@@ -1,29 +1,17 @@
 package com.springboot.MyTodoList.util;
 
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-import org.telegram.telegrambots.meta.generics.TelegramClient;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
-
-import com.springboot.MyTodoList.controller.ToDoItemBotController;
 import com.springboot.MyTodoList.model.ToDoItem;
+import com.springboot.MyTodoList.service.DeepSeekService;
 import com.springboot.MyTodoList.service.ToDoItemService;
-
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.springboot.MyTodoList.util.BotCommands;
-import com.springboot.MyTodoList.util.BotHelper;
-import com.springboot.MyTodoList.util.BotLabels;
-import com.springboot.MyTodoList.util.BotMessages;
-
-import java.util.List;
-import java.util.ArrayList;
-import java.util.stream.Collectors;
-
-import java.time.OffsetDateTime;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
+import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 public class BotActions{
 
@@ -35,10 +23,12 @@ public class BotActions{
     boolean exit;
 
     ToDoItemService todoService;
+    DeepSeekService deepSeekService;
 
-    public BotActions(TelegramClient tc,ToDoItemService ts){
+    public BotActions(TelegramClient tc,ToDoItemService ts, DeepSeekService ds){
         telegramClient = tc;
         todoService = ts;
+        deepSeekService = ds;
         exit  = false;
     }
 
@@ -60,6 +50,14 @@ public class BotActions{
 
     public ToDoItemService getTodoService(){
         return todoService;
+    }
+
+    public void setDeepSeekService(DeepSeekService dssvc){
+        deepSeekService = dssvc;
+    }
+
+    public DeepSeekService getDeepSeekService(){
+        return deepSeekService;
     }
 
 
@@ -228,5 +226,23 @@ public class BotActions{
 
         BotHelper.sendMessageToTelegram(chatId, BotMessages.NEW_ITEM_ADDED.getMessage(), telegramClient, null);
     }
+
+    public void fnLLM(){
+        logger.info("Calling LLM");
+        if (!(requestText.contains(BotCommands.LLM_REQ.getCommand())) || exit)
+            return;
+        
+        String prompt = "Dame los datos del clima en mty";
+        String out = "<empty>";
+        try{
+            out = deepSeekService.generateText(prompt);
+        }catch(Exception exc){
+
+        }
+
+        BotHelper.sendMessageToTelegram(chatId, "LLM: "+out, telegramClient, null);
+
+    }
+
 
 }

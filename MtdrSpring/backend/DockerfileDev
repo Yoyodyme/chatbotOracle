@@ -1,5 +1,4 @@
-FROM openjdk:22-slim
-RUN apt-get update && apt-get install -y procps
+FROM openjdk:22-jdk
 #COPY pom.xml /tmp/
 #COPY src /tmp/src/
 RUN mkdir -p /mtdrworkshop/creds
