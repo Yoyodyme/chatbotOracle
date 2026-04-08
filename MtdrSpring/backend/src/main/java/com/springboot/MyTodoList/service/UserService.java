@@ -30,14 +30,12 @@ public class UserService {
         }
     }
 
-
     public User addUser(User newUser){
         return userRepository.save(newUser);
     }
 
     public User test(){
-        User newUser = new User(88,"someNumber","pwd");
-
+        User newUser = new User(88, 1234567890L, "pwd");
         return userRepository.save(newUser);
     }
 
@@ -49,17 +47,27 @@ public class UserService {
             return false;
         }
     }
+
     public User updateUser(int id, User user2update){
         Optional<User> dbUser = userRepository.findById(id);
         if(dbUser.isPresent()){
             User user = dbUser.get();
             user.setID(id);
-            user.setPhoneNumber(user2update.getPhoneNumber());
-            user.setUserPassword(user2update.getUserPassword());
+            if (user2update.getPhoneNumber() != null) {
+                user.setPhoneNumber(user2update.getPhoneNumber());
+            }
+            if (user2update.getUserPassword() != null) {
+                user.setUserPassword(user2update.getUserPassword());
+            }
+            if (user2update.getName() != null) {
+                user.setName(user2update.getName());
+            }
+            if (user2update.getLastname() != null) {
+                user.setLastname(user2update.getLastname());
+            }
             return userRepository.save(user);
         }else{
             return null;
         }
     }
-
 }

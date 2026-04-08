@@ -1,74 +1,52 @@
 package com.springboot.MyTodoList.model;
 
-
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 
-/*
-    representation of the TODOITEM table that exists already
-    in the autonomous database
- */
 @Entity
-@Table(name = "TODOITEM")
+@Table(name = "TAREAS")
 public class ToDoItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    int ID;
-    @Column(name = "DESCRIPTION")
-    String description;
-    @Column(name = "CREATION_TS")
-    OffsetDateTime creation_ts;
-    @Column(name = "done")
-    boolean done;
-    public ToDoItem(){
+    private int id;
 
-    }
-    public ToDoItem(int ID, String description, OffsetDateTime creation_ts, boolean done) {
-        this.ID = ID;
-        this.description = description;
-        this.creation_ts = creation_ts;
-        this.done = done;
-    }
+    private String titulo;
+    private String descripcion;
+    private boolean done;
+    private OffsetDateTime creation_ts;
 
-    public int getID() {
-        return ID;
-    }
+    @ManyToOne
+    @JoinColumn(name = "ID_USUARIO_ASIGNADO")
+    private User user;
 
-    public void setID(int ID) {
-        this.ID = ID;
-    }
+    public ToDoItem() {}
 
-    public String getDescription() {
-        return description;
-    }
+    public int getID() { return id; }
+    public void setID(int id) { this.id = id; }
 
-    public void setDescription(String description) {
-        this.description = description;
-    }
+    public String getTitulo() { return titulo; }
+    public void setTitulo(String titulo) { this.titulo = titulo; }
 
-    public OffsetDateTime getCreation_ts() {
-        return creation_ts;
-    }
+    public String getDescription() { return descripcion; }
+    public void setDescription(String descripcion) { this.descripcion = descripcion; }
 
-    public void setCreation_ts(OffsetDateTime creation_ts) {
-        this.creation_ts = creation_ts;
-    }
+    public boolean isDone() { return done; }
+    public void setDone(boolean done) { this.done = done; }
 
-    public boolean isDone() {
-        return done;
-    }
+    public OffsetDateTime getCreation_ts() { return creation_ts; }
+    public void setCreation_ts(OffsetDateTime creation_ts) { this.creation_ts = creation_ts; }
 
-    public void setDone(boolean done) {
-        this.done = done;
-    }
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
 
     @Override
     public String toString() {
         return "ToDoItem{" +
-                "ID=" + ID +
-                ", description='" + description + '\'' +
-                ", creation_ts=" + creation_ts +
+                "id=" + id +
+                ", titulo='" + titulo + '\'' +
+                ", descripcion='" + descripcion + '\'' +
                 ", done=" + done +
+                ", creation_ts=" + creation_ts +
                 '}';
     }
 }
