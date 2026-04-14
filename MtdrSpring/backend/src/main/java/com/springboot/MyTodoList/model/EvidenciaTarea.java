@@ -17,11 +17,11 @@ public class EvidenciaTarea {
     @Column(name = "ID_EVIDENCIA")
     private Long idEvidencia;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "ID_TAREA", foreignKey = @ForeignKey(name = "FK_EVIDENCIA_TAREA"))
     private Tarea tarea;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "ID_USUARIO_SUBIO", foreignKey = @ForeignKey(name = "FK_EVIDENCIA_USUARIO"))
     private Usuario usuarioSubio;
 

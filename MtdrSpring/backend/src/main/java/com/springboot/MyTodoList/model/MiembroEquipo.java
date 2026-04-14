@@ -15,12 +15,12 @@ import java.io.Serializable;
 @IdClass(MiembroEquipoId.class)
 public class MiembroEquipo {
     @Id
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "ID_EQUIPO", foreignKey = @ForeignKey(name = "FK_ME_EQUIPO"))
     private Equipo equipo;
 
     @Id
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "ID_USUARIO", foreignKey = @ForeignKey(name = "FK_ME_USUARIO"))
     private Usuario usuario;
 

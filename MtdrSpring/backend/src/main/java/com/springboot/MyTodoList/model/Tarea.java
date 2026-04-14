@@ -24,19 +24,19 @@ public class Tarea {
     @Column(name = "DESCRIPCION", length = 500)
     private String descripcion;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "ID_ESTATUS", foreignKey = @ForeignKey(name = "FK_TAREA_ESTATUS"))
     private EstatusTarea estatus;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "ID_PRIORIDAD", foreignKey = @ForeignKey(name = "FK_TAREA_PRIORIDAD"))
     private PrioridadTarea prioridad;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "ID_USUARIO_CREADOR", foreignKey = @ForeignKey(name = "FK_TAREA_CREADOR"))
     private Usuario usuarioCreador;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "ID_USUARIO_ASIGNADO", foreignKey = @ForeignKey(name = "FK_TAREA_ASIGNADO"))
     private Usuario usuarioAsignado;
 

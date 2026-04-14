@@ -1,9 +1,9 @@
 package com.springboot.MyTodoList.config;
 
-//import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Component;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-//import org.springframework.context.annotation.PropertySource;
 
+@Component
 @ConfigurationProperties(prefix = "telegram.bot")
 public class BotProps {
     private String name;

@@ -17,11 +17,11 @@ public class ComentarioTarea {
     @Column(name = "ID_COMENTARIO")
     private Long idComentario;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "ID_TAREA", foreignKey = @ForeignKey(name = "FK_COMENT_TAREA"))
     private Tarea tarea;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "ID_USUARIO_AUTOR", foreignKey = @ForeignKey(name = "FK_COMENT_USUARIO"))
     private Usuario usuarioAutor;
 

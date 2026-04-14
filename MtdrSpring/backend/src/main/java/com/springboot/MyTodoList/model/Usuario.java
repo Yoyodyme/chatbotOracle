@@ -26,7 +26,7 @@ public class Usuario {
     @Column(name = "NOMBRE_COMPLETO", length = 200)
     private String nombreCompleto;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "ID_ROL", foreignKey = @ForeignKey(name = "FK_USUARIO_ROL"))
     private Rol rol;
 
