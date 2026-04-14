@@ -1,6 +1,5 @@
 package com.springboot.MyTodoList.config;
 
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
@@ -8,18 +7,19 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 import javax.sql.DataSource;
+import java.io.File;
 
 @Configuration
 public class OracleConfiguration {
     Logger logger = LoggerFactory.getLogger(OracleConfiguration.class);
-    
+
     @Bean
     public DataSource dataSource() {
         DriverManagerDataSource dataSource = new DriverManagerDataSource();
 
-        // Wallet descargado desde OCI Console para la ADB "chatbotdb"
-        // Usar forward slashes — Oracle JDBC los acepta en Windows
-        String walletPath = "c:/Users/Usuario/Documents/GitHub/chatbotOracle/MtdrSpring/backend/wallet";
+        // Ruta relativa al directorio donde se ejecuta Maven (MtdrSpring/backend/)
+        // Funciona en cualquier máquina sin configuración adicional
+        String walletPath = new File("wallet").getAbsolutePath().replace("\\", "/");
 
         // 1. TNS_ADMIN: donde Oracle JDBC busca tnsnames.ora y sqlnet.ora
         System.setProperty("oracle.net.tns_admin", walletPath);
@@ -28,8 +28,7 @@ public class OracleConfiguration {
         System.setProperty("oracle.net.wallet_location",
                 "(SOURCE=(METHOD=FILE)(METHOD_DATA=(DIRECTORY=" + walletPath + ")))");
 
-        // 3. URL usando el descriptor completo de tnsnames.ora (chatbotdb_high)
-        //    Incluye la cláusula security requerida para TLS con ADB
+        // 3. URL con descriptor completo de tnsnames.ora (chatbotdb_high)
         String jdbcUrl = "jdbc:oracle:thin:@(description=" +
                 "(retry_count=20)(retry_delay=3)" +
                 "(address=(protocol=tcps)(port=1522)(host=adb.mx-queretaro-1.oraclecloud.com))" +
@@ -42,8 +41,7 @@ public class OracleConfiguration {
         dataSource.setPassword("Equipo51_105");
 
         logger.info("Oracle Cloud ADB DataSource configured");
-        logger.info("JDBC URL: {}", jdbcUrl);
-        logger.info("TNS Admin / Wallet: {}", walletPath);
+        logger.info("Wallet path: {}", walletPath);
 
         return dataSource;
     }
