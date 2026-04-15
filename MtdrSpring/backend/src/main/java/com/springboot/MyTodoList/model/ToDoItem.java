@@ -1,6 +1,7 @@
 package com.springboot.MyTodoList.model;
 
 import jakarta.persistence.*;
+import jakarta.persistence.Column;
 import java.time.OffsetDateTime;
 
 @Entity
@@ -8,11 +9,14 @@ import java.time.OffsetDateTime;
 public class ToDoItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ID_TAREA")
     private int id;
 
     private String titulo;
     private String descripcion;
-    private boolean done;
+    @Column(name = "DONE", nullable = true)
+    private Boolean done;
+    @Column(name = "CREADO_EN")
     private OffsetDateTime creation_ts;
 
     @ManyToOne
@@ -30,7 +34,7 @@ public class ToDoItem {
     public String getDescription() { return descripcion; }
     public void setDescription(String descripcion) { this.descripcion = descripcion; }
 
-    public boolean isDone() { return done; }
+    public boolean isDone() { return done != null && done; }
     public void setDone(boolean done) { this.done = done; }
 
     public OffsetDateTime getCreation_ts() { return creation_ts; }
