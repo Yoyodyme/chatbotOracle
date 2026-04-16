@@ -7,8 +7,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: graalvm/setup-graalvm@v1
         with:
-          java-version: '22'      # See 'Options' for more details
-          distribution: 'graalvm' # See 'Supported distributions' for available options
+          java-version: '22'
+          distribution: 'graalvm'
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Example step
         run: |
@@ -17,12 +17,17 @@ jobs:
           java --version
           native-image --version
       - name: Extract configuration files
-        run: cd MtdrSpring;
-              wget https://objectstorage.mx-queretaro-1.oraclecloud.com/p/Bg_eV5KPa4E0iFKeKlQ_k55F3OcfCs_33dNFyE2Gz9SBIqKaoFRf_JkaeHF3andL/n/axzmghqes1gn/b/reacttodo-rolax/o/deployment_config.tgz ;
-              tar -xzvf deployment_config.tgz;
-              source env.sh;
-              echo "${{ secrets.AUTH_TOKEN }}" | docker login -u "axzmghqes1gn/adan.ruiz@tec.mx" --password-stdin mx-queretaro-1.ocir.io ;
-      - name: "Build"
-        run:  cd MtdrSpring;
-              source env.sh;
-              (cd backend;source build.sh)
+        env:
+          OCI_CONFIG_PAR_URL: ${{ secrets.OCI_CONFIG_PAR_URL }}
+          AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+        run: |
+          cd MtdrSpring
+          wget "$OCI_CONFIG_PAR_URL" -O deployment_config.tgz
+          tar -xzvf deployment_config.tgz
+          source env.sh
+          echo "$AUTH_TOKEN" | docker login -u "axzmghqes1gn/adan.ruiz@tec.mx" --password-stdin mx-queretaro-1.ocir.io
+      - name: Build
+        run: |
+          cd MtdrSpring
+          source env.sh
+          (cd backend; source build.sh)

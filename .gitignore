@@ -41,11 +41,17 @@ frontend/build
 
 # misc
 .DS_Store
+.idea
+
+# Environment variable files — NEVER commit real secrets
+.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
-.idea
+
+# Oracle Wallet — contains mTLS certificates, never commit
+MtdrSpring/backend/wallet/
 
 frontend/package-lock.json
 frontend/npm-debug.log*
