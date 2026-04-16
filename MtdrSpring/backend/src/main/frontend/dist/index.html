@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="EQ51 Task Manager — Gestión de tareas en la nube" />
+    <title>EQ51 Task Manager</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Google Fonts: IBM Plex Sans (headings/body), IBM Plex Mono (code/IDs) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <script type="module" crossorigin src="/assets/index-D1FYW_3K.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-B5UHKC4J.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      window.onerror = function(msg, src, line, col, err) {
+        document.body.innerHTML = '<div style="color:#da1e28;padding:32px;font-family:monospace;background:#f4f5f7;min-height:100vh"><h1 style="color:#da1e28">Error Global</h1><pre style="white-space:pre-wrap;word-break:break-word;font-size:13px">' + msg + '\n\nSource: ' + src + ':' + line + ':' + col + (err ? '\n\nStack:\n' + err.stack : '') + '</pre></div>';
+      };
+      window.addEventListener('unhandledrejection', function(e) {
+        document.body.innerHTML = '<div style="color:#da1e28;padding:32px;font-family:monospace;background:#f4f5f7;min-height:100vh"><h1 style="color:#da1e28">Promise Error</h1><pre style="white-space:pre-wrap;word-break:break-word;font-size:13px">' + String(e.reason) + (e.reason?.stack ? '\n\nStack:\n' + e.reason.stack : '') + '</pre></div>';
+      });
+    </script>
+  </body>
+</html>
