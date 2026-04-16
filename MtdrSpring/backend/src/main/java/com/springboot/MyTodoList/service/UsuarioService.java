@@ -26,7 +26,11 @@ public class UsuarioService {
     }
 
     public Usuario obtenerUsuarioPorIdIntegration(String idIntegration) {
-        return usuarioRepository.findByIdIntegrationUsuario(idIntegration);
+        return usuarioRepository.findByIdIntegrationUsuario(idIntegration).orElse(null);
+    }
+
+    public Optional<Usuario> buscarPorTelegramId(String telegramId) {
+        return usuarioRepository.findByIdIntegrationUsuario(telegramId);
     }
 
     public List<Usuario> obtenerTodosLosUsuarios() {

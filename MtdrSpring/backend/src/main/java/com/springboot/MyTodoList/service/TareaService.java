@@ -63,9 +63,27 @@ public class TareaService {
             if (tareaActualizada.getFechaVencimiento() != null) {
                 tarea.setFechaVencimiento(tareaActualizada.getFechaVencimiento());
             }
+            if (tareaActualizada.getHorasReales() != null) {
+                tarea.setHorasReales(tareaActualizada.getHorasReales());
+            }
+            if (tareaActualizada.getSprint() != null) {
+                tarea.setSprint(tareaActualizada.getSprint());
+            }
             return tareaRepository.save(tarea);
         }
         return null;
+    }
+
+    public List<Tarea> obtenerTareasPorSprint(Long idSprint) {
+        return tareaRepository.findBySprintIdSprint(idSprint);
+    }
+
+    public List<Tarea> obtenerTareasPorSprintYUsuario(Long idSprint, Long idUsuario) {
+        return tareaRepository.findBySprintIdSprintAndUsuarioAsignadoIdUsuario(idSprint, idUsuario);
+    }
+
+    public List<Tarea> obtenerTareasPorEstatusYUsuario(String nombreEstatus, Long idUsuario) {
+        return tareaRepository.findByEstatusNombreIgnoreCaseAndUsuarioAsignadoIdUsuario(nombreEstatus, idUsuario);
     }
 
     public boolean eliminarTarea(Long id) {

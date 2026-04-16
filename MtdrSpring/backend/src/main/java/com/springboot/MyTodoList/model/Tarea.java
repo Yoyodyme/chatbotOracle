@@ -52,6 +52,16 @@ public class Tarea {
     @Column(name = "ACTUALIZADO_EN")
     private LocalDateTime actualizadoEn;
 
+    @Column(name = "HORAS_ESTIMADAS")
+    private Double horasEstimadas;
+
+    @Column(name = "HORAS_REALES")
+    private Double horasReales;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "ID_SPRINT", foreignKey = @ForeignKey(name = "FK_TAREA_SPRINT"))
+    private Sprint sprint;
+
     @PrePersist
     protected void onCreate() {
         creadoEn = LocalDateTime.now();

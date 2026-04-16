@@ -10,7 +10,13 @@ public enum BotLabels {
 	UNDO("UNDO"),
 	DELETE("DELETE"),
 	MY_TODO_LIST("MY TODO LIST"),
-	DASH("-");
+	DASH("-"),
+	NEW_TASK("Nueva Tarea"),
+	ASSIGN_TO_SPRINT("Asignar a Sprint"),
+	COMPLETE_TASK("Completar Tarea"),
+	SPRINT_TABLE("Tabla del Sprint"),
+	KPI_REPORT("KPI del Sprint"),
+	CANCEL("Cancelar");
 
 	private String label;
 
