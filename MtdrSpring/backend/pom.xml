@@ -14,7 +14,7 @@
 	<name>MyTodoList</name>
 	<description>Demo project for Spring Boot</description>
 	<properties>
-		<java.version>11</java.version>
+		<java.version>17</java.version>
 		<version.lib.ojdbc>21.1.0.0</version.lib.ojdbc>
 		<frontend-src-dir>${project.basedir}/src/main/frontend</frontend-src-dir>
 		<node.version>v23.9.0</node.version>
@@ -33,17 +33,11 @@
 		<dependency>
 			<groupId>org.hibernate.orm</groupId>
 			<artifactId>hibernate-community-dialects</artifactId>
-			<version>6.6.22.Final</version>
 		</dependency>
 		<dependency>
-			<groupId>io.springfox</groupId>
-			<artifactId>springfox-swagger2</artifactId>
-			<version>2.6.1</version>
-		</dependency>
-		<dependency>
-			<groupId>io.springfox</groupId>
-			<artifactId>springfox-swagger-ui</artifactId>
-			<version>2.6.1</version>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>2.8.3</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.httpcomponents.client5</groupId>
@@ -145,7 +139,7 @@
 						<goals>
 							<goal>copy-resources</goal>
 						</goals>
-						<phase>prepare-package</phase>
+						<phase>process-resources</phase>
 						<configuration>
 							<outputDirectory>${project.build.outputDirectory}/static</outputDirectory>
 							<resources>
