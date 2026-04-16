@@ -4,6 +4,7 @@ import com.springboot.MyTodoList.model.Usuario;
 import com.springboot.MyTodoList.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,6 +32,16 @@ public class UsuarioService {
 
     public Optional<Usuario> buscarPorTelegramId(String telegramId) {
         return usuarioRepository.findByIdIntegrationUsuario(telegramId);
+    }
+
+    @Transactional
+    public Usuario autoRegistrarUsuario(String telegramId, String nombreUsuario, String nombreCompleto) {
+        Usuario nuevo = new Usuario();
+        nuevo.setIdIntegrationUsuario(telegramId);
+        nuevo.setNombreUsuario(nombreUsuario);
+        nuevo.setNombreCompleto(nombreCompleto);
+        nuevo.setRol(null);
+        return usuarioRepository.save(nuevo);
     }
 
     public List<Usuario> obtenerTodosLosUsuarios() {

@@ -104,14 +104,19 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
 
     @Override
     public void consume(Update update) {
-        // Ignorar actualizaciones sin mensaje de texto
+        // Ignorar actualizaciones sin mensaje de texto o sin remitente
         if (!update.hasMessage() || !update.getMessage().hasText()) return;
+        if (update.getMessage().getFrom() == null) return;
 
         String mensajeOriginal = update.getMessage().getText();
         long chatId = update.getMessage().getChatId();
 
-        // Extraer identificador de Telegram del usuario
-        String telegramUserId = String.valueOf(update.getMessage().getFrom().getId());
+        // Extraer identificador y datos del usuario de Telegram
+        org.telegram.telegrambots.meta.api.objects.User remitente = update.getMessage().getFrom();
+        String telegramUserId = String.valueOf(remitente.getId());
+        String telegramFirstName = remitente.getFirstName();
+        String telegramLastName = remitente.getLastName();
+        String telegramUsername = remitente.getUserName();
 
         // ── Mapear etiquetas de botones a sus comandos equivalentes ──────────
         String mensajeEfectivo = resolverMensajeEfectivo(mensajeOriginal);
@@ -147,6 +152,9 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
         tareaActions.setTextoMensaje(mensajeEfectivo);
         tareaActions.setChatId(chatId);
         tareaActions.setTelegramUserId(telegramUserId);
+        tareaActions.setTelegramFirstName(telegramFirstName);
+        tareaActions.setTelegramLastName(telegramLastName);
+        tareaActions.setTelegramUsername(telegramUsername);
 
         // ── Cadena de comandos heredados ──────────────────────────────────────
         actions.fnDone();
@@ -163,11 +171,14 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
         tareaActions.fnCompletarTarea();
         tareaActions.fnTablaSprint();
         tareaActions.fnKpi();
+        tareaActions.fnNuevoSprint();
 
-        // ── Fallback: guardar texto libre como ítem de to-do ─────────────────
-        // Solo se ejecuta si ningún manejador de tarea capturó el mensaje.
-        if (!tareaActions.isExit()) {
-            actions.fnElse();
+        // ── Fallback: comando no reconocido ──────────────────────────────────
+        // Solo se ejecuta si ningún manejador capturó el mensaje.
+        if (!tareaActions.isExit() && !actions.isExit()) {
+            BotHelper.sendMessageToTelegram(chatId,
+                    "Comando no reconocido. Usa /start para ver los comandos disponibles.",
+                    telegramClient);
         }
     }
 
@@ -188,6 +199,8 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
             return "/sprinttable";
         } else if (BotLabels.KPI_REPORT.getLabel().equals(mensajeOriginal)) {
             return "/kpi";
+        } else if (BotLabels.NEW_SPRINT.getLabel().equals(mensajeOriginal)) {
+            return "/newsprint";
         }
         // Sin cambio: devolver el mensaje tal cual
         return mensajeOriginal;
@@ -210,6 +223,8 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
                         BotLabels.SPRINT_TABLE.getLabel(),
                         BotLabels.KPI_REPORT.getLabel()))
                 .keyboardRow(new KeyboardRow(
+                        BotLabels.NEW_SPRINT.getLabel()))
+                .keyboardRow(new KeyboardRow(
                         BotLabels.SHOW_MAIN_SCREEN.getLabel(),
                         BotLabels.HIDE_MAIN_SCREEN.getLabel()))
                 .build();
@@ -218,6 +233,7 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
                 "Hola! Soy el bot de EQ51.\n\n" +
                 "Comandos disponibles:\n" +
                 "/newtask — Crear nueva tarea\n" +
+                "/newsprint — Crear nuevo sprint\n" +
                 "/assignsprint — Asignar tarea al sprint\n" +
                 "/donetask — Completar tarea\n" +
                 "/sprinttable — Ver tabla del sprint\n" +

@@ -44,6 +44,10 @@ public class BotActions{
         telegramClient=tc;
     }
 
+    public boolean isExit() {
+        return exit;
+    }
+
     public void setTodoService(ToDoItemService tsvc){
         todoService = tsvc;
     }
@@ -213,18 +217,6 @@ public class BotActions{
         logger.info("Adding item by BotHelper");
         BotHelper.sendMessageToTelegram(chatId, BotMessages.TYPE_NEW_TODO_ITEM.getMessage(), telegramClient);
         exit = true;
-    }
-
-    public void fnElse(){
-        if(exit)
-            return;
-        ToDoItem newItem = new ToDoItem();
-        newItem.setDescription(requestText);
-        newItem.setCreation_ts(OffsetDateTime.now());
-        newItem.setDone(false);
-        todoService.addToDoItem(newItem);
-
-        BotHelper.sendMessageToTelegram(chatId, BotMessages.NEW_ITEM_ADDED.getMessage(), telegramClient, null);
     }
 
     public void fnLLM(){

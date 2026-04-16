@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -32,6 +33,7 @@ public class TareaBotActions {
     private static final Logger logger = LoggerFactory.getLogger(TareaBotActions.class);
     private static final double MAX_HORAS_RECOMENDADAS = 4.0;
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yy");
+    private static final DateTimeFormatter FORMATO_FECHA_COMPLETO = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final TelegramClient telegramClient;
     private final TareaService tareaService;
@@ -44,6 +46,9 @@ public class TareaBotActions {
     private String textoMensaje;
     private long chatId;
     private String telegramUserId;  // Telegram user ID as String (for Usuario.idIntegrationUsuario)
+    private String telegramFirstName;
+    private String telegramLastName;
+    private String telegramUsername;
     boolean exit;
 
     public TareaBotActions(TelegramClient telegramClient,
@@ -66,6 +71,9 @@ public class TareaBotActions {
     public void setTextoMensaje(String texto) { this.textoMensaje = texto; }
     public void setChatId(long chatId) { this.chatId = chatId; }
     public void setTelegramUserId(String telegramUserId) { this.telegramUserId = telegramUserId; }
+    public void setTelegramFirstName(String telegramFirstName) { this.telegramFirstName = telegramFirstName; }
+    public void setTelegramLastName(String telegramLastName) { this.telegramLastName = telegramLastName; }
+    public void setTelegramUsername(String telegramUsername) { this.telegramUsername = telegramUsername; }
     public boolean isExit() { return exit; }
 
     // ── /newtask ─────────────────────────────────────────────────────────────
@@ -183,19 +191,14 @@ public class TareaBotActions {
             return;
         }
 
-        Optional<Usuario> usuarioOpt = usuarioService.buscarPorTelegramId(telegramUserId);
-        if (usuarioOpt.isEmpty()) {
-            conversationManager.terminarConversacion(chatId);
-            BotHelper.sendMessageToTelegram(chatId, "No estas registrado en el sistema. Pide a tu manager que te registre.", telegramClient);
-            return;
-        }
+        Usuario usuario = obtenerOAutoRegistrarUsuario();
 
         Tarea nuevaTarea = new Tarea();
         nuevaTarea.setTitulo((String) estado.getDato("titulo"));
         nuevaTarea.setDescripcion((String) estado.getDato("descripcion"));
         nuevaTarea.setHorasEstimadas((Double) estado.getDato("horasEstimadas"));
-        nuevaTarea.setUsuarioCreador(usuarioOpt.get());
-        nuevaTarea.setUsuarioAsignado(usuarioOpt.get());
+        nuevaTarea.setUsuarioCreador(usuario);
+        nuevaTarea.setUsuarioAsignado(usuario);
 
         PrioridadTarea prioridad = new PrioridadTarea();
         prioridad.setIdPrioridad(idPrioridad);
@@ -245,13 +248,9 @@ public class TareaBotActions {
             return;
         }
 
-        Optional<Usuario> usuarioOpt = usuarioService.buscarPorTelegramId(telegramUserId);
-        if (usuarioOpt.isEmpty()) {
-            BotHelper.sendMessageToTelegram(chatId, "No estas registrado en el sistema.", telegramClient);
-            return;
-        }
+        Usuario usuarioSprint = obtenerOAutoRegistrarUsuario();
 
-        List<Tarea> tareasPendientes = tareaService.obtenerTareasPorEstatusYUsuario("Pendiente", usuarioOpt.get().getIdUsuario());
+        List<Tarea> tareasPendientes = tareaService.obtenerTareasPorEstatusYUsuario("Pendiente", usuarioSprint.getIdUsuario());
         if (tareasPendientes.isEmpty()) {
             BotHelper.sendMessageToTelegram(chatId, BotMessages.ASSIGNSPRINT_NO_TASKS.getMessage(), telegramClient);
             return;
@@ -259,7 +258,7 @@ public class TareaBotActions {
 
         ConversationState estado = new ConversationState("assignsprint");
         estado.setDato("idSprint", sprintOpt.get().getIdSprint());
-        estado.setDato("idUsuario", usuarioOpt.get().getIdUsuario());
+        estado.setDato("idUsuario", usuarioSprint.getIdUsuario());
         conversationManager.iniciarConversacion(chatId, estado);
 
         String listaTareas = construirListaTareas(tareasPendientes);
@@ -334,20 +333,16 @@ public class TareaBotActions {
     }
 
     private void iniciarFlujoCompletarTarea() {
-        Optional<Usuario> usuarioOpt = usuarioService.buscarPorTelegramId(telegramUserId);
-        if (usuarioOpt.isEmpty()) {
-            BotHelper.sendMessageToTelegram(chatId, "No estas registrado en el sistema.", telegramClient);
-            return;
-        }
+        Usuario usuarioDone = obtenerOAutoRegistrarUsuario();
 
-        List<Tarea> tareasEnProgreso = tareaService.obtenerTareasPorEstatusYUsuario("En Progreso", usuarioOpt.get().getIdUsuario());
+        List<Tarea> tareasEnProgreso = tareaService.obtenerTareasPorEstatusYUsuario("En Progreso", usuarioDone.getIdUsuario());
         if (tareasEnProgreso.isEmpty()) {
             BotHelper.sendMessageToTelegram(chatId, BotMessages.DONETASK_NO_TASKS.getMessage(), telegramClient);
             return;
         }
 
         ConversationState estado = new ConversationState("donetask");
-        estado.setDato("idUsuario", usuarioOpt.get().getIdUsuario());
+        estado.setDato("idUsuario", usuarioDone.getIdUsuario());
         conversationManager.iniciarConversacion(chatId, estado);
 
         String listaTareas = construirListaTareas(tareasEnProgreso);
@@ -478,7 +473,137 @@ public class TareaBotActions {
         exit = true;
     }
 
+    // ── /newsprint ────────────────────────────────────────────────────────────
+
+    public void fnNuevoSprint() {
+        if (exit) return;
+
+        boolean esComandoInicio = textoMensaje.equals(BotCommands.NEW_SPRINT.getCommand());
+        boolean tieneConversacionActiva = conversationManager.tieneConversacionActiva(chatId)
+                && "newsprint".equals(conversationManager.obtenerEstado(chatId).getComando());
+
+        if (!esComandoInicio && !tieneConversacionActiva) return;
+
+        if (esComandoInicio) {
+            if (conversationManager.tieneConversacionActiva(chatId)) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        "Ya tienes una operacion en curso. Escribe 'cancelar' para terminarla primero.",
+                        telegramClient);
+                exit = true;
+                return;
+            }
+            ConversationState estado = new ConversationState("newsprint");
+            conversationManager.iniciarConversacion(chatId, estado);
+            BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWSPRINT_NOMBRE.getMessage(), telegramClient);
+            exit = true;
+            return;
+        }
+
+        ConversationState estado = conversationManager.obtenerEstado(chatId);
+        procesarPasoNuevoSprint(estado);
+        exit = true;
+    }
+
+    private void procesarPasoNuevoSprint(ConversationState estado) {
+        if (textoMensaje.equalsIgnoreCase("cancelar")) {
+            conversationManager.terminarConversacion(chatId);
+            BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWSPRINT_CANCELLED.getMessage(), telegramClient);
+            return;
+        }
+
+        switch (estado.getPaso()) {
+            case 0: // esperando nombre del sprint
+                estado.setDato("nombreSprint", textoMensaje.trim());
+                estado.avanzarPaso();
+                BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWSPRINT_FECHA_INICIO.getMessage(), telegramClient);
+                break;
+
+            case 1: // esperando fecha de inicio
+                try {
+                    LocalDate fechaInicio = LocalDate.parse(textoMensaje.trim(),
+                            FORMATO_FECHA_COMPLETO);
+                    estado.setDato("fechaInicio", fechaInicio);
+                    estado.avanzarPaso();
+                    BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWSPRINT_FECHA_FIN.getMessage(), telegramClient);
+                } catch (Exception e) {
+                    BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWSPRINT_FECHA_INVALIDA.getMessage(), telegramClient);
+                }
+                break;
+
+            case 2: // esperando fecha de fin
+                try {
+                    LocalDate fechaFin = LocalDate.parse(textoMensaje.trim(),
+                            FORMATO_FECHA_COMPLETO);
+                    LocalDate fechaInicio = (LocalDate) estado.getDato("fechaInicio");
+
+                    if (!fechaFin.isAfter(fechaInicio)) {
+                        BotHelper.sendMessageToTelegram(chatId,
+                                "La fecha de fin debe ser posterior a la fecha de inicio. Intenta de nuevo (dd/MM/yyyy):",
+                                telegramClient);
+                        break;
+                    }
+
+                    // Desactivar sprint activo anterior si existe
+                    Optional<Sprint> sprintPrevioOpt = sprintService.obtenerSprintActivo();
+                    if (sprintPrevioOpt.isPresent()) {
+                        Sprint sprintPrevio = sprintPrevioOpt.get();
+                        sprintPrevio.setActivo(false);
+                        Sprint resultado = sprintService.actualizarSprint(sprintPrevio.getIdSprint(), sprintPrevio);
+                        if (resultado == null) {
+                            logger.warn("No se pudo desactivar el sprint anterior con ID {}", sprintPrevio.getIdSprint());
+                        }
+                    }
+
+                    // Crear el nuevo sprint
+                    Sprint nuevoSprint = new Sprint();
+                    nuevoSprint.setNombre((String) estado.getDato("nombreSprint"));
+                    nuevoSprint.setFechaInicio(fechaInicio);
+                    nuevoSprint.setFechaFin(fechaFin);
+                    nuevoSprint.setActivo(true);
+                    sprintService.crearSprint(nuevoSprint);
+
+                    conversationManager.terminarConversacion(chatId);
+
+                    String mensaje = BotMessages.NEWSPRINT_CREADO.getMessage()
+                            .replace("{nombre}", nuevoSprint.getNombre());
+                    BotHelper.sendMessageToTelegram(chatId, mensaje, telegramClient);
+                } catch (Exception e) {
+                    BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWSPRINT_FECHA_INVALIDA.getMessage(), telegramClient);
+                }
+                break;
+
+            default:
+                conversationManager.terminarConversacion(chatId);
+        }
+    }
+
     // ── Private helpers ───────────────────────────────────────────────────────
+
+    private Usuario obtenerOAutoRegistrarUsuario() {
+        Optional<Usuario> usuarioOpt = usuarioService.buscarPorTelegramId(telegramUserId);
+        if (usuarioOpt.isPresent()) {
+            return usuarioOpt.get();
+        }
+
+        String nombreUsuario = (telegramUsername != null && !telegramUsername.isEmpty())
+                ? telegramUsername
+                : "user_" + telegramUserId;
+
+        String nombreCompleto;
+        if (telegramFirstName != null && !telegramFirstName.isEmpty()) {
+            nombreCompleto = telegramLastName != null && !telegramLastName.isEmpty()
+                    ? telegramFirstName + " " + telegramLastName
+                    : telegramFirstName;
+        } else {
+            nombreCompleto = nombreUsuario;
+        }
+
+        Usuario nuevo = usuarioService.autoRegistrarUsuario(telegramUserId, nombreUsuario, nombreCompleto);
+        BotHelper.sendMessageToTelegram(chatId,
+                "Bienvenido, " + nombreCompleto + "! Te hemos registrado automaticamente en el sistema.",
+                telegramClient);
+        return nuevo;
+    }
 
     private String construirListaTareas(List<Tarea> tareas) {
         StringBuilder sb = new StringBuilder();

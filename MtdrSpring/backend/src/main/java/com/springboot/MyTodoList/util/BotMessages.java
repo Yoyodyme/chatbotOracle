@@ -43,7 +43,15 @@ public enum BotMessages {
 
 	// kpi
 	KPI_NO_SPRINT("No hay un sprint activo."),
-	KPI_EMPTY("El sprint actual no tiene tareas.");
+	KPI_EMPTY("El sprint actual no tiene tareas."),
+
+	// newsprint flow
+	NEWSPRINT_NOMBRE("Nuevo Sprint\n\nPaso 1/3 — Escribe el nombre del sprint:"),
+	NEWSPRINT_FECHA_INICIO("Paso 2/3 — Fecha de inicio (dd/MM/yyyy):"),
+	NEWSPRINT_FECHA_FIN("Paso 3/3 — Fecha de fin (dd/MM/yyyy):"),
+	NEWSPRINT_FECHA_INVALIDA("Formato de fecha invalido. Usa dd/MM/yyyy (ej: 25/04/2025):"),
+	NEWSPRINT_CREADO("Sprint '{nombre}' creado y activado."),
+	NEWSPRINT_CANCELLED("Creacion de sprint cancelada.");
 
 	private String message;
 

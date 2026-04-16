@@ -16,7 +16,8 @@ public enum BotLabels {
 	COMPLETE_TASK("Completar Tarea"),
 	SPRINT_TABLE("Tabla del Sprint"),
 	KPI_REPORT("KPI del Sprint"),
-	CANCEL("Cancelar");
+	CANCEL("Cancelar"),
+	NEW_SPRINT("Nuevo Sprint");
 
 	private String label;
 
