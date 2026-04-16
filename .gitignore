@@ -11,6 +11,9 @@
 *.jar
 *.war
 *.nar
+
+# Exception: Maven wrapper bootstrap JAR must be committed
+!MtdrSpring/backend/.mvn/wrapper/maven-wrapper.jar
 *.ear
 *.zip
 *.tar.gz

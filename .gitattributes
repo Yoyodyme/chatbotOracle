@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Maven wrapper — enforce correct line endings
+MtdrSpring/backend/mvnw text eol=lf
+MtdrSpring/backend/mvnw.cmd text eol=crlf
