@@ -7,7 +7,6 @@ metadata:
 spec:
   type: LoadBalancer
   externalTrafficPolicy: Local
-
   ports:
     - port: 80
       protocol: TCP
@@ -15,7 +14,6 @@ spec:
   selector:
     app: todolistapp-springboot
 ---
-#this is new stuff for hosting on the load balancer
 apiVersion: v1
 kind: Service
 metadata:
@@ -48,30 +46,32 @@ spec:
           image: DOCKER_REGISTRY%/todolistapp-springboot:0.1
           imagePullPolicy: Always
           env:
+            - name: SPRING_ADMIN_PASSWORD
+              value: "None0001"
+            - name: TELEGRAM_BOT_TOKEN
+              value: "8611801334:AAHsDArpy-7k593SUx3Qx2ehBiyASlaY1gk"
+            - name: ORACLE_DB_USERNAME
+              value: "admin"
+            - name: ORACLE_DB_PASSWORD
+              value: "gWGa#BR%9@1peRbN"
+            - name: WALLET_PATH
+              value: "/mtdrworkshop/creds"
+            - name: TNS_ADMIN
+              value: "/mtdrworkshop/creds"
+            - name: DEEPSEEK_API_KEY
+              value: "placeholder"
             - name: db_user
-              value: "EQUIPO51"
+              value: "admin"
             - name: db_url
-              value: "jdbc:oracle:thin:@%TODO_PDB_NAME%_tp?TNS_ADMIN=/mtdrworkshop/creds"
+              value: "jdbc:oracle:thin:@chatbotdb_tp?TNS_ADMIN=/mtdrworkshop/creds"
             - name: todo.table.name
               value: "todoitem"
             - name: driver_class_name
               value: "oracle.jdbc.OracleDriver"
             - name: OCI_REGION
               value: "%OCI_REGION%"
-            - name: dbpassword
-              valueFrom:
-                secretKeyRef:
-                  name: dbuser
-                  key: dbpassword
-                  optional: true
             - name: ui_username
               value: "%UI_USERNAME%"
-            - name: ui_password
-              valueFrom:
-                secretKeyRef:
-                  name: frontendadmin
-                  key: password
-                  optional: true
           volumeMounts:
             - name: creds
               mountPath: /mtdrworkshop/creds
@@ -89,4 +89,3 @@ spec:
           labelSelector:
             matchLabels:
               app: todolistapp-springboot
----
