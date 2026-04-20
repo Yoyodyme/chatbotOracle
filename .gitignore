@@ -45,13 +45,14 @@ frontend/build
 
 # Environment variable files — NEVER commit real secrets
 .env
+# start-dev.sh is committed (sources .env, no hardcoded secrets)
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-# Oracle Wallet — contains mTLS certificates, never commit
-MtdrSpring/backend/wallet/
+# Oracle Wallet — committed to repo so developers can run against Oracle ADB after cloning
+# MtdrSpring/backend/wallet/
 
 frontend/package-lock.json
 frontend/npm-debug.log*
