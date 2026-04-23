@@ -31,6 +31,9 @@ resource "oci_database_autonomous_database" "autonomous_database_atp" {
   display_name ="MTDRDB"
   is_auto_scaling_enabled                        = "false"
   is_preview_version_with_service_terms_accepted = "false"
+  lifecycle {
+    ignore_changes = [admin_password]
+  }
 }
 data "oci_database_autonomous_databases" "autonomous_databases_atp" {
   #Required

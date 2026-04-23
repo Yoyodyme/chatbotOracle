@@ -9,7 +9,8 @@
 - [x] Fixed Kubernetes version v1.35.0 → v1.34.2 (only version available in Querétaro)
 - [x] Fixed build.sh: `mvn` → `./mvnw clean package -DskipTests`
 - [x] Fixed OracleConfiguration.java: removed hardcoded old DB URL, now reads `DB_URL` env var
-- [x] Fixed database.tf: removed hardcoded `Welcome12345` password, uses generated password
+- [x] Fixed database.tf: removed hardcoded `Welcome12345` password, uses generated password + sensitive=true
+- [x] Fixed database.tf: added `lifecycle { ignore_changes = [admin_password] }` — Always Free ADB does not allow password updates after creation
 - [x] Fixed containerengine.tf: removed someone else's SSH key, now uses `sshPublicKey` variable
 - [x] Fixed todolistapp-springboot.yaml:
   - Added `ORACLE_DB_USERNAME=admin`
@@ -42,20 +43,26 @@
 
 ## IMMEDIATE NEXT STEP — Do This Now in OCI Console
 
-The OKE cluster was created with v1.35.0 and must be deleted before re-running setup:
-
+### Problem 1 — OKE cluster must be deleted (still on v1.35.0, cannot downgrade in-place)
 1. OCI Console → **Developer Services** → **Kubernetes Clusters (OKE)**
-2. Delete the cluster that was just created (named `mtdrworkshopcluster-xxxxx`)
+2. Delete the cluster named `mtdrworkshopcluster-xxxxx`
 3. Wait for it to fully terminate
+
+### Problem 2 — ADB already exists and is fine (fixed in code)
+The Always Free ADB does not allow password updates after creation.
+Fix applied: `lifecycle { ignore_changes = [admin_password] }` added to `database.tf`.
+Terraform will now skip the ADB on subsequent runs — no action needed in console.
 
 Then in Cloud Shell:
 ```bash
 cd ~/yoyodyme/chatbotOracle
 git pull origin main
+sed -i 's/\r//' MtdrSpring/utils/*.sh MtdrSpring/backend/build.sh MtdrSpring/backend/deploy.sh MtdrSpring/backend/undeploy.sh MtdrSpring/env.sh MtdrSpring/setup.sh MtdrSpring/destroy.sh
+chmod +x MtdrSpring/utils/*.sh MtdrSpring/backend/build.sh MtdrSpring/backend/deploy.sh MtdrSpring/backend/undeploy.sh MtdrSpring/env.sh MtdrSpring/setup.sh MtdrSpring/destroy.sh
 source MtdrSpring/env.sh
 source MtdrSpring/setup.sh
 ```
-Setup will resume from where it left off (skips compartment, Docker login, ADB — only retries Terraform).
+Setup will skip compartment, Docker login — only retries Terraform (cluster + node pool).
 
 ---
 
