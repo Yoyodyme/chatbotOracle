@@ -1,33 +1,13 @@
-name: GraalVM build
+name: Maven Build & Test
 on: [push, pull_request]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: graalvm/setup-graalvm@v1
+      - uses: actions/setup-java@v4
         with:
-          java-version: '22'
-          distribution: 'graalvm'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Example step
-        run: |
-          echo "GRAALVM_HOME: $GRAALVM_HOME"
-          echo "JAVA_HOME: $JAVA_HOME"
-          java --version
-          native-image --version
-      - name: Extract configuration files
-        env:
-          OCI_CONFIG_PAR_URL: ${{ secrets.OCI_CONFIG_PAR_URL }}
-          AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
-        run: |
-          cd MtdrSpring
-          wget "$OCI_CONFIG_PAR_URL" -O deployment_config.tgz
-          tar -xzvf deployment_config.tgz
-          source env.sh
-          echo "$AUTH_TOKEN" | docker login -u "axzmghqes1gn/adan.ruiz@tec.mx" --password-stdin mx-queretaro-1.ocir.io
-      - name: Build
-        run: |
-          cd MtdrSpring
-          source env.sh
-          (cd backend; source build.sh)
+          java-version: '11'
+          distribution: 'temurin'
+      - name: Build and test
+        run: cd MtdrSpring/backend && ./mvnw clean verify -DskipTests=false

@@ -86,6 +86,10 @@ public class TareaService {
         return tareaRepository.findByEstatusNombreIgnoreCaseAndUsuarioAsignadoIdUsuario(nombreEstatus, idUsuario);
     }
 
+    public List<Tarea> obtenerTareasActivasPorUsuario(Long idUsuario) {
+        return tareaRepository.findByUsuarioAsignadoAndEstatusNombres(idUsuario, List.of("pendiente", "en progreso"));
+    }
+
     public boolean eliminarTarea(Long id) {
         if (tareaRepository.existsById(id)) {
             tareaRepository.deleteById(id);

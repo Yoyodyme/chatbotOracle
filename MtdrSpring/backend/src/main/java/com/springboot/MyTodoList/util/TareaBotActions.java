@@ -335,8 +335,8 @@ public class TareaBotActions {
     private void iniciarFlujoCompletarTarea() {
         Usuario usuarioDone = obtenerOAutoRegistrarUsuario();
 
-        List<Tarea> tareasEnProgreso = tareaService.obtenerTareasPorEstatusYUsuario("En Progreso", usuarioDone.getIdUsuario());
-        if (tareasEnProgreso.isEmpty()) {
+        List<Tarea> tareasActivas = tareaService.obtenerTareasActivasPorUsuario(usuarioDone.getIdUsuario());
+        if (tareasActivas.isEmpty()) {
             BotHelper.sendMessageToTelegram(chatId, BotMessages.DONETASK_NO_TASKS.getMessage(), telegramClient);
             return;
         }
@@ -345,7 +345,7 @@ public class TareaBotActions {
         estado.setDato("idUsuario", usuarioDone.getIdUsuario());
         conversationManager.iniciarConversacion(chatId, estado);
 
-        String listaTareas = construirListaTareas(tareasEnProgreso);
+        String listaTareas = construirListaTareas(tareasActivas);
         String mensaje = BotMessages.DONETASK_SELECT.getMessage().replace("{lista}", listaTareas);
         BotHelper.sendMessageToTelegram(chatId, mensaje, telegramClient);
     }
@@ -374,6 +374,15 @@ public class TareaBotActions {
                     || !tarea.getUsuarioAsignado().getIdUsuario().equals(idUsuario)) {
                 conversationManager.terminarConversacion(chatId);
                 BotHelper.sendMessageToTelegram(chatId, BotMessages.ASSIGNSPRINT_NOT_FOUND.getMessage(), telegramClient);
+                return;
+            }
+
+            String estatusActual = tarea.getEstatus() != null ? tarea.getEstatus().getNombre() : "";
+            if (!estatusActual.equals("Pendiente") && !estatusActual.equals("En Progreso")) {
+                conversationManager.terminarConversacion(chatId);
+                BotHelper.sendMessageToTelegram(chatId,
+                        "Esa tarea ya no esta activa (estatus: " + estatusActual + "). Operacion cancelada.",
+                        telegramClient);
                 return;
             }
 

@@ -8,7 +8,7 @@ Aplicación cloud-native de gestión de tareas construida sobre Oracle Cloud Inf
 - **Frontend:** React.js (empaquetado dentro del JAR de Spring Boot por Maven)
 - **Bot:** Bot de Telegram (long-polling) para gestionar tareas vía chat
 - **IA:** Integración con DeepSeek Chat API (comando `/llm` del bot)
-- **Infraestructura:** Terraform (OCI), Docker, Kubernetes (OKE)
+- **Infraestructura:** Por configurar (OCI, Docker, Kubernetes)
 
 ---
 
@@ -112,32 +112,14 @@ Matriz completa de endpoints: ver `MATRIZ_ENDPOINTS_REST.md`
 
 ## Infraestructura
 
-```
-MtdrSpring/terraform/         # IaC con Terraform para OCI
-MtdrSpring/utils/             # Scripts de configuración y limpieza
-MtdrSpring/backend/minikube/  # Manifiestos K8s + scripts de wallet/secrets
-```
-
-Despliegue en OCI:
-```bash
-cd MtdrSpring
-./setup.sh     # Bootstrap completo del entorno
-./destroy.sh   # Limpieza completa
-```
-
-Despliegue en Minikube (local):
-```powershell
-cd MtdrSpring/backend/minikube
-./wallet2k8s.ps1   # Cargar Oracle Wallet como Secret de K8s
-./deploy.ps1       # Desplegar la app en Minikube
-```
+Pendiente de configurar. La infraestructura (Docker, Kubernetes, OCI Terraform) se añadirá desde cero.
+Los archivos de referencia del setup anterior se conservan en la rama `main`.
 
 ---
 
 ## CI/CD
-- `.github/workflows/build.yml` — Compilación con Maven + imagen Docker en cada push
+- `.github/workflows/build.yml` — Compila y ejecuta tests con Maven en cada push
 - `.github/workflows/lint.yml` — Checkstyle con `java_checks.xml`
-- `oci_devops.yml` — Pipeline de OCI DevOps para despliegue en OKE
 
 ---
 

@@ -4,3 +4,11 @@
 # Maven wrapper — enforce correct line endings
 MtdrSpring/backend/mvnw text eol=lf
 MtdrSpring/backend/mvnw.cmd text eol=crlf
+
+# Oracle Wallet — binary files, never apply line-ending conversion
+MtdrSpring/backend/wallet/*.sso binary
+MtdrSpring/backend/wallet/*.p12 binary
+MtdrSpring/backend/wallet/*.jks binary
+MtdrSpring/backend/wallet/*.pem binary
+MtdrSpring/backend/wallet/*.ora text eol=lf
+MtdrSpring/backend/wallet/README text eol=lf

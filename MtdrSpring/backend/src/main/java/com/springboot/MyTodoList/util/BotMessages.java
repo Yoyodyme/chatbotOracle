@@ -31,7 +31,7 @@ public enum BotMessages {
 	ASSIGNSPRINT_DONE("Tarea {id} asignada al sprint y marcada como En Progreso."),
 
 	// donetask flow
-	DONETASK_NO_TASKS("No tienes tareas en progreso para completar."),
+	DONETASK_NO_TASKS("No tienes tareas activas asignadas. Usa /newtask para crear una tarea."),
 	DONETASK_SELECT("Selecciona el ID de la tarea a completar:\n\n{lista}"),
 	DONETASK_HOURS("Cuantas horas reales tomo completar esta tarea? (numero):"),
 	DONETASK_HOURS_INVALID("Por favor escribe un numero valido de horas."),
