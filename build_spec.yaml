@@ -1,0 +1,35 @@
+version: 0.1
+component: build
+timeoutInSeconds: 600
+shell: bash
+
+env:
+  variables:
+    JAVA_HOME: /usr/lib64/graalvm/graalvm-java22
+
+  exportedVariables:
+    - BuildServiceDemoVersion
+
+steps:
+  - type: Command
+    name: "Install GraalVM 22.x for Java22"
+    command: yum -y install graalvm-22-jdk.x86_64;
+             ls /usr/lib64/graalvm/
+
+  - type: Command
+    name: "Set PATH Variable"
+    command: export PATH=$JAVA_HOME/bin:$PATH
+
+  - type: Command
+    name: "Docker Login"
+    command: cd MtdrSpring;
+             oci os object get --bucket-name ${DEPLOYMENT_CONFIG_BUCKET} --name deployment_config.tgz --file deployment_config.tgz;
+             tar -xzvf deployment_config.tgz;
+             source env.sh;
+             cat at.cfg | docker login -u "axx2gmncrzyo/${OCI_USER_EMAIL}" --password-stdin mx-queretaro-1.ocir.io
+
+  - type: Command
+    name: "Build"
+    command: cd MtdrSpring;
+             source env.sh;
+             (cd backend; source build.sh)

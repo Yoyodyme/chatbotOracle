@@ -1,3 +1,9 @@
 **/node_modules/**
 **/build/**
 **/target/**
+
+# OCI secrets — never commit these
+at.cfg
+*.pem
+deployment_config.tgz
+mtdrworkshop-state/
