@@ -5,6 +5,13 @@
 MtdrSpring/backend/mvnw text eol=lf
 MtdrSpring/backend/mvnw.cmd text eol=crlf
 
+# Shell scripts — always LF so they run on Linux/Cloud Shell
+*.sh text eol=lf
+*.py text eol=lf
+*.tf text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+
 # Oracle Wallet — binary files, never apply line-ending conversion
 MtdrSpring/backend/wallet/*.sso binary
 MtdrSpring/backend/wallet/*.p12 binary
