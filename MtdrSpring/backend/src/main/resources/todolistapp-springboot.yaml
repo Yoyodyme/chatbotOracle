@@ -24,7 +24,7 @@ spec:
   ports:
     - protocol: TCP
       port: 80
-      targetPort: http
+      targetPort: 8080
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -46,32 +46,34 @@ spec:
           image: %DOCKER_REGISTRY%/todolistapp-springboot:0.1
           imagePullPolicy: Always
           env:
-            - name: db_user
+            - name: ORACLE_DB_USERNAME
               value: "admin"
-            - name: db_url
+            - name: DB_URL
               value: "jdbc:oracle:thin:@%TODO_PDB_NAME%_tp?TNS_ADMIN=/mtdrworkshop/creds"
-            - name: todo.table.name
-              value: "todoitem"
-            - name: driver_class_name
-              value: "oracle.jdbc.OracleDriver"
-            - name: OCI_REGION
-              value: "%OCI_REGION%"
             - name: WALLET_PATH
               value: "/mtdrworkshop/creds"
             - name: TNS_ADMIN
               value: "/mtdrworkshop/creds"
+            - name: OCI_REGION
+              value: "%OCI_REGION%"
             - name: ORACLE_DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: dbuser
                   key: dbpassword
-                  optional: true
+                  optional: false
+            - name: SPRING_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: frontendadmin
+                  key: password
+                  optional: false
             - name: TELEGRAM_BOT_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: chatbot-secrets
                   key: telegram-bot-token
-                  optional: true
+                  optional: false
             - name: DEEPSEEK_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -80,17 +82,12 @@ spec:
                   optional: true
             - name: ui_username
               value: "%UI_USERNAME%"
-            - name: ui_password
-              valueFrom:
-                secretKeyRef:
-                  name: frontendadmin
-                  key: password
-                  optional: true
           volumeMounts:
             - name: creds
               mountPath: /mtdrworkshop/creds
           ports:
             - containerPort: 8080
+              name: http
       restartPolicy: Always
       imagePullSecrets:
         - name: ocir-secret

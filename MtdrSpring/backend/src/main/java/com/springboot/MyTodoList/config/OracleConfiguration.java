@@ -36,11 +36,8 @@ public class OracleConfiguration {
         System.setProperty("oracle.net.wallet_location",
                 "(SOURCE=(METHOD=FILE)(METHOD_DATA=(DIRECTORY=" + walletPath + ")))");
 
-        String jdbcUrl = "jdbc:oracle:thin:@(description=" +
-                "(retry_count=20)(retry_delay=3)" +
-                "(address=(protocol=tcps)(port=1522)(host=adb.mx-queretaro-1.oraclecloud.com))" +
-                "(connect_data=(service_name=gbe09837a45665c_eq51db_high.adb.oraclecloud.com))" +
-                "(security=(ssl_server_dn_match=yes)))";
+        String jdbcUrl = System.getenv().getOrDefault("DB_URL",
+                "jdbc:oracle:thin:@chatbotdb_high?TNS_ADMIN=" + walletPath);
 
         dataSource.setDriverClassName("oracle.jdbc.OracleDriver");
         dataSource.setUrl(jdbcUrl);

@@ -9,3 +9,6 @@ variable "runName"             { default = "chatbotoracle" }
 
 # mtdrKey is a unique generated id — set automatically by setup.sh
 variable "mtdrKey" { default = "" }
+
+# Your SSH public key for OKE node access (optional — leave empty to disable SSH)
+variable "sshPublicKey" { default = "" }
