@@ -4,6 +4,7 @@ import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import Toast from '../shared/Toast';
 import TaskDetailModal from '../tasks/TaskDetailModal';
+import ChatbotPanel from '../chatbot/ChatbotPanel';
 import useAppStore from '../../store/index';
 import '../../styles/animations.css';
 import '../../styles/globals.css';
@@ -58,6 +59,9 @@ export default function AppShell({ tituloPagina }) {
 
       {/* Sistema de notificaciones toast */}
       <Toast />
+
+      {/* Asistente de tareas */}
+      <ChatbotPanel />
     </div>
   );
 }
