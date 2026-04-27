@@ -28,4 +28,5 @@ jobs:
           VALIDATE_HTML: true
           VALIDATE_JSON: true
           VALIDATE_YAML: true
+          ESLINT_USE_FLAT_CONFIG: 'false'
           FILTER_REGEX_EXCLUDE: (node_modules|build|dist|\.next|target|wallet)/.*|.*swagger.*\.yaml|build_spec\.yaml|todolistapp-springboot\.yaml
