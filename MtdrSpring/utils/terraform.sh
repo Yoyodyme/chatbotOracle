@@ -36,6 +36,34 @@ provider_installation {
     exit
   fi
 
+  # Si el cluster OKE ya existe en el estado de Terraform, eliminarlo de OCI y del estado
+  # antes de apply para evitar el error "version lower than existing version".
+  if terraform state list 2>/dev/null | grep -q "oci_containerengine_cluster.mtdrworkshop_cluster"; then
+    CLUSTER_OCID=$(terraform state show oci_containerengine_cluster.mtdrworkshop_cluster 2>/dev/null \
+      | grep '^\s*id\s*=' | head -1 | sed 's/.*"\(.*\)".*/\1/')
+    if test -n "$CLUSTER_OCID"; then
+      echo "Cluster OKE detectado en estado ($CLUSTER_OCID). Eliminando de OCI para recreación en v1.34.2..."
+      oci ce cluster delete --cluster-id "$CLUSTER_OCID" --force 2>/dev/null || true
+      for i in $(seq 1 40); do
+        STATUS=$(oci ce cluster get --cluster-id "$CLUSTER_OCID" \
+          --query 'data."lifecycle-state"' --raw-output 2>/dev/null || echo "DELETED")
+        echo "Estado del cluster: $STATUS"
+        if [ "$STATUS" = "DELETED" ] || [ -z "$STATUS" ]; then
+          echo "Cluster OKE eliminado."
+          break
+        fi
+        sleep 15
+      done
+      if [ "$STATUS" != "DELETED" ] && [ -n "$STATUS" ]; then
+        echo "ERROR: Cluster OKE no eliminado después de 10 minutos. Abortando."
+        exit 1
+      fi
+    fi
+    terraform state rm oci_containerengine_cluster.mtdrworkshop_cluster 2>/dev/null || true
+    terraform state rm oci_containerengine_node_pool.oke_node_pool 2>/dev/null || true
+    echo "Recursos OKE eliminados del estado de Terraform."
+  fi
+
   if ! terraform apply -auto-approve; then
     echo 'ERROR: terraform apply failed!'
     exit

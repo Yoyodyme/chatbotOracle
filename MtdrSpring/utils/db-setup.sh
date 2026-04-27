@@ -109,7 +109,14 @@ ORDER_LINK=ORDERTOINVENTORYLINK
 ORDER_QUEUE=ORDERQUEUE
 
 
-# Get DB Password
+# Wait for DB Password to be set in Order DB
+while ! state_done MTDR_DB_PASSWORD_SET; do
+  echo "`date`: Waiting for MTDR_DB_PASSWORD_SET"
+  sleep 2
+done
+
+
+# Get DB Password (read AFTER MTDR_DB_PASSWORD_SET so the secret holds the Terraform-generated password)
 while true; do
   if DB_PASSWORD=`kubectl get secret dbuser -n mtdrworkshop --template={{.data.dbpassword}} | base64 --decode`; then
     if ! test -z "$DB_PASSWORD"; then
@@ -118,13 +125,6 @@ while true; do
   fi
   echo "Error: Failed to get DB password.  Retrying..."
   sleep 5
-done
-
-
-# Wait for DB Password to be set in Order DB
-while ! state_done MTDR_DB_PASSWORD_SET; do
-  echo "`date`: Waiting for MTDR_DB_PASSWORD_SET"
-  sleep 2
 done
 
 

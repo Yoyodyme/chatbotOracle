@@ -340,16 +340,22 @@ done
 
 
 # Set admin password in order database
+# NOTE: Always Free ADB no permite actualizar admin_password después de la creación.
+# Se obtiene la contraseña generada por Terraform y se usa para sobrescribir el K8s secret
+# de modo que db-setup.sh pueda conectarse con sqlplus con la contraseña correcta.
 while ! state_done MTDR_DB_PASSWORD_SET; do
-  echo "setting admin password in mtdr_db"
-  # get password from vault secret
-  DB_PASSWORD=`kubectl get secret dbuser -n mtdrworkshop --template={{.data.dbpassword}} | base64 --decode`
-  umask 177
-  echo '{"adminPassword": "'"$DB_PASSWORD"'"}' > temp_params
-  umask 22
-  oci db autonomous-database update --autonomous-database-id "$(state_get MTDR_DB_OCID)" --from-json "file://temp_params" >/dev/null
-  rm temp_params
+  echo "Obteniendo contraseña ADB generada por Terraform..."
+  ADMIN_PASS=$(terraform -chdir="$MTDRWORKSHOP_LOCATION/terraform" output -json autonomous_database_admin_password \
+    | python3 -c "import sys,json; print(json.load(sys.stdin)[0])")
+  if test -z "$ADMIN_PASS"; then
+    echo "ERROR: No se pudo obtener la contraseña ADB de Terraform output. Reintentando..."
+    sleep 10
+    continue
+  fi
+  kubectl delete secret dbuser -n mtdrworkshop --ignore-not-found
+  kubectl create secret generic dbuser --from-literal=dbpassword="$ADMIN_PASS" -n mtdrworkshop
   state_set_done MTDR_DB_PASSWORD_SET
+  echo "K8s secret 'dbuser' actualizado con contraseña real del ADB."
 done
 
 
