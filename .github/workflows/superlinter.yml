@@ -28,5 +28,4 @@ jobs:
           VALIDATE_HTML: true
           VALIDATE_JSON: true
           VALIDATE_YAML: true
-          # Ignorar node_modules y build
-          FILTER_REGEX_EXCLUDE: (node_modules|build|dist|\.next)/.*
+          FILTER_REGEX_EXCLUDE: (node_modules|build|dist|\.next|target|wallet)/.*|.*swagger.*\.yaml|build_spec\.yaml|todolistapp-springboot\.yaml
