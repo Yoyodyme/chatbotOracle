@@ -26,6 +26,4 @@ jobs:
           VALIDATE_JSON: true
           VALIDATE_YAML: true
           VALIDATE_JAVASCRIPT_ES: true
-          VALIDATE_JSX: false        # ← desactiva JSX por incompatibilidad con React 17+
-          VALIDATE_CSS: false        # ← desactiva CSS por regla deprecada
           FILTER_REGEX_EXCLUDE: (node_modules|build|dist|\.next)/.*
