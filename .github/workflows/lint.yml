@@ -10,7 +10,9 @@ on:
       tags:
         description: 'Test scenario tags' 
   push:
-    branches: null
+    branches:
+      - main
+      - develop
 
 jobs:
   super-lint:
@@ -30,7 +32,7 @@ jobs:
           pip install -U pytest
           pip install -U pytest-html
           pip install -U webdriver-manager
-          pytest test1.py --html=report.html.
+          pytest test1.py --html=report.html
           cat report.html
 
       - name: Path
@@ -46,7 +48,7 @@ jobs:
           echo ".automation"
           ls -l /action/lib/.automation/
 
-      - name:   Java checks
+      - name: Java checks
         continue-on-error: true
         run: |
           ls -l /
