@@ -1,0 +1,3 @@
+[sqlfluff]
+dialect = oracle
+# Use Oracle dialect so PL/SQL and Oracle-specific SQL syntax are validated correctly.
