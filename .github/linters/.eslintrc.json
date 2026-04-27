@@ -12,8 +12,15 @@
       "jsx": true
     }
   },
+  "settings": {
+    "react": {
+      "version": "18.0"
+    }
+  },
   "rules": {
     "no-console": ["warn", { "allow": ["error", "warn"] }],
-    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }]
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "react/react-in-jsx-scope": "off",
+    "react/prop-types": "off"
   }
 }

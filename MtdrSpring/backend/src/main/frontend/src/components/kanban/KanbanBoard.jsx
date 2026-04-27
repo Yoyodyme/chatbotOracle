@@ -10,7 +10,6 @@ import '../../styles/animations.css';
 /* Modal wrapper alrededor del TaskForm existente */
 function TaskFormModal({ open, onClose, initialEstatus }) {
   const addTarea = useAppStore((s) => s.addTarea);
-  const estatuses = useAppStore((s) => s.estatuses);
   const addToast = useAppStore((s) => s.addToast);
 
   if (!open) return null;

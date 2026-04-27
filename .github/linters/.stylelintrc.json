@@ -2,7 +2,6 @@
   "rules": {
     "color-function-notation": "legacy",
     "alpha-value-notation": "number",
-    "color-hex-case": null,
     "property-no-vendor-prefix": null,
     "value-no-vendor-prefix": null,
     "no-descending-specificity": null,

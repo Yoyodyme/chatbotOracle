@@ -5,7 +5,7 @@ import useAppStore from '../../store/index';
 import { updateTarea as apiActualizarTarea, deleteTarea as apiEliminarTarea } from '../../api/tareas';
 import ConfirmDialog from '../shared/ConfirmDialog';
 import Avatar from '../shared/Avatar';
-import { StatusBadge, PriorityBadge } from './TaskBadge';
+
 import Skeleton from '../shared/Skeleton';
 import '../../styles/animations.css';
 
