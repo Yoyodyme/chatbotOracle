@@ -15,6 +15,7 @@ fi
 
 export IMAGE=${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_VERSION}
 
+chmod +x mvnw
 ./mvnw clean package -DskipTests
 docker build -f Dockerfile -t $IMAGE .
 
