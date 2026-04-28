@@ -47,7 +47,7 @@ spec:
           imagePullPolicy: Always
           env:
             - name: ORACLE_DB_USERNAME
-              value: "admin"
+              value: "EQUIPO51"
             - name: DB_URL
               value: "jdbc:oracle:thin:@%TODO_PDB_NAME%_tp?TNS_ADMIN=/mtdrworkshop/creds"
             - name: WALLET_PATH
