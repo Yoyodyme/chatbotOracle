@@ -1,12 +1,12 @@
-eq51db_high = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.mx-queretaro-1.oraclecloud.com))(connect_data=(service_name=gbe09837a45665c_eq51db_high.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
+yoyodymemavyk_high = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.mx-queretaro-1.oraclecloud.com))(connect_data=(service_name=gbe09837a45665c_yoyodymemavyk_high.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
 
-eq51db_medium = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.mx-queretaro-1.oraclecloud.com))(connect_data=(service_name=gbe09837a45665c_eq51db_medium.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
+yoyodymemavyk_medium = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.mx-queretaro-1.oraclecloud.com))(connect_data=(service_name=gbe09837a45665c_yoyodymemavyk_medium.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
 
-eq51db_low = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.mx-queretaro-1.oraclecloud.com))(connect_data=(service_name=gbe09837a45665c_eq51db_low.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
+yoyodymemavyk_low = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.mx-queretaro-1.oraclecloud.com))(connect_data=(service_name=gbe09837a45665c_yoyodymemavyk_low.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
 
-eq51db_tp = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.mx-queretaro-1.oraclecloud.com))(connect_data=(service_name=gbe09837a45665c_eq51db_tp.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
+yoyodymemavyk_tp = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.mx-queretaro-1.oraclecloud.com))(connect_data=(service_name=gbe09837a45665c_yoyodymemavyk_tp.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
 
-eq51db_tpurgent = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.mx-queretaro-1.oraclecloud.com))(connect_data=(service_name=gbe09837a45665c_eq51db_tpurgent.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
+yoyodymemavyk_tpurgent = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.mx-queretaro-1.oraclecloud.com))(connect_data=(service_name=gbe09837a45665c_yoyodymemavyk_tpurgent.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
 
 
 

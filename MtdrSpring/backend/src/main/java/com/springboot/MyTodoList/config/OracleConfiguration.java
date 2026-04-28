@@ -38,7 +38,7 @@ public class OracleConfiguration {
                 "(SOURCE=(METHOD=FILE)(METHOD_DATA=(DIRECTORY=" + walletPath + ")))");
 
         String jdbcUrl = System.getenv().getOrDefault("DB_URL",
-                "jdbc:oracle:thin:@eq51db_high?TNS_ADMIN=" + walletPath);
+                "jdbc:oracle:thin:@yoyodymemavyk_high?TNS_ADMIN=" + walletPath);
 
         dataSource.setDriverClassName("oracle.jdbc.OracleDriver");
         dataSource.setUrl(jdbcUrl);
