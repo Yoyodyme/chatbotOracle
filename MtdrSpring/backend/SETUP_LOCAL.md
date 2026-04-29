@@ -100,6 +100,8 @@ http://localhost:8080/swagger-ui.html
 | `java.io.FileNotFoundException: wallet/` | Wallet no encontrado | Confirmar que `MtdrSpring/backend/wallet/` existe y tiene archivos |
 | Puerto 8080 en uso | Otro proceso ocupa el puerto | Cambiar puerto en `application.properties` con `server.port=8081` o matar el proceso |
 | `./mvnw: Permission denied` | Sin permisos de ejecución | Ejecutar `chmod +x mvnw` dentro de `MtdrSpring/backend/` |
+| `TelegramApiErrorResponseException` al arrancar | Conflicto de long-polling: dos desarrolladores comparten el mismo token y Telegram sólo permite un consumidor activo | Añadir `TELEGRAM_BOT_ENABLED=false` en tu `.env` — el bot no se registra y el backend arranca con acceso completo a la API y la BD |
+| Frontend con componentes o estilos faltantes | Caché de compilación de Maven (`target/`) o `node_modules` desactualizados — `spring-boot:run` reutiliza artefactos anteriores en lugar de reconstruir desde cero | Hacer primero `git pull`, luego ejecutar `bash start-dev.sh` con limpieza: detener el proceso, correr `./mvnw clean` dentro de `MtdrSpring/backend/` y volver a lanzar `bash start-dev.sh` |
 
 ---
 

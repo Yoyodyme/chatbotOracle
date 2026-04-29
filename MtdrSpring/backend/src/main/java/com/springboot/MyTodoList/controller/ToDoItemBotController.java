@@ -16,6 +16,7 @@ import com.springboot.MyTodoList.util.TareaBotActions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.longpolling.BotSession;
@@ -31,8 +32,12 @@ import org.telegram.telegrambots.meta.generics.TelegramClient;
 /**
  * Controlador principal del bot de Telegram para EQ51.
  * Gestiona los comandos heredados de to-do y los nuevos comandos de gestión de tareas/sprint.
+ *
+ * El bean se omite por completo cuando {@code telegram.bot.enabled=false}, lo que permite
+ * que un segundo desarrollador levante el backend sin conflicto de long-polling.
  */
 @Component
+@ConditionalOnProperty(name = "telegram.bot.enabled", havingValue = "true", matchIfMissing = true)
 public class ToDoItemBotController implements SpringLongPollingBot, LongPollingSingleThreadUpdateConsumer {
 
     private static final Logger logger = LoggerFactory.getLogger(ToDoItemBotController.class);
