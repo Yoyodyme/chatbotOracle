@@ -207,6 +207,16 @@ public class TareaBotActions {
         EstatusTarea estatusPendiente = estatusTareaService.obtenerEstatusPorNombre("Pendiente");
         if (estatusPendiente != null) {
             nuevaTarea.setEstatus(estatusPendiente);
+        } else {
+            // Fallback: usar el primer estatus disponible para que la tarea sea visible en el tablero
+            List<EstatusTarea> todosLosEstatus = estatusTareaService.obtenerTodosLosEstatus();
+            if (!todosLosEstatus.isEmpty()) {
+                nuevaTarea.setEstatus(todosLosEstatus.get(0));
+                logger.warn("Estatus 'Pendiente' no encontrado; usando '{}' como fallback",
+                        todosLosEstatus.get(0).getNombre());
+            } else {
+                logger.warn("No se encontro ningun estatus en la BD; la tarea se guardara sin estatus");
+            }
         }
 
         Tarea tareaCreada = tareaService.crearTarea(nuevaTarea);
