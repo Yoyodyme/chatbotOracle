@@ -1,5 +1,6 @@
 package com.springboot.MyTodoList.util;
 
+import com.springboot.MyTodoList.agent.AgentOrchestrator;
 import com.springboot.MyTodoList.model.ToDoItem;
 import com.springboot.MyTodoList.service.DeepSeekService;
 import com.springboot.MyTodoList.service.ToDoItemService;
@@ -24,12 +25,14 @@ public class BotActions{
 
     ToDoItemService todoService;
     DeepSeekService deepSeekService;
+    AgentOrchestrator orquestador;
 
-    public BotActions(TelegramClient tc,ToDoItemService ts, DeepSeekService ds){
+    public BotActions(TelegramClient tc, ToDoItemService ts, DeepSeekService ds, AgentOrchestrator orq) {
         telegramClient = tc;
         todoService = ts;
         deepSeekService = ds;
-        exit  = false;
+        orquestador = orq;
+        exit = false;
     }
 
     public void setRequestText(String cmd){
@@ -219,21 +222,35 @@ public class BotActions{
         exit = true;
     }
 
-    public void fnLLM(){
-        logger.info("Calling LLM");
-        if (!(requestText.contains(BotCommands.LLM_REQ.getCommand())) || exit)
+    public void fnLLM() {
+        logger.info("Invocando LLM via AgentOrchestrator");
+        if (!requestText.contains(BotCommands.LLM_REQ.getCommand()) || exit)
             return;
-        
-        String prompt = "Dame los datos del clima en mty";
-        String out = "<empty>";
-        try{
-            out = deepSeekService.generateText(prompt);
-        }catch(Exception exc){
 
+        // Extraer el texto del usuario eliminando el comando /llm del inicio
+        String textoUsuario = requestText.length() > BotCommands.LLM_REQ.getCommand().length()
+                ? requestText.substring(BotCommands.LLM_REQ.getCommand().length()).trim()
+                : "";
+
+        // Validar que el usuario haya enviado una consulta
+        if (textoUsuario.isBlank()) {
+            BotHelper.sendMessageToTelegram(chatId,
+                    "Uso: /llm [tu consulta]\nEjemplo: /llm tareas pendientes",
+                    telegramClient);
+            exit = true;
+            return;
         }
 
-        BotHelper.sendMessageToTelegram(chatId, "LLM: "+out, telegramClient, null);
+        String respuesta;
+        try {
+            respuesta = orquestador.manejarMensaje(textoUsuario);
+        } catch (Exception ex) {
+            logger.error("Error al invocar AgentOrchestrator desde el bot", ex);
+            respuesta = "Ocurrio un error al procesar tu consulta. Intenta de nuevo.";
+        }
 
+        BotHelper.sendMessageToTelegram(chatId, respuesta, telegramClient, null);
+        exit = true;
     }
 
 

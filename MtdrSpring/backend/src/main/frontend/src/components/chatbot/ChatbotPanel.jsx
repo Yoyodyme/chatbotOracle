@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import useAppStore from '../../store/index';
-import { getTareas } from '../../api/tareas';
+import { enviarMensaje } from '../../api/chatbot';
 import './ChatbotPanel.css';
 
 const HINTS = [
@@ -9,90 +8,6 @@ const HINTS = [
   { label: 'Tareas completadas',  mensaje: 'tareas completadas'  },
 ];
 
-function normalizar(texto) {
-  return texto
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '');
-}
-
-function responderMensaje(texto, tareas) {
-  const t = normalizar(texto);
-
-  if (t.includes('ayuda') || t.includes('help') || t.includes('que puedes') || t.includes('comandos')) {
-    return (
-      'Puedo ayudarte con:\n' +
-      '• "tareas pendientes" — sin iniciar\n' +
-      '• "tareas en progreso" — activas\n' +
-      '• "tareas completadas" — terminadas\n' +
-      '• "tareas de [nombre]" — por usuario\n' +
-      '• "estado del sprint" — resumen del sprint\n' +
-      '• "total de tareas" — conteo general\n' +
-      '• "listar tareas" — ver todas'
-    );
-  }
-
-  if (t.includes('total') || t.includes('cuantas') || t.includes('cuántas') || t.includes('conteo')) {
-    return `Hay un total de ${tareas.length} tarea(s) registrada(s) en el sistema.`;
-  }
-
-  if (t.includes('pendiente') || t.includes('sin iniciar')) {
-    const lista = tareas.filter(ta => normalizar(ta.estatus?.nombre ?? '').includes('pendiente'));
-    if (lista.length === 0) return 'No hay tareas pendientes actualmente. ✓';
-    const items = lista.slice(0, 5).map(ta => `• ${ta.titulo}`).join('\n');
-    return `${lista.length} tarea(s) pendiente(s):\n${items}${lista.length > 5 ? `\n…y ${lista.length - 5} más.` : ''}`;
-  }
-
-  if (t.includes('progreso') || t.includes('en curso') || t.includes('activa')) {
-    const lista = tareas.filter(ta => normalizar(ta.estatus?.nombre ?? '').includes('progreso'));
-    if (lista.length === 0) return 'No hay tareas en progreso actualmente.';
-    const items = lista.slice(0, 5).map(ta => `• ${ta.titulo}`).join('\n');
-    return `${lista.length} tarea(s) en progreso:\n${items}${lista.length > 5 ? `\n…y ${lista.length - 5} más.` : ''}`;
-  }
-
-  if (t.includes('complet') || t.includes('terminad') || t.includes('hecha')) {
-    const lista = tareas.filter(ta => normalizar(ta.estatus?.nombre ?? '').includes('complet'));
-    if (lista.length === 0) return 'No hay tareas completadas aún.';
-    const items = lista.slice(0, 5).map(ta => `• ${ta.titulo}`).join('\n');
-    return `${lista.length} tarea(s) completada(s):\n${items}${lista.length > 5 ? `\n…y ${lista.length - 5} más.` : ''}`;
-  }
-
-  if (t.includes('sprint')) {
-    const conSprint = tareas.filter(ta => ta.sprint?.nombre);
-    if (conSprint.length === 0) return 'No hay tareas asignadas a un sprint actualmente.';
-    const nombres = [...new Set(conSprint.map(ta => ta.sprint.nombre))];
-    const pend = conSprint.filter(ta => normalizar(ta.estatus?.nombre ?? '').includes('pendiente')).length;
-    const prog = conSprint.filter(ta => normalizar(ta.estatus?.nombre ?? '').includes('progreso')).length;
-    const comp = conSprint.filter(ta => normalizar(ta.estatus?.nombre ?? '').includes('complet')).length;
-    return (
-      `Sprint: ${nombres[0]}\n` +
-      `Total en sprint: ${conSprint.length}\n` +
-      `• Pendientes:  ${pend}\n` +
-      `• En progreso: ${prog}\n` +
-      `• Completadas: ${comp}`
-    );
-  }
-
-  const matchUsuario = t.match(/tareas de ([a-zà-ɏ\w]+)/);
-  if (matchUsuario) {
-    const nombre = matchUsuario[1];
-    const del = tareas.filter(ta =>
-      normalizar(ta.usuarioAsignado?.nombreCompleto ?? '').includes(nombre) ||
-      normalizar(ta.usuarioAsignado?.nombreUsuario ?? '').includes(nombre)
-    );
-    if (del.length === 0) return `No encontré tareas asignadas a "${nombre}".`;
-    const items = del.slice(0, 5).map(ta => `• ${ta.titulo} (${ta.estatus?.nombre ?? '—'})`).join('\n');
-    return `${del.length} tarea(s) de ${nombre}:\n${items}${del.length > 5 ? `\n…y ${del.length - 5} más.` : ''}`;
-  }
-
-  if (t.includes('lista') || t.includes('todas') || t.includes('mostrar') || t.includes('ver tarea')) {
-    if (tareas.length === 0) return 'No hay tareas registradas.';
-    const items = tareas.slice(0, 6).map(ta => `• ${ta.titulo} — ${ta.estatus?.nombre ?? '—'}`).join('\n');
-    return `Tareas (${tareas.length} total):\n${items}${tareas.length > 6 ? `\n…y ${tareas.length - 6} más.` : ''}`;
-  }
-
-  return 'No entendí tu pregunta.\nEscribe "ayuda" para ver qué puedo hacer.';
-}
 
 export default function ChatbotPanel() {
   const [abierto, setAbierto]         = useState(false);
@@ -105,7 +20,6 @@ export default function ChatbotPanel() {
 
   const mensajesRef = useRef(null);
   const inputRef    = useRef(null);
-  const tareasStore = useAppStore((s) => s.tareas);
 
   useEffect(() => {
     if (mensajesRef.current) {
@@ -126,15 +40,12 @@ export default function ChatbotPanel() {
     setEntrada('');
     setCargando(true);
 
-    let tareas = tareasStore;
-    if (tareas.length === 0) {
-      try { tareas = (await getTareas()) ?? []; }
-      catch { tareas = []; }
+    let respuesta;
+    try {
+      respuesta = await enviarMensaje(msg);
+    } catch (err) {
+      respuesta = 'Error al conectar con el asistente. Verifica que el servidor esté en línea.';
     }
-
-    await new Promise(r => setTimeout(r, 500));
-
-    const respuesta = responderMensaje(msg, tareas);
     setCargando(false);
 
     // Efecto de escritura carácter por carácter

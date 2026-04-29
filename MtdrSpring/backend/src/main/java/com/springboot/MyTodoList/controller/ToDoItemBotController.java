@@ -1,5 +1,6 @@
 package com.springboot.MyTodoList.controller;
 
+import com.springboot.MyTodoList.agent.AgentOrchestrator;
 import com.springboot.MyTodoList.config.BotProps;
 import com.springboot.MyTodoList.service.DeepSeekService;
 import com.springboot.MyTodoList.service.EstatusTareaService;
@@ -58,6 +59,7 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
     private final EstatusTareaService estatusTareaService;
     private final PrioridadTareaService prioridadTareaService;
     private final BotConversationManager conversationManager;
+    private final AgentOrchestrator orquestador;
 
     @Value("${telegram.bot.token}")
     private String telegramBotToken;
@@ -73,7 +75,8 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
             UsuarioService usuarioService,
             EstatusTareaService estatusTareaService,
             PrioridadTareaService prioridadTareaService,
-            BotConversationManager conversationManager) {
+            BotConversationManager conversationManager,
+            AgentOrchestrator agentOrchestrator) {
 
         this.botProps = botProps;
         this.toDoItemService = toDoItemService;
@@ -84,6 +87,7 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
         this.estatusTareaService = estatusTareaService;
         this.prioridadTareaService = prioridadTareaService;
         this.conversationManager = conversationManager;
+        this.orquestador = agentOrchestrator;
 
         // El cliente de Telegram requiere el token en el momento de construcción;
         // getBotToken() lee botProps como fallback cuando la variable de entorno no está lista aún.
@@ -137,7 +141,7 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
         // ── Construir manejadores de acciones ─────────────────────────────────
 
         // Manejador heredado (to-do simple)
-        BotActions actions = new BotActions(telegramClient, toDoItemService, deepSeekService);
+        BotActions actions = new BotActions(telegramClient, toDoItemService, deepSeekService, orquestador);
         actions.setRequestText(mensajeEfectivo);
         actions.setChatId(chatId);
         if (actions.getTodoService() == null) {
