@@ -38,15 +38,15 @@ function ModalNuevoSprint({ onClose, onCrear }) {
   function handleSubmit(e) {
     e.preventDefault();
     if (!form.nombre.trim()) {
-      setError('El nombre del sprint es obligatorio.');
+      setError('Sprint name is required.');
       return;
     }
     if (!form.fechaInicio || !form.fechaFin) {
-      setError('Debes indicar las fechas de inicio y fin.');
+      setError('Please provide start and end dates.');
       return;
     }
     if (new Date(form.fechaFin) <= new Date(form.fechaInicio)) {
-      setError('La fecha de fin debe ser posterior a la de inicio.');
+      setError('End date must be after start date.');
       return;
     }
     setError('');
@@ -133,10 +133,10 @@ function ModalNuevoSprint({ onClose, onCrear }) {
   return (
     <div style={estiloOverlay} onClick={onClose}>
       <div style={estiloPanel} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-        <h2 style={estiloTitulo}>Nuevo Sprint</h2>
+        <h2 style={estiloTitulo}>New Sprint</h2>
         <form onSubmit={handleSubmit}>
           <div style={estiloGrupo}>
-            <label style={estiloLabel} htmlFor="sp-nombre">Nombre *</label>
+            <label style={estiloLabel} htmlFor="sp-nombre">Name *</label>
             <input
               id="sp-nombre"
               type="text"
@@ -151,7 +151,7 @@ function ModalNuevoSprint({ onClose, onCrear }) {
           </div>
           <div style={estiloFila2}>
             <div style={estiloGrupo}>
-              <label style={estiloLabel} htmlFor="sp-inicio">Inicio *</label>
+              <label style={estiloLabel} htmlFor="sp-inicio">Start *</label>
               <input
                 id="sp-inicio"
                 type="date"
@@ -163,7 +163,7 @@ function ModalNuevoSprint({ onClose, onCrear }) {
               />
             </div>
             <div style={estiloGrupo}>
-              <label style={estiloLabel} htmlFor="sp-fin">Fin *</label>
+              <label style={estiloLabel} htmlFor="sp-fin">End *</label>
               <input
                 id="sp-fin"
                 type="date"
@@ -193,7 +193,7 @@ function ModalNuevoSprint({ onClose, onCrear }) {
               onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
             >
-              Cancelar
+              Cancel
             </button>
             <button
               type="submit"
@@ -210,7 +210,7 @@ function ModalNuevoSprint({ onClose, onCrear }) {
               onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.85'; }}
               onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
             >
-              Crear Sprint
+              Create Sprint
             </button>
           </div>
         </form>

@@ -3,16 +3,16 @@ import { enviarMensaje } from '../../api/chatbot';
 import './ChatbotPanel.css';
 
 const HINTS = [
-  { label: 'Tareas pendientes',   mensaje: 'tareas pendientes'   },
-  { label: 'Estado del sprint',   mensaje: 'estado del sprint'   },
-  { label: 'Tareas completadas',  mensaje: 'tareas completadas'  },
+  { label: 'Pending tasks',    mensaje: 'pending tasks'    },
+  { label: 'Sprint status',    mensaje: 'sprint status'    },
+  { label: 'Completed tasks',  mensaje: 'completed tasks'  },
 ];
 
 
 export default function ChatbotPanel() {
   const [abierto, setAbierto]         = useState(false);
   const [mensajes, setMensajes]       = useState([
-    { rol: 'asistente', texto: '¡Hola! Soy tu asistente de tareas.\n¿En qué te puedo ayudar hoy?' },
+    { rol: 'asistente', texto: 'Hi! I\'m your task assistant.\nHow can I help you today?' },
   ]);
   const [entrada, setEntrada]         = useState('');
   const [cargando, setCargando]       = useState(false);
@@ -52,7 +52,7 @@ export default function ChatbotPanel() {
     try {
       respuesta = await enviarMensaje(msg, historial);
     } catch (err) {
-      respuesta = 'Error al conectar con el asistente. Verifica que el servidor esté en línea.';
+      respuesta = 'Error connecting to the assistant. Please verify the server is online.';
     }
     setCargando(false);
 
@@ -81,7 +81,7 @@ export default function ChatbotPanel() {
       <button
         className={`chatbot-fab${abierto ? ' chatbot-fab--activo' : ''}`}
         onClick={() => setAbierto(v => !v)}
-        aria-label={abierto ? 'Cerrar asistente' : 'Abrir asistente'}
+        aria-label={abierto ? 'Close assistant' : 'Open assistant'}
       >
         {abierto ? (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -103,7 +103,7 @@ export default function ChatbotPanel() {
             <div className="chatbot-header-info">
               <div className="chatbot-avatar">AI</div>
               <div>
-                <p className="chatbot-nombre">Asistente</p>
+                <p className="chatbot-nombre">Assistant</p>
                 <p className="chatbot-sub">Yoyodyme · Task Manager</p>
               </div>
             </div>
@@ -145,7 +145,7 @@ export default function ChatbotPanel() {
               className="chatbot-input"
               value={entrada}
               onChange={e => setEntrada(e.target.value)}
-              placeholder="Escribe tu pregunta…"
+              placeholder="Ask a question…"
               disabled={cargando}
               autoComplete="off"
             />

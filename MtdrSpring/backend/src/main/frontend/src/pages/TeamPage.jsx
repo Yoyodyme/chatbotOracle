@@ -157,7 +157,7 @@ export default function TeamPage() {
   if (loading) {
     return (
       <div style={estiloPage}>
-        <h1 style={estiloTitulo}>Equipo</h1>
+        <h1 style={estiloTitulo}>Team</h1>
         <SkeletonTarjetas n={8} />
       </div>
     );
@@ -166,11 +166,11 @@ export default function TeamPage() {
   if (usuarios.length === 0) {
     return (
       <div style={estiloPage}>
-        <h1 style={estiloTitulo}>Equipo</h1>
+        <h1 style={estiloTitulo}>Team</h1>
         <EmptyState
           icon="👥"
-          title="Sin miembros"
-          message="No se encontraron usuarios en el sistema."
+          title="No members"
+          message="No users found in the system."
         />
       </div>
     );
@@ -193,7 +193,7 @@ export default function TeamPage() {
 
   return (
     <div style={estiloPage}>
-      <h1 style={estiloTitulo}>Equipo</h1>
+      <h1 style={estiloTitulo}>Team</h1>
 
       {secciones.map(({ equipo, miembros }) => (
         miembros.length > 0 && (
@@ -201,7 +201,7 @@ export default function TeamPage() {
             <h2 style={estiloSeccionHeader}>
               {equipo.nombre}
               <span style={estiloContadorEquipo}>
-                {miembros.length} miembro{miembros.length !== 1 ? 's' : ''}
+                {miembros.length} member{miembros.length !== 1 ? 's' : ''}
               </span>
             </h2>
             <div style={estiloGrid}>
@@ -217,9 +217,9 @@ export default function TeamPage() {
       {mostrarSinEquipo && (
         <section>
           <h2 style={{ ...estiloSeccionHeader, color: 'var(--text-muted)' }}>
-            Sin equipo
+            No team
             <span style={estiloContadorEquipo}>
-              {sinEquipo.length} miembro{sinEquipo.length !== 1 ? 's' : ''}
+              {sinEquipo.length} member{sinEquipo.length !== 1 ? 's' : ''}
             </span>
           </h2>
           <div style={estiloGrid}>
@@ -233,7 +233,7 @@ export default function TeamPage() {
       {equipos.length === 0 && (
         <section>
           <h2 style={estiloSeccionHeader}>
-            Todos los miembros
+            All members
             <span style={estiloContadorEquipo}>{usuarios.length}</span>
           </h2>
           <div style={estiloGrid}>

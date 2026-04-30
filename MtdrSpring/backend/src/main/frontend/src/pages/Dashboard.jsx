@@ -162,7 +162,7 @@ export default function Dashboard() {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400, color: 'var(--text-muted)', gap: 10, fontSize: 14 }}>
         <div style={{ width: 16, height: 16, border: `2px solid var(--border)`, borderTopColor: ACENTO, borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-        Cargando dashboard…
+        Loading dashboard…
       </div>
     );
   }
@@ -172,7 +172,7 @@ export default function Dashboard() {
       <div style={{ padding: 20, color: 'var(--danger)', background: '#fff5f5', borderRadius: 8, border: '1px solid #fca5a5', fontSize: 14 }}>
         Error: {error}
         <button onClick={cargar} style={{ marginLeft: 12, padding: '4px 12px', borderRadius: 4, border: '1px solid var(--danger)', background: 'transparent', color: 'var(--danger)', cursor: 'pointer', fontSize: 13 }}>
-          Reintentar
+          Retry
         </button>
       </div>
     );
@@ -189,7 +189,7 @@ export default function Dashboard() {
           </h1>
           {ultimaAct && (
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              Actualizado {ultimaAct.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })} · actualiza cada hora
+              Updated {ultimaAct.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} · refreshes every hour
             </span>
           )}
         </div>
@@ -200,7 +200,7 @@ export default function Dashboard() {
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
           </svg>
-          Actualizar
+          Refresh
         </button>
       </div>
 
@@ -287,7 +287,7 @@ export default function Dashboard() {
             </ResponsiveContainer>
           ) : (
             <div style={{ height: 190, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-              Sin tareas cerradas en los últimos 6 meses
+              No tasks closed in the last 6 months
             </div>
           )}
         </Tarjeta>
@@ -297,7 +297,7 @@ export default function Dashboard() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
             <div><Etiqueta>Statistics</Etiqueta><Titulo mb={0}>Personal work</Titulo></div>
             <div style={{ fontSize: 11, padding: '3px 8px', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text-secondary)' }}>
-              Sprint activo
+              Active sprint
             </div>
           </div>
           {personal.length > 0 ? (
@@ -306,7 +306,7 @@ export default function Dashboard() {
                 <Pie data={personal} dataKey="tareas" nameKey="nombre" cx={70} cy={70} innerRadius={38} outerRadius={64} stroke="none">
                   {personal.map((_, i) => <Cell key={i} fill={COLORES_PIE[i % COLORES_PIE.length]} />)}
                 </Pie>
-                <Tooltip contentStyle={{ borderRadius: 6, border: '1px solid var(--border)', fontSize: 11 }} formatter={(v, n) => [`${v} tareas`, n]} />
+                <Tooltip contentStyle={{ borderRadius: 6, border: '1px solid var(--border)', fontSize: 11 }} formatter={(v, n) => [`${v} tasks`, n]} />
               </PieChart>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 7 }}>
                 {personal.slice(0, 5).map((u, i) => (
@@ -324,7 +324,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-              Sin tareas asignadas
+              No tasks assigned
             </div>
           )}
         </Tarjeta>
@@ -332,15 +332,15 @@ export default function Dashboard() {
         <Tarjeta>
           <Etiqueta>Team Velocity</Etiqueta>
           <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>{sprint.completadas ?? 0} tareas</span>
-            <span style={{ fontSize: 11, color: 'var(--success)', fontWeight: 500 }}>● completadas</span>
+            <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>{sprint.completadas ?? 0} tasks</span>
+            <span style={{ fontSize: 11, color: 'var(--success)', fontWeight: 500 }}>● completed</span>
           </div>
           <ResponsiveContainer width="100%" height={160}>
             <BarChart data={velocity} margin={{ top: 4, right: 4, bottom: 0, left: -22 }} barSize={22}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
               <XAxis dataKey="dia" tick={EJE_TICK} axisLine={false} tickLine={false} />
               <YAxis tick={EJE_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
-              <Tooltip contentStyle={{ borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }} formatter={v => [`${v} tareas`, 'Completadas']} />
+              <Tooltip contentStyle={{ borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }} formatter={v => [`${v} tasks`, 'Completed']} />
               <Bar dataKey="tareas" radius={[3, 3, 0, 0]}>
                 {velocity.map((entry, i) => (
                   <Cell key={i} fill={entry.tareas === maxVel && entry.tareas > 0 ? ACENTO : ACENTO_SOFT} />
@@ -362,7 +362,7 @@ export default function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="usuario" tick={EJE_TICK} axisLine={false} tickLine={false} />
                 <YAxis tick={EJE_TICK} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }} formatter={v => [`${v} tareas`, 'Contribuciones']} />
+                <Tooltip contentStyle={{ borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }} formatter={v => [`${v} tasks`, 'Contributions']} />
                 <Bar dataKey="tareas" radius={[3, 3, 0, 0]}>
                   {contrib.map((_, i) => <Cell key={i} fill={i === 0 ? ACENTO : ACENTO_SOFT} />)}
                 </Bar>
@@ -370,14 +370,14 @@ export default function Dashboard() {
             </ResponsiveContainer>
           ) : (
             <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-              Sin contribuciones este mes
+              No contributions this month
             </div>
           )}
         </Tarjeta>
 
         <Tarjeta>
-          <Etiqueta>Tareas</Etiqueta>
-          <Titulo>Distribución por estatus</Titulo>
+          <Etiqueta>Tasks</Etiqueta>
+          <Titulo>Status distribution</Titulo>
           {statusDist.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {statusDist.map((item, i) => (
@@ -402,7 +402,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-              Sin tareas registradas
+              No tasks registered
             </div>
           )}
         </Tarjeta>
@@ -412,7 +412,7 @@ export default function Dashboard() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
             <div><Etiqueta>Statistics</Etiqueta><Titulo mb={0}>Weekly Hours</Titulo></div>
             <div style={{ display: 'flex', gap: 6 }}>
-              {[{ label: 'Día', value: 'day' }, { label: 'Semana', value: 'week' }, { label: 'Mes', value: 'month' }].map(({ label, value }) => (
+              {[{ label: 'Day', value: 'day' }, { label: 'Week', value: 'week' }, { label: 'Month', value: 'month' }].map(({ label, value }) => (
                 <button
                   key={value}
                   onClick={() => cambiarPeriodo(value)}
@@ -440,7 +440,7 @@ export default function Dashboard() {
           {horasCargando ? (
             <div style={{ height: 210, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13, gap: 8 }}>
               <div style={{ width: 14, height: 14, border: `2px solid var(--border)`, borderTopColor: ACENTO, borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-              Cargando…
+              Loading…
             </div>
           ) : weekly.length > 0 ? (
             <ResponsiveContainer width="100%" height={210}>
@@ -455,7 +455,7 @@ export default function Dashboard() {
             </ResponsiveContainer>
           ) : (
             <div style={{ height: 210, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-              Sin datos de horas para este periodo
+              No hours data for this period
             </div>
           )}
         </Tarjeta>

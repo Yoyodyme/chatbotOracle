@@ -3,7 +3,7 @@ import React from 'react';
 function formatFechaCorta(fechaStr) {
   if (!fechaStr) return '—';
   const d = new Date(fechaStr);
-  return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
+  return d.toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
 }
 
 function calcularPorcentaje(sprint) {
@@ -97,7 +97,7 @@ export default function SprintHeader({ sprint }) {
   return (
     <div style={estiloBanner}>
       <span style={estiloNombre}>{sprint.nombre}</span>
-      {sprint.activo && <span style={estiloActivoBadge}>ACTIVO</span>}
+      {sprint.activo && <span style={estiloActivoBadge}>ACTIVE</span>}
       <span style={estiloFechas}>
         {formatFechaCorta(sprint.fechaInicio)} → {formatFechaCorta(sprint.fechaFin)}
       </span>
