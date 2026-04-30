@@ -33,10 +33,10 @@ function TaskFormModal({ open, onClose, initialEstatus }) {
         fechaVencimiento: datos.fechaVencimiento || null,
       });
       addTarea(nueva);
-      addToast({ id: `cre-${Date.now()}`, message: 'Tarea creada', type: 'success' });
+      addToast({ id: `cre-${Date.now()}`, message: 'Task created', type: 'success' });
       onClose();
     } catch (err) {
-      addToast({ id: `err-${Date.now()}`, message: 'Error al crear la tarea', type: 'error' });
+      addToast({ id: `err-${Date.now()}`, message: 'Error creating the task', type: 'error' });
     }
   }
 
@@ -74,10 +74,10 @@ function TaskFormModal({ open, onClose, initialEstatus }) {
     <div style={estiloOverlay} onClick={onClose}>
       <div style={estiloPanel} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <h2 style={estiloTitulo}>
-          Nueva tarea
+          New Task
           {initialEstatus && (
             <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-secondary)', marginLeft: '10px' }}>
-              en {initialEstatus.nombre}
+              in {initialEstatus.nombre}
             </span>
           )}
         </h2>
@@ -148,7 +148,7 @@ export default function KanbanBoard({ loading = false }) {
       });
       addToast({
         id: `move-${idTarea}-${Date.now()}`,
-        message: `Tarea movida a "${estatusDestino.nombre}"`,
+        message: `Task moved to "${estatusDestino.nombre}"`,
         type: 'success',
       });
     } catch (err) {
@@ -156,7 +156,7 @@ export default function KanbanBoard({ loading = false }) {
       updateTarea(idTarea, { estatus: tarea.estatus });
       addToast({
         id: `err-${idTarea}-${Date.now()}`,
-        message: 'No se pudo mover la tarea. Intenta de nuevo.',
+        message: 'Could not move the task. Please try again.',
         type: 'error',
       });
     }

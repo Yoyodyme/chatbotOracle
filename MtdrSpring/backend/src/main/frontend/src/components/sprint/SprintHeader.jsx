@@ -3,7 +3,7 @@ import React from 'react';
 function formatFechaCorta(fechaStr) {
   if (!fechaStr) return '—';
   const d = new Date(fechaStr);
-  return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
+  return d.toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
 }
 
 function calcularPorcentaje(sprint) {

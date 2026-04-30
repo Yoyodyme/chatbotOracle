@@ -7,7 +7,7 @@ export default function ConfirmDialog({
   message,
   onConfirm,
   onCancel,
-  confirmLabel = 'Eliminar',
+  confirmLabel = 'Delete',
   dangerous = true,
 }) {
   useEffect(() => {
@@ -106,7 +106,7 @@ export default function ConfirmDialog({
               e.currentTarget.style.color = 'var(--text-secondary)';
             }}
           >
-            Cancelar
+            Cancel
           </button>
           <button
             style={estiloBotonConfirmar}

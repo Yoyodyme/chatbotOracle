@@ -23,10 +23,10 @@ export default function TopBar({ titulo }) {
         fechaVencimiento: datos.fechaVencimiento || null,
       });
       addTarea(nueva);
-      addToast({ id: `cre-${Date.now()}`, type: 'success', message: 'Tarea creada correctamente' });
+      addToast({ id: `cre-${Date.now()}`, type: 'success', message: 'Task created successfully' });
       setMostrarFormulario(false);
     } catch {
-      addToast({ id: `err-${Date.now()}`, type: 'error', message: 'Error al crear la tarea' });
+      addToast({ id: `err-${Date.now()}`, type: 'error', message: 'Error creating the task' });
     }
   }
 
@@ -85,11 +85,11 @@ export default function TopBar({ titulo }) {
           onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--accent)'; }}
         >
           <span style={{ fontSize: '16px', lineHeight: 1 }}>+</span>
-          Nueva Tarea
+          New Task
         </button>
       </header>
 
-      {/* Modal de creación de tarea */}
+      {/* Task creation modal */}
       {mostrarFormulario && (
         <ModalNuevaTarea
           onSubmit={manejarCrearTarea}
@@ -141,7 +141,7 @@ function ModalNuevaTarea({ onSubmit, onCancel }) {
   return (
     <div style={estiloOverlay} onClick={onCancel}>
       <div style={estiloPanel} onClick={(e) => e.stopPropagation()}>
-        <h2 style={estiloTitulo}>Nueva tarea</h2>
+        <h2 style={estiloTitulo}>New Task</h2>
         <TaskForm onSubmit={onSubmit} onCancel={onCancel} />
       </div>
     </div>

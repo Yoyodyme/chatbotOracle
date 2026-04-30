@@ -26,14 +26,14 @@ public class OracleConfiguration {
     public DataSource dataSource() {
         DriverManagerDataSource dataSource = new DriverManagerDataSource();
 
-        // Ruta relativa al directorio donde se ejecuta Maven (MtdrSpring/backend/)
+        // Relative path to the directory where Maven is executed (MtdrSpring/backend/)
         String walletPath = System.getenv().getOrDefault("WALLET_PATH",
                 new File("wallet").getAbsolutePath().replace("\\", "/"));
 
-        // TNS_ADMIN: donde Oracle JDBC busca tnsnames.ora y sqlnet.ora
+        // TNS_ADMIN: where Oracle JDBC looks for tnsnames.ora and sqlnet.ora
         System.setProperty("oracle.net.tns_admin", walletPath);
 
-        // Wallet location
+        // Wallet location (Oracle connection descriptor)
         System.setProperty("oracle.net.wallet_location",
                 "(SOURCE=(METHOD=FILE)(METHOD_DATA=(DIRECTORY=" + walletPath + ")))");
 

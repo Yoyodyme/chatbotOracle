@@ -3,16 +3,16 @@ import { enviarMensaje } from '../../api/chatbot';
 import './ChatbotPanel.css';
 
 const HINTS = [
-  { label: 'Tareas pendientes',   mensaje: 'tareas pendientes'   },
-  { label: 'Estado del sprint',   mensaje: 'estado del sprint'   },
-  { label: 'Tareas completadas',  mensaje: 'tareas completadas'  },
+  { label: 'Pending tasks',      mensaje: 'tareas pendientes'   },
+  { label: 'Sprint status',      mensaje: 'estado del sprint'   },
+  { label: 'Completed tasks',    mensaje: 'tareas completadas'  },
 ];
 
 
 export default function ChatbotPanel() {
   const [abierto, setAbierto]         = useState(false);
   const [mensajes, setMensajes]       = useState([
-    { rol: 'asistente', texto: '¡Hola! Soy tu asistente de tareas.\n¿En qué te puedo ayudar hoy?' },
+    { rol: 'asistente', texto: 'Hello! I am your task assistant.\nHow can I help you today?' },
   ]);
   const [entrada, setEntrada]         = useState('');
   const [cargando, setCargando]       = useState(false);
@@ -35,9 +35,9 @@ export default function ChatbotPanel() {
     const msg = texto.trim();
     if (!msg || cargando) return;
 
-    // Construir historial desde los mensajes actuales antes de añadir el nuevo turno.
-    // Se filtran mensajes de rol 'sistema', se toman los últimos 10 y se mapean al
-    // formato estándar {role, content} que espera el backend (OpenAI/DeepSeek API).
+    // Build history from current messages before adding the new turn.
+    // Filter out 'sistema' role messages, take the last 10, and map to the
+    // standard {role, content} format expected by the backend (OpenAI/DeepSeek API).
     const historial = mensajes
       .filter(m => m.rol !== 'sistema')
       .slice(-10)
@@ -52,11 +52,11 @@ export default function ChatbotPanel() {
     try {
       respuesta = await enviarMensaje(msg, historial);
     } catch (err) {
-      respuesta = 'Error al conectar con el asistente. Verifica que el servidor esté en línea.';
+      respuesta = 'Error connecting to the assistant. Please verify that the server is online.';
     }
     setCargando(false);
 
-    // Efecto de escritura carácter por carácter
+    // Character-by-character typing effect
     setMensajes(prev => [...prev, { rol: 'asistente', texto: '' }]);
     let i = 0;
     const intervalo = setInterval(() => {
@@ -77,11 +77,11 @@ export default function ChatbotPanel() {
 
   return (
     <>
-      {/* Botón flotante */}
+      {/* Floating button */}
       <button
         className={`chatbot-fab${abierto ? ' chatbot-fab--activo' : ''}`}
         onClick={() => setAbierto(v => !v)}
-        aria-label={abierto ? 'Cerrar asistente' : 'Abrir asistente'}
+        aria-label={abierto ? 'Close assistant' : 'Open assistant'}
       >
         {abierto ? (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -103,13 +103,13 @@ export default function ChatbotPanel() {
             <div className="chatbot-header-info">
               <div className="chatbot-avatar">AI</div>
               <div>
-                <p className="chatbot-nombre">Asistente</p>
+                <p className="chatbot-nombre">Assistant</p>
                 <p className="chatbot-sub">Yoyodyme · Task Manager</p>
               </div>
             </div>
           </div>
 
-          {/* Área de mensajes */}
+          {/* Messages area */}
           <div className="chatbot-mensajes" ref={mensajesRef}>
             {mensajes.map((m, idx) => (
               <div key={idx} className={`chatbot-burbuja chatbot-burbuja--${m.rol}`}>
@@ -145,7 +145,7 @@ export default function ChatbotPanel() {
               className="chatbot-input"
               value={entrada}
               onChange={e => setEntrada(e.target.value)}
-              placeholder="Escribe tu pregunta…"
+              placeholder="Type your question…"
               disabled={cargando}
               autoComplete="off"
             />

@@ -12,7 +12,7 @@ import { PriorityBadge, StatusBadge } from '../components/tasks/TaskBadge';
 function formatFecha(fechaStr) {
   if (!fechaStr) return '—';
   try {
-    return new Date(fechaStr).toLocaleDateString('es-MX', {
+    return new Date(fechaStr).toLocaleDateString('en-US', {
       day: '2-digit', month: 'short', year: 'numeric',
     });
   } catch {
@@ -123,10 +123,10 @@ export default function BacklogPage() {
         fechaVencimiento: datos.fechaVencimiento || null,
       });
       addTareaStore(nueva);
-      addToast({ id: `cre-${Date.now()}`, message: 'Tarea creada', type: 'success' });
+      addToast({ id: `cre-${Date.now()}`, message: 'Task created', type: 'success' });
       setShowForm(false);
     } catch {
-      addToast({ id: `err-${Date.now()}`, message: 'Error al crear la tarea', type: 'error' });
+      addToast({ id: `err-${Date.now()}`, message: 'Error creating the task', type: 'error' });
     }
   }
 
@@ -142,11 +142,11 @@ export default function BacklogPage() {
       await apiDeleteTarea(tarea.idTarea);
       addToast({
         id: `del-${tarea.idTarea}-${Date.now()}`,
-        message: `Tarea "${tarea.titulo}" eliminada`,
+        message: `Task "${tarea.titulo}" deleted`,
         type: 'info',
         duration: 5000,
         action: {
-          label: 'Deshacer',
+          label: 'Undo',
           onClick: async () => {
             try {
               const restaurada = await createTarea({
@@ -160,16 +160,16 @@ export default function BacklogPage() {
                 fechaVencimiento: tarea.fechaVencimiento || null,
               });
               addTarea(restaurada);
-              addToast({ id: `rest-${Date.now()}`, message: 'Tarea restaurada', type: 'success' });
+              addToast({ id: `rest-${Date.now()}`, message: 'Task restored', type: 'success' });
             } catch {
-              addToast({ id: `errrest-${Date.now()}`, message: 'No se pudo restaurar la tarea', type: 'error' });
+              addToast({ id: `errrest-${Date.now()}`, message: 'Could not restore the task', type: 'error' });
             }
           },
         },
       });
     } catch {
       addTareaStore(tarea);
-      addToast({ id: `errdel-${Date.now()}`, message: 'Error al eliminar la tarea', type: 'error' });
+      addToast({ id: `errdel-${Date.now()}`, message: 'Error deleting the task', type: 'error' });
     }
   }
 
@@ -322,12 +322,12 @@ export default function BacklogPage() {
 
   const columnas = [
     { key: 'idTarea', label: 'ID', sortable: true },
-    { key: 'titulo', label: 'Título', sortable: true },
-    { key: 'estatus', label: 'Estatus', sortable: true },
-    { key: 'prioridad', label: 'Prioridad', sortable: true },
-    { key: 'usuarioAsignado', label: 'Asignado', sortable: false },
-    { key: 'fechaVencimiento', label: 'Vencimiento', sortable: true },
-    { key: 'acciones', label: 'Acciones', sortable: false },
+    { key: 'titulo', label: 'Title', sortable: true },
+    { key: 'estatus', label: 'Status', sortable: true },
+    { key: 'prioridad', label: 'Priority', sortable: true },
+    { key: 'usuarioAsignado', label: 'Assigned', sortable: false },
+    { key: 'fechaVencimiento', label: 'Due date', sortable: true },
+    { key: 'acciones', label: 'Actions', sortable: false },
   ];
 
   return (
@@ -341,7 +341,7 @@ export default function BacklogPage() {
           onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
         >
           <span style={{ fontSize: '16px', lineHeight: 1 }}>+</span>
-          Nueva Tarea
+          New Task
         </button>
       </div>
 
@@ -349,7 +349,7 @@ export default function BacklogPage() {
       <div style={estiloFiltros}>
         <input
           type="text"
-          placeholder="Buscar por título o descripción…"
+          placeholder="Search by title or description…"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
           style={estiloInput}
@@ -361,7 +361,7 @@ export default function BacklogPage() {
           onChange={(e) => setFiltroEstatus(e.target.value)}
           style={estiloSelect}
         >
-          <option value="">Todos los estatus</option>
+          <option value="">All statuses</option>
           {estatuses.map((e) => (
             <option key={e.idEstatus} value={String(e.idEstatus)}>
               {e.nombre}
@@ -373,7 +373,7 @@ export default function BacklogPage() {
           onChange={(e) => setFiltroPrioridad(e.target.value)}
           style={estiloSelect}
         >
-          <option value="">Todas las prioridades</option>
+          <option value="">All priorities</option>
           {prioridades.map((p) => (
             <option key={p.idPrioridad} value={String(p.idPrioridad)}>
               {p.nombre}
@@ -392,7 +392,7 @@ export default function BacklogPage() {
             }}
             onClick={() => { setBusqueda(''); setFiltroEstatus(''); setFiltroPrioridad(''); }}
           >
-            ✕ Limpiar filtros
+            ✕ Clear filters
           </button>
         )}
       </div>
@@ -407,7 +407,7 @@ export default function BacklogPage() {
                   key={col.key}
                   style={col.sortable ? estiloTh : estiloThAcciones}
                   onClick={col.sortable ? () => toggleSort(col.key) : undefined}
-                  title={col.sortable ? `Ordenar por ${col.label}` : undefined}
+                  title={col.sortable ? `Sort by ${col.label}` : undefined}
                 >
                   {col.label}
                   {col.sortable && (
@@ -425,15 +425,15 @@ export default function BacklogPage() {
                 <td colSpan={7}>
                   <EmptyState
                     icon="🔍"
-                    title="Sin resultados"
+                    title="No results"
                     message={
                       busqueda || filtroEstatus || filtroPrioridad
-                        ? 'Ninguna tarea coincide con los filtros aplicados.'
-                        : 'No hay tareas en el backlog. Crea la primera.'
+                        ? 'No tasks match the applied filters.'
+                        : 'No tasks in the backlog. Create the first one.'
                     }
                     action={
                       !busqueda && !filtroEstatus && !filtroPrioridad
-                        ? { label: '+ Nueva Tarea', onClick: () => setShowForm(true) }
+                        ? { label: '+ New Task', onClick: () => setShowForm(true) }
                         : undefined
                     }
                   />
@@ -498,9 +498,9 @@ export default function BacklogPage() {
                       onMouseLeave={(e) => {
                         e.currentTarget.style.backgroundColor = 'transparent';
                       }}
-                      title="Eliminar tarea"
+                      title="Delete task"
                     >
-                      Eliminar
+                      Delete
                     </button>
                   </td>
                 </tr>
@@ -549,7 +549,7 @@ export default function BacklogPage() {
                 marginBottom: '20px',
               }}
             >
-              Nueva tarea
+              New Task
             </h2>
             <TaskForm
               onSubmit={handleCrearTarea}
@@ -559,16 +559,16 @@ export default function BacklogPage() {
         </div>
       )}
 
-      {/* Confirmar eliminación */}
+      {/* Confirm deletion */}
       <ConfirmDialog
         open={Boolean(confirmEliminar)}
-        title="¿Eliminar tarea?"
+        title="Delete task?"
         message={
           confirmEliminar
-            ? `¿Seguro que deseas eliminar "${confirmEliminar.titulo}"? Esta acción se puede deshacer.`
+            ? `Are you sure you want to delete "${confirmEliminar.titulo}"? This action can be undone.`
             : ''
         }
-        confirmLabel="Eliminar"
+        confirmLabel="Delete"
         dangerous
         onConfirm={handleEliminar}
         onCancel={() => setConfirmEliminar(null)}

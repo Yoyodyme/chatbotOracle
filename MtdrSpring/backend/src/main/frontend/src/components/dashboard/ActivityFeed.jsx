@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { getLogs } from '../../api/logs';
 import Skeleton from '../shared/Skeleton';
 import { formatDistanceToNow } from 'date-fns';
-import { es } from 'date-fns/locale';
 
 function estiloEntradaLog(log) {
   // Si el mensaje menciona cambio de estatus, usa color acento; de lo contrario, muted
@@ -15,7 +14,7 @@ function estiloEntradaLog(log) {
 function formatearFecha(fechaStr) {
   if (!fechaStr) return '';
   try {
-    return formatDistanceToNow(new Date(fechaStr), { addSuffix: true, locale: es });
+    return formatDistanceToNow(new Date(fechaStr), { addSuffix: true });
   } catch {
     return fechaStr;
   }
@@ -51,7 +50,7 @@ export default function ActivityFeed() {
       try {
         const data = await getLogs();
         if (!cancelado) {
-          // Ordenar por fecha descendente, tomar últimos 10
+          // Sort by date descending, take the last 10
           const ordenados = [...(data ?? [])].sort(
             (a, b) => new Date(b.creadoEn || 0) - new Date(a.creadoEn || 0)
           );
@@ -132,7 +131,7 @@ export default function ActivityFeed() {
   if (loading) {
     return (
       <div style={estiloContenedor}>
-        <h3 style={estiloHeader}>Actividad reciente</h3>
+        <h3 style={estiloHeader}>Recent activity</h3>
         <SkeletonFeed />
       </div>
     );
@@ -141,9 +140,9 @@ export default function ActivityFeed() {
   if (error) {
     return (
       <div style={estiloContenedor}>
-        <h3 style={estiloHeader}>Actividad reciente</h3>
+        <h3 style={estiloHeader}>Recent activity</h3>
         <p style={{ color: 'var(--danger)', fontSize: '0.875rem' }}>
-          No se pudo cargar la actividad.
+          Could not load activity.
         </p>
       </div>
     );
@@ -152,9 +151,9 @@ export default function ActivityFeed() {
   if (logs.length === 0) {
     return (
       <div style={estiloContenedor}>
-        <h3 style={estiloHeader}>Actividad reciente</h3>
+        <h3 style={estiloHeader}>Recent activity</h3>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', padding: '20px 0' }}>
-          No hay actividad registrada aún.
+          No activity recorded yet.
         </p>
       </div>
     );
@@ -162,7 +161,7 @@ export default function ActivityFeed() {
 
   return (
     <div style={estiloContenedor}>
-      <h3 style={estiloHeader}>Actividad reciente</h3>
+      <h3 style={estiloHeader}>Recent activity</h3>
       <div style={estiloScroll}>
         {logs.map((log, idx) => {
           const dotColor = estiloEntradaLog(log);
@@ -181,7 +180,7 @@ export default function ActivityFeed() {
               />
               {/* Contenido */}
               <div style={estiloContenidoTexto}>
-                <p style={estiloMensaje}>{log.mensaje || 'Actividad registrada'}</p>
+                <p style={estiloMensaje}>{log.mensaje || 'Activity recorded'}</p>
                 {log.tarea?.titulo && (
                   <span style={estiloTareaRef} title={log.tarea.titulo}>
                     {log.tarea.titulo}

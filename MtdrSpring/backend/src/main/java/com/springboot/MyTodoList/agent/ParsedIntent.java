@@ -4,28 +4,28 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
 /**
- * Resultado del análisis de intención de un mensaje del usuario.
- * Compatible con deserialización JSON desde la respuesta del LLM.
+ * Result of the intent analysis of a user message.
+ * Compatible with JSON deserialization from the LLM response.
  */
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ParsedIntent {
 
-    /** Intención detectada; DESCONOCIDO por defecto si no se puede clasificar. */
+    /** Detected intent; DESCONOCIDO by default if it cannot be classified. */
     private IntentType intent = IntentType.DESCONOCIDO;
 
-    /** Nombre del integrante al que están asignadas las tareas (si aplica). */
+    /** Name of the team member to whom the tasks are assigned (if applicable). */
     private String asignado;
 
-    /** Estatus de las tareas a filtrar (si aplica). */
+    /** Status of the tasks to filter (if applicable). */
     private String estatus;
 
-    /** Título de la tarea mencionada (si aplica). */
+    /** Title of the task mentioned (if applicable). */
     private String titulo;
 
-    /** Indica si se necesita más información del usuario para resolver la intención. */
+    /** Indicates whether more information is needed from the user to resolve the intent. */
     private boolean clarificationNeeded;
 
-    /** Pregunta que el asistente debe hacerle al usuario para aclarar su intención. */
+    /** Question that the assistant should ask the user to clarify their intent. */
     private String clarificationQuestion;
 }

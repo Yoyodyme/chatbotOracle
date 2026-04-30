@@ -90,7 +90,7 @@ public class TareaService {
     }
 
     public List<Tarea> obtenerTareasActivasPorUsuario(Long idUsuario) {
-        return tareaRepository.findByUsuarioAsignadoAndEstatusNombres(idUsuario, List.of("pendiente", "en progreso"));
+        return tareaRepository.findByUsuarioAsignadoAndEstatusNombres(idUsuario, List.of("Pending", "In Progress"));
     }
 
     public boolean eliminarTarea(Long id) {

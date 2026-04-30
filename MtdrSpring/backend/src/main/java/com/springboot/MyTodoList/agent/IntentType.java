@@ -1,36 +1,36 @@
 package com.springboot.MyTodoList.agent;
 
 /**
- * Tipos de intención reconocidos por el orquestador de agente IA.
+ * Intent types recognized by the AI agent orchestrator.
  */
 public enum IntentType {
-    /** El usuario pide ayuda o instrucciones generales. */
+    /** The user is asking for help or general instructions. */
     AYUDA,
 
-    /** El usuario quiere ver todas las tareas. */
+    /** The user wants to see all tasks. */
     LISTAR_TAREAS,
 
-    /** El usuario quiere las tareas de un integrante específico. */
+    /** The user wants the tasks assigned to a specific team member. */
     TAREAS_POR_ASIGNADO,
 
-    /** El usuario filtra tareas por estatus (pendiente, en progreso, completada). */
+    /** The user is filtering tasks by status (pending, in progress, completed). */
     TAREAS_POR_ESTATUS,
 
-    /** El usuario solicita un resumen del sprint actual. */
+    /** The user is requesting a summary of the current sprint. */
     RESUMEN_SPRINT,
 
-    /** El usuario pregunta por la carga de trabajo del equipo. */
+    /** The user is asking about the team's workload. */
     CARGA_EQUIPO,
 
-    /** El usuario quiere ver los detalles de una tarea específica. */
+    /** The user wants to see the details of a specific task. */
     VER_TAREA,
 
-    /** El usuario quiere modificar o editar una tarea existente. */
+    /** The user wants to modify or edit an existing task. */
     MODIFICAR_TAREA,
 
-    /** El usuario quiere reasignar una tarea a otro integrante. */
+    /** The user wants to reassign a task to another team member. */
     ASIGNAR_TAREA,
 
-    /** No se pudo determinar la intención del mensaje. */
+    /** The intent of the message could not be determined. */
     DESCONOCIDO
 }

@@ -5,15 +5,15 @@ import org.springframework.stereotype.Component;
 import java.text.Normalizer;
 
 /**
- * Clasificador de intenciones basado en reglas de palabras clave en español.
- * Normaliza el texto (minúsculas + eliminación de acentos) antes de comparar.
- * Se usa como respaldo cuando el LLM no está disponible o falla.
+ * Rule-based intent classifier using English keywords.
+ * Normalizes text (lowercase + accent removal) before comparing.
+ * Used as fallback when the LLM is unavailable or fails.
  */
 @Component
 public class RuleBasedIntentParser implements IntentParser {
 
-    private static final String PREFIJO_TAREAS_DE       = "tareas de ";
-    private static final String PREFIJO_TAREAS_ASIGNADAS = "tareas asignadas a ";
+    private static final String PREFIJO_TAREAS_DE       = "tasks of ";
+    private static final String PREFIJO_TAREAS_ASIGNADAS = "tasks assigned to ";
 
     @Override
     public ParsedIntent parse(String textoMensaje) {
@@ -23,15 +23,18 @@ public class RuleBasedIntentParser implements IntentParser {
 
         String texto = normalizarTexto(textoMensaje);
 
-        // 1. Ayuda
-        if (texto.contains("ayuda") || texto.contains("help")) {
+        // 1. Help
+        if (texto.contains("help") || texto.contains("ayuda")) {
             ParsedIntent resultado = new ParsedIntent();
             resultado.setIntent(IntentType.AYUDA);
             return resultado;
         }
 
-        // 2. Resumen de sprint
-        if (texto.contains("sprint actual")
+        // 2. Sprint summary
+        if (texto.contains("current sprint")
+                || texto.contains("sprint summary")
+                || texto.contains("sprint status")
+                || texto.contains("sprint actual")
                 || texto.contains("resumen sprint")
                 || texto.contains("estado del sprint")) {
             ParsedIntent resultado = new ParsedIntent();
@@ -39,15 +42,17 @@ public class RuleBasedIntentParser implements IntentParser {
             return resultado;
         }
 
-        // 3. Carga del equipo
-        if (texto.contains("carga del equipo")
+        // 3. Team workload
+        if (texto.contains("team workload")
+                || texto.contains("who has the most work")
+                || texto.contains("carga del equipo")
                 || texto.contains("quien tiene mas carga")) {
             ParsedIntent resultado = new ParsedIntent();
             resultado.setIntent(IntentType.CARGA_EQUIPO);
             return resultado;
         }
 
-        // 4. Tareas por asignado — extraer nombre tras la preposición
+        // 4. Tasks by assignee — extract name after the preposition
         if (texto.contains(PREFIJO_TAREAS_DE) || texto.contains(PREFIJO_TAREAS_ASIGNADAS)) {
             String nombre = extraerNombreTrasPreposicion(texto);
             ParsedIntent resultado = new ParsedIntent();
@@ -56,28 +61,30 @@ public class RuleBasedIntentParser implements IntentParser {
             return resultado;
         }
 
-        // 5. Tareas por estatus
-        if (texto.contains("pendiente")) {
+        // 5. Tasks by status
+        if (texto.contains("pending") || texto.contains("pendiente")) {
             ParsedIntent resultado = new ParsedIntent();
             resultado.setIntent(IntentType.TAREAS_POR_ESTATUS);
-            resultado.setEstatus("pendiente");
+            resultado.setEstatus("pending");
             return resultado;
         }
-        if (texto.contains("en progreso")) {
+        if (texto.contains("in progress") || texto.contains("en progreso")) {
             ParsedIntent resultado = new ParsedIntent();
             resultado.setIntent(IntentType.TAREAS_POR_ESTATUS);
-            resultado.setEstatus("en progreso");
+            resultado.setEstatus("in progress");
             return resultado;
         }
-        if (texto.contains("completada") || texto.contains("completadas")) {
+        if (texto.contains("completed") || texto.contains("completada") || texto.contains("completadas")) {
             ParsedIntent resultado = new ParsedIntent();
             resultado.setIntent(IntentType.TAREAS_POR_ESTATUS);
-            resultado.setEstatus("completada");
+            resultado.setEstatus("completed");
             return resultado;
         }
 
-        // 6. Listar todas las tareas
-        if (texto.contains("listar")
+        // 6. List all tasks
+        if (texto.contains("list")
+                || texto.contains("all tasks")
+                || texto.contains("listar")
                 || texto.contains("lista")
                 || texto.contains("todas las tareas")) {
             ParsedIntent resultado = new ParsedIntent();
@@ -85,8 +92,11 @@ public class RuleBasedIntentParser implements IntentParser {
             return resultado;
         }
 
-        // 7. Ver detalles de una tarea específica
-        if (texto.contains("detalle")
+        // 7. View details of a specific task
+        if (texto.contains("detail")
+                || texto.contains("view task")
+                || texto.contains("show task")
+                || texto.contains("detalle")
                 || texto.contains("ver tarea")
                 || texto.contains("mostrar tarea")) {
             ParsedIntent resultado = new ParsedIntent();
@@ -94,8 +104,11 @@ public class RuleBasedIntentParser implements IntentParser {
             return resultado;
         }
 
-        // 8. Modificar o editar una tarea
-        if (texto.contains("modificar")
+        // 8. Modify or edit a task
+        if (texto.contains("modify")
+                || texto.contains("edit task")
+                || texto.contains("change task")
+                || texto.contains("modificar")
                 || texto.contains("editar tarea")
                 || texto.contains("cambiar tarea")) {
             ParsedIntent resultado = new ParsedIntent();
@@ -103,27 +116,30 @@ public class RuleBasedIntentParser implements IntentParser {
             return resultado;
         }
 
-        // 9. Asignar o reasignar una tarea
-        if (texto.contains("asignar") || texto.contains("reasignar")) {
+        // 9. Assign or reassign a task
+        if (texto.contains("assign")
+                || texto.contains("reassign")
+                || texto.contains("asignar")
+                || texto.contains("reasignar")) {
             ParsedIntent resultado = new ParsedIntent();
             resultado.setIntent(IntentType.ASIGNAR_TAREA);
             return resultado;
         }
 
-        // 10. Sin coincidencia
+        // 10. No match
         return intentDesconocido();
     }
 
     // -------------------------------------------------------------------------
-    // Métodos de apoyo privados
+    // Private helper methods
     // -------------------------------------------------------------------------
 
     /**
-     * Convierte el texto a minúsculas y elimina marcas diacríticas (acentos)
-     * usando la descomposición canónica NFD del estándar Unicode.
+     * Converts text to lowercase and removes diacritical marks (accents)
+     * using the NFD canonical decomposition of the Unicode standard.
      *
-     * @param texto texto original del usuario
-     * @return texto normalizado listo para comparación
+     * @param texto original text from the user
+     * @return normalized text ready for comparison
      */
     private String normalizarTexto(String texto) {
         return Normalizer
@@ -133,11 +149,11 @@ public class RuleBasedIntentParser implements IntentParser {
     }
 
     /**
-     * Extrae el nombre del integrante que aparece después de "tareas de " o
-     * "tareas asignadas a " en el texto ya normalizado.
+     * Extracts the team member name that appears after "tasks of " or
+     * "tasks assigned to " in the already normalized text.
      *
-     * @param textoNormalizado texto en minúsculas sin acentos
-     * @return nombre extraído, o null si no se encontró
+     * @param textoNormalizado lowercase text without accents
+     * @return extracted name, or null if not found
      */
     private String extraerNombreTrasPreposicion(String textoNormalizado) {
         int inicio = textoNormalizado.indexOf(PREFIJO_TAREAS_ASIGNADAS);
@@ -151,7 +167,7 @@ public class RuleBasedIntentParser implements IntentParser {
         return null;
     }
 
-    /** Crea un ParsedIntent con intención DESCONOCIDO y todos los demás campos vacíos. */
+    /** Creates a ParsedIntent with DESCONOCIDO intent and all other fields empty. */
     private ParsedIntent intentDesconocido() {
         ParsedIntent resultado = new ParsedIntent();
         resultado.setIntent(IntentType.DESCONOCIDO);

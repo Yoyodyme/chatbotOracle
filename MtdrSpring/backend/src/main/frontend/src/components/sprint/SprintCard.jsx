@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 function formatFecha(fechaStr) {
   if (!fechaStr) return '—';
   const d = new Date(fechaStr);
-  return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+  return d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function calcularPorcentaje(sprint) {
@@ -184,7 +184,7 @@ export default function SprintCard({ sprint, onCompleteSprint }) {
       <div style={estiloProgresoWrapper}>
         <div style={estiloProgresoHeader}>
           <span style={estiloProgresoLabel}>
-            {completadas} / {total} tareas completadas
+            {completadas} / {total} tasks completed
           </span>
           <span style={estiloPorcentaje}>{porcentaje}%</span>
         </div>
@@ -196,7 +196,7 @@ export default function SprintCard({ sprint, onCompleteSprint }) {
       {sprint.activo && (
         <div style={estiloAcciones}>
           <Link to="/board" style={estiloBtnBoard}>
-            <span>▶</span> Ver Board
+            <span>▶</span> View Board
           </Link>
           {onCompleteSprint && (
             <button
@@ -205,7 +205,7 @@ export default function SprintCard({ sprint, onCompleteSprint }) {
               onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8'; }}
               onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
             >
-              ✓ Completar Sprint
+              ✓ Complete Sprint
             </button>
           )}
         </div>

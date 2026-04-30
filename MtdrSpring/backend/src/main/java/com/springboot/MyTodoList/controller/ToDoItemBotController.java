@@ -31,11 +31,11 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 /**
- * Controlador principal del bot de Telegram para EQ51.
- * Gestiona los comandos heredados de to-do y los nuevos comandos de gestión de tareas/sprint.
+ * Main Telegram bot controller for EQ51.
+ * Handles legacy to-do commands and the new task/sprint management commands.
  *
- * El bean se omite por completo cuando {@code telegram.bot.enabled=false}, lo que permite
- * que un segundo desarrollador levante el backend sin conflicto de long-polling.
+ * The bean is skipped entirely when {@code telegram.bot.enabled=false}, allowing
+ * a second developer to start the backend without a long-polling conflict.
  */
 @Component
 @ConditionalOnProperty(name = "telegram.bot.enabled", havingValue = "true", matchIfMissing = true)
@@ -43,16 +43,16 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
 
     private static final Logger logger = LoggerFactory.getLogger(ToDoItemBotController.class);
 
-    // ── Dependencias ──────────────────────────────────────────────────────────
+    // ── Dependencies ─────────────────────────────────────────────────────────
 
     private final BotProps botProps;
     private final TelegramClient telegramClient;
 
-    // Servicios heredados
+    // Legacy services
     private final ToDoItemService toDoItemService;
     private final DeepSeekService deepSeekService;
 
-    // Nuevos servicios EQ51
+    // New EQ51 services
     private final TareaService tareaService;
     private final SprintService sprintService;
     private final UsuarioService usuarioService;
@@ -64,7 +64,7 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
     @Value("${telegram.bot.token}")
     private String telegramBotToken;
 
-    // ── Constructor ───────────────────────────────────────────────────────────
+    // ── Constructor ──────────────────────────────────────────────────────────
 
     public ToDoItemBotController(
             BotProps botProps,
@@ -89,12 +89,12 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
         this.conversationManager = conversationManager;
         this.orquestador = agentOrchestrator;
 
-        // El cliente de Telegram requiere el token en el momento de construcción;
-        // getBotToken() lee botProps como fallback cuando la variable de entorno no está lista aún.
+        // The Telegram client requires the token at construction time;
+        // getBotToken() reads botProps as a fallback when the environment variable is not yet available.
         this.telegramClient = new OkHttpTelegramClient(botProps.getToken());
     }
 
-    // ── SpringLongPollingBot ──────────────────────────────────────────────────
+    // ── SpringLongPollingBot ─────────────────────────────────────────────────
 
     @Override
     public String getBotToken() {
@@ -109,29 +109,29 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
         return this;
     }
 
-    // ── Procesamiento de actualizaciones ──────────────────────────────────────
+    // ── Update processing ────────────────────────────────────────────────────
 
     @Override
     public void consume(Update update) {
-        // Ignorar actualizaciones sin mensaje de texto o sin remitente
+        // Ignore updates with no text message or no sender
         if (!update.hasMessage() || !update.getMessage().hasText()) return;
         if (update.getMessage().getFrom() == null) return;
 
         String mensajeOriginal = update.getMessage().getText();
         long chatId = update.getMessage().getChatId();
 
-        // Extraer identificador y datos del usuario de Telegram
+        // Extract identifier and data from the Telegram user
         org.telegram.telegrambots.meta.api.objects.User remitente = update.getMessage().getFrom();
         String telegramUserId = String.valueOf(remitente.getId());
         String telegramFirstName = remitente.getFirstName();
         String telegramLastName = remitente.getLastName();
         String telegramUsername = remitente.getUserName();
 
-        // ── Mapear etiquetas de botones a sus comandos equivalentes ──────────
+        // ── Map button labels to their equivalent slash commands ─────────────
         String mensajeEfectivo = resolverMensajeEfectivo(mensajeOriginal);
 
-        // ── Manejar /start y "Show Main Screen" directamente en el controlador
-        // para mostrar el teclado ampliado con los nuevos comandos EQ51.
+        // ── Handle /start and "Show Main Screen" directly in the controller
+        // to display the expanded keyboard with the new EQ51 commands.
         if (mensajeOriginal.equals("/start")
                 || mensajeOriginal.equals(BotLabels.SHOW_MAIN_SCREEN.getLabel())) {
             conversationManager.limpiarHistorialLlm(chatId);
@@ -139,18 +139,18 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
             return;
         }
 
-        // ── Construir manejadores de acciones ─────────────────────────────────
+        // ── Build action handlers ─────────────────────────────────────────────
 
-        // Manejador heredado (to-do simple)
+        // Legacy handler (simple to-do)
         BotActions actions = new BotActions(telegramClient, toDoItemService, deepSeekService, orquestador);
         actions.setRequestText(mensajeEfectivo);
         actions.setChatId(chatId);
         if (actions.getTodoService() == null) {
-            logger.info("Servicio to-do no inyectado correctamente — reinyectando");
+            logger.info("To-do service not properly injected — re-injecting");
             actions.setTodoService(toDoItemService);
         }
 
-        // Manejador de tareas EQ51
+        // EQ51 task handler
         TareaBotActions tareaActions = new TareaBotActions(
                 telegramClient,
                 tareaService,
@@ -166,7 +166,7 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
         tareaActions.setTelegramLastName(telegramLastName);
         tareaActions.setTelegramUsername(telegramUsername);
 
-        // ── Cadena de comandos heredados ──────────────────────────────────────
+        // ── Legacy command chain ──────────────────────────────────────────────
         actions.fnDone();
         actions.fnUndo();
         actions.fnDelete();
@@ -175,7 +175,7 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
         actions.fnAddItem();
         actions.fnLLM();
 
-        // ── Nuevos comandos EQ51 ──────────────────────────────────────────────
+        // ── New EQ51 commands ────────────────────────────────────────────────
         tareaActions.fnNuevatarea();
         tareaActions.fnAsignarSprint();
         tareaActions.fnCompletarTarea();
@@ -185,33 +185,33 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
         tareaActions.fnModificarTarea();
         tareaActions.fnModificarSprint();
 
-        // ── Fallback: texto libre → LLM, o mensaje de error si hay conversacion activa sin handler
+        // ── Fallback: free text → LLM, or error message if there is an active conversation without a handler
         if (!tareaActions.isExit() && !actions.isExit()) {
             if (!conversationManager.tieneConversacionActiva(chatId)) {
-                // Texto libre sin conversacion activa: enrutar al orquestador LLM
+                // Free text with no active conversation: route to the LLM orchestrator
                 String respuesta;
                 try {
                     respuesta = orquestador.manejarMensaje(mensajeEfectivo);
                 } catch (Exception ex) {
-                    logger.error("Error al invocar AgentOrchestrator desde free-text", ex);
-                    respuesta = "Ocurrio un error al procesar tu mensaje. Intenta de nuevo.";
+                    logger.error("Error invoking AgentOrchestrator from free-text", ex);
+                    respuesta = "An error occurred while processing your message. Please try again.";
                 }
                 conversationManager.agregarAlHistorialLlm(chatId, "user", mensajeEfectivo);
                 conversationManager.agregarAlHistorialLlm(chatId, "assistant", respuesta);
                 BotHelper.sendMessageToTelegram(chatId, respuesta, telegramClient);
             } else {
                 BotHelper.sendMessageToTelegram(chatId,
-                        "Comando no reconocido. Usa /start para ver los comandos disponibles.",
+                        "Command not recognized. Use /start to see the available commands.",
                         telegramClient);
             }
         }
     }
 
-    // ── Métodos auxiliares privados ────────────────────────────────────────────
+    // ── Private helper methods ────────────────────────────────────────────────
 
     /**
-     * Traduce las etiquetas del teclado de botones a sus comandos de slash correspondientes,
-     * de modo que los manejadores de BotActions y TareaBotActions los reconozcan.
+     * Translates keyboard button labels to their corresponding slash commands,
+     * so that BotActions and TareaBotActions handlers can recognize them.
      */
     private String resolverMensajeEfectivo(String mensajeOriginal) {
         if (BotLabels.NEW_TASK.getLabel().equals(mensajeOriginal)) {
@@ -231,13 +231,13 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
         } else if (BotLabels.MODIFY_SPRINT.getLabel().equals(mensajeOriginal)) {
             return "/modifysprint";
         }
-        // Sin cambio: devolver el mensaje tal cual
+        // No match: return the message as-is
         return mensajeOriginal;
     }
 
     /**
-     * Envía el menú principal del bot EQ51 con todos los botones del teclado,
-     * incluyendo los nuevos comandos de gestión de tareas y sprint.
+     * Sends the EQ51 bot main menu with all keyboard buttons,
+     * including the new task and sprint management commands.
      */
     private void enviarMenuPrincipal(long chatId) {
         ReplyKeyboardMarkup teclado = ReplyKeyboardMarkup.builder()
@@ -262,27 +262,27 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
                 .build();
 
         String mensajeBienvenida =
-                "Hola! Soy el bot de EQ51.\n\n" +
-                "Comandos disponibles:\n" +
-                "/newtask — Crear nueva tarea\n" +
-                "/newsprint — Crear nuevo sprint\n" +
-                "/assignsprint — Asignar tarea al sprint\n" +
-                "/donetask — Completar tarea\n" +
-                "/modifytask — Modificar una tarea existente\n" +
-                "/modifysprint — Modificar un sprint existente\n" +
-                "/sprinttable — Ver tabla del sprint\n" +
-                "/kpi — Ver KPIs del sprint\n" +
-                "/todolist — Lista de to-dos\n" +
-                "/llm — Consultar IA\n\n" +
-                "Tambien puedes escribir cualquier pregunta y te respondere con IA.";
+                "Hello! I'm the EQ51 bot.\n\n" +
+                "Available commands:\n" +
+                "/newtask — Create a new task\n" +
+                "/newsprint — Create a new sprint\n" +
+                "/assignsprint — Assign a task to a sprint\n" +
+                "/donetask — Complete a task\n" +
+                "/modifytask — Modify an existing task\n" +
+                "/modifysprint — Modify an existing sprint\n" +
+                "/sprinttable — View the sprint board\n" +
+                "/kpi — View sprint KPIs\n" +
+                "/todolist — To-do list\n" +
+                "/llm — Ask the AI\n\n" +
+                "You can also type any question and I will answer with AI.";
 
         BotHelper.sendMessageToTelegram(chatId, mensajeBienvenida, telegramClient, teclado);
     }
 
-    // ── Registro del bot ──────────────────────────────────────────────────────
+    // ── Bot registration ──────────────────────────────────────────────────────
 
     @AfterBotRegistration
     public void afterRegistration(BotSession botSession) {
-        System.out.println("Bot registrado. Estado en ejecución: " + botSession.isRunning());
+        System.out.println("Bot registered. Running status: " + botSession.isRunning());
     }
 }
