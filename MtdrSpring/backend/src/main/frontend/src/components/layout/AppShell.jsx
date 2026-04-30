@@ -6,6 +6,7 @@ import Toast from '../shared/Toast';
 import TaskDetailModal from '../tasks/TaskDetailModal';
 import ChatbotPanel from '../chatbot/ChatbotPanel';
 import useAppStore from '../../store/index';
+import useUsuarios from '../../hooks/useUsuarios';
 import '../../styles/animations.css';
 import '../../styles/globals.css';
 
@@ -15,6 +16,7 @@ const ALTO_TOPBAR = 48;
 
 export default function AppShell({ tituloPagina }) {
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
+  useUsuarios(); // Carga la lista de usuarios globalmente para todos los selectores de asignación
 
   const anchoSidebar = sidebarCollapsed
     ? ANCHO_SIDEBAR_COLAPSADO

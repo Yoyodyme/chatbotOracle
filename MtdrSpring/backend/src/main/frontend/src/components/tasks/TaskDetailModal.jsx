@@ -207,7 +207,7 @@ export default function TaskDetailModal() {
     try {
       await apiEliminarTarea(selectedTask.idTarea);
       deleteTarea(selectedTask.idTarea);
-      addToast({ id: `del-${Date.now()}`, type: 'success', message: `Tarea EQ51-${selectedTask.idTarea} eliminada` });
+      addToast({ id: `del-${Date.now()}`, type: 'success', message: `Tarea YD-${selectedTask.idTarea} eliminada` });
       setSelectedTask(null);
     } catch (err) {
       addToast({ id: `err-${Date.now()}`, type: 'error', message: 'Error al eliminar la tarea' });
@@ -455,7 +455,7 @@ export default function TaskDetailModal() {
         <div style={estiloCard} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
           {/* Header */}
           <div style={estiloHeader}>
-            <span style={estiloIDHeader}>EQ51-{selectedTask.idTarea}</span>
+            <span style={estiloIDHeader}>YD-{selectedTask.idTarea}</span>
             <span style={estiloTituloHeader}>{campos.titulo || selectedTask.titulo}</span>
             <button
               style={estiloBotonCerrar}
@@ -649,7 +649,7 @@ export default function TaskDetailModal() {
       <ConfirmDialog
         open={confirmarEliminar}
         title="Eliminar tarea"
-        message={`¿Estás seguro de que deseas eliminar la tarea EQ51-${selectedTask.idTarea}? Esta acción no se puede deshacer.`}
+        message={`¿Estás seguro de que deseas eliminar la tarea YD-${selectedTask.idTarea}? Esta acción no se puede deshacer.`}
         onConfirm={manejarEliminar}
         onCancel={() => setConfirmarEliminar(false)}
         confirmLabel="Eliminar"

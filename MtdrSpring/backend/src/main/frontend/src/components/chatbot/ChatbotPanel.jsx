@@ -35,6 +35,14 @@ export default function ChatbotPanel() {
     const msg = texto.trim();
     if (!msg || cargando) return;
 
+    // Construir historial desde los mensajes actuales antes de añadir el nuevo turno.
+    // Se filtran mensajes de rol 'sistema', se toman los últimos 10 y se mapean al
+    // formato estándar {role, content} que espera el backend (OpenAI/DeepSeek API).
+    const historial = mensajes
+      .filter(m => m.rol !== 'sistema')
+      .slice(-10)
+      .map(m => ({ role: m.rol === 'usuario' ? 'user' : 'assistant', content: m.texto }));
+
     setHintsVisible(false);
     setMensajes(prev => [...prev, { rol: 'usuario', texto: msg }]);
     setEntrada('');
@@ -42,7 +50,7 @@ export default function ChatbotPanel() {
 
     let respuesta;
     try {
-      respuesta = await enviarMensaje(msg);
+      respuesta = await enviarMensaje(msg, historial);
     } catch (err) {
       respuesta = 'Error al conectar con el asistente. Verifica que el servidor esté en línea.';
     }
@@ -96,7 +104,7 @@ export default function ChatbotPanel() {
               <div className="chatbot-avatar">AI</div>
               <div>
                 <p className="chatbot-nombre">Asistente</p>
-                <p className="chatbot-sub">EQ51 · Task Manager</p>
+                <p className="chatbot-sub">Yoyodyme · Task Manager</p>
               </div>
             </div>
           </div>

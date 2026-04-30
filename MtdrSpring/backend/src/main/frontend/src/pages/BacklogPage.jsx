@@ -448,7 +448,7 @@ export default function BacklogPage() {
                   style={{ transition: 'background-color 100ms' }}
                 >
                   <td style={{ ...estiloTd }}>
-                    <span style={estiloIdCell}>EQ51-{tarea.idTarea}</span>
+                    <span style={estiloIdCell}>YD-{tarea.idTarea}</span>
                   </td>
                   <td style={estiloTd}>
                     <span style={estiloTituloCell} title={tarea.titulo}>

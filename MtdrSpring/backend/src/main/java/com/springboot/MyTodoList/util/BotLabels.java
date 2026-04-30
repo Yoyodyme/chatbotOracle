@@ -17,7 +17,11 @@ public enum BotLabels {
 	SPRINT_TABLE("Tabla del Sprint"),
 	KPI_REPORT("KPI del Sprint"),
 	CANCEL("Cancelar"),
-	NEW_SPRINT("Nuevo Sprint");
+	NEW_SPRINT("Nuevo Sprint"),
+	MODIFY_TASK("Modificar Tarea"),
+	MODIFY_SPRINT("Modificar Sprint"),
+	CONFIRM_YES("Si, confirmar"),
+	CONFIRM_EDIT("No, editar");
 
 	private String label;
 

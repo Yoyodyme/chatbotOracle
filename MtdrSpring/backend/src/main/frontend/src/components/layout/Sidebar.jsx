@@ -170,7 +170,7 @@ export default function Sidebar() {
       {/* Logo */}
       <div style={estiloLogo}>
         <IconCloud />
-        <span style={estiloTextoLogo}>EQ51</span>
+        <span style={estiloTextoLogo}>Yoyodyme</span>
       </div>
 
       {/* Navegación */}

@@ -134,6 +134,7 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
         // para mostrar el teclado ampliado con los nuevos comandos EQ51.
         if (mensajeOriginal.equals("/start")
                 || mensajeOriginal.equals(BotLabels.SHOW_MAIN_SCREEN.getLabel())) {
+            conversationManager.limpiarHistorialLlm(chatId);
             enviarMenuPrincipal(chatId);
             return;
         }
@@ -181,13 +182,28 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
         tareaActions.fnTablaSprint();
         tareaActions.fnKpi();
         tareaActions.fnNuevoSprint();
+        tareaActions.fnModificarTarea();
+        tareaActions.fnModificarSprint();
 
-        // ── Fallback: comando no reconocido ──────────────────────────────────
-        // Solo se ejecuta si ningún manejador capturó el mensaje.
+        // ── Fallback: texto libre → LLM, o mensaje de error si hay conversacion activa sin handler
         if (!tareaActions.isExit() && !actions.isExit()) {
-            BotHelper.sendMessageToTelegram(chatId,
-                    "Comando no reconocido. Usa /start para ver los comandos disponibles.",
-                    telegramClient);
+            if (!conversationManager.tieneConversacionActiva(chatId)) {
+                // Texto libre sin conversacion activa: enrutar al orquestador LLM
+                String respuesta;
+                try {
+                    respuesta = orquestador.manejarMensaje(mensajeEfectivo);
+                } catch (Exception ex) {
+                    logger.error("Error al invocar AgentOrchestrator desde free-text", ex);
+                    respuesta = "Ocurrio un error al procesar tu mensaje. Intenta de nuevo.";
+                }
+                conversationManager.agregarAlHistorialLlm(chatId, "user", mensajeEfectivo);
+                conversationManager.agregarAlHistorialLlm(chatId, "assistant", respuesta);
+                BotHelper.sendMessageToTelegram(chatId, respuesta, telegramClient);
+            } else {
+                BotHelper.sendMessageToTelegram(chatId,
+                        "Comando no reconocido. Usa /start para ver los comandos disponibles.",
+                        telegramClient);
+            }
         }
     }
 
@@ -210,6 +226,10 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
             return "/kpi";
         } else if (BotLabels.NEW_SPRINT.getLabel().equals(mensajeOriginal)) {
             return "/newsprint";
+        } else if (BotLabels.MODIFY_TASK.getLabel().equals(mensajeOriginal)) {
+            return "/modifytask";
+        } else if (BotLabels.MODIFY_SPRINT.getLabel().equals(mensajeOriginal)) {
+            return "/modifysprint";
         }
         // Sin cambio: devolver el mensaje tal cual
         return mensajeOriginal;
@@ -232,7 +252,10 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
                         BotLabels.SPRINT_TABLE.getLabel(),
                         BotLabels.KPI_REPORT.getLabel()))
                 .keyboardRow(new KeyboardRow(
-                        BotLabels.NEW_SPRINT.getLabel()))
+                        BotLabels.NEW_SPRINT.getLabel(),
+                        BotLabels.MODIFY_TASK.getLabel()))
+                .keyboardRow(new KeyboardRow(
+                        BotLabels.MODIFY_SPRINT.getLabel()))
                 .keyboardRow(new KeyboardRow(
                         BotLabels.SHOW_MAIN_SCREEN.getLabel(),
                         BotLabels.HIDE_MAIN_SCREEN.getLabel()))
@@ -245,10 +268,13 @@ public class ToDoItemBotController implements SpringLongPollingBot, LongPollingS
                 "/newsprint — Crear nuevo sprint\n" +
                 "/assignsprint — Asignar tarea al sprint\n" +
                 "/donetask — Completar tarea\n" +
+                "/modifytask — Modificar una tarea existente\n" +
+                "/modifysprint — Modificar un sprint existente\n" +
                 "/sprinttable — Ver tabla del sprint\n" +
                 "/kpi — Ver KPIs del sprint\n" +
                 "/todolist — Lista de to-dos\n" +
-                "/llm — Consultar IA";
+                "/llm — Consultar IA\n\n" +
+                "Tambien puedes escribir cualquier pregunta y te respondere con IA.";
 
         BotHelper.sendMessageToTelegram(chatId, mensajeBienvenida, telegramClient, teclado);
     }

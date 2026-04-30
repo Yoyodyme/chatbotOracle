@@ -121,7 +121,7 @@ export default function TaskRow({ tarea, onClick, onDelete }) {
     >
       {/* ID */}
       <td style={{ ...estiloCelda, paddingLeft: '16px' }}>
-        <span style={estiloID}>EQ51-{tarea?.idTarea}</span>
+        <span style={estiloID}>YD-{tarea?.idTarea}</span>
       </td>
 
       {/* Título */}

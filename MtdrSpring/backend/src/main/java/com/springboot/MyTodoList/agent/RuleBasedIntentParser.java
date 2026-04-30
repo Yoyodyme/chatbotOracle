@@ -85,7 +85,32 @@ public class RuleBasedIntentParser implements IntentParser {
             return resultado;
         }
 
-        // 7. Sin coincidencia
+        // 7. Ver detalles de una tarea específica
+        if (texto.contains("detalle")
+                || texto.contains("ver tarea")
+                || texto.contains("mostrar tarea")) {
+            ParsedIntent resultado = new ParsedIntent();
+            resultado.setIntent(IntentType.VER_TAREA);
+            return resultado;
+        }
+
+        // 8. Modificar o editar una tarea
+        if (texto.contains("modificar")
+                || texto.contains("editar tarea")
+                || texto.contains("cambiar tarea")) {
+            ParsedIntent resultado = new ParsedIntent();
+            resultado.setIntent(IntentType.MODIFICAR_TAREA);
+            return resultado;
+        }
+
+        // 9. Asignar o reasignar una tarea
+        if (texto.contains("asignar") || texto.contains("reasignar")) {
+            ParsedIntent resultado = new ParsedIntent();
+            resultado.setIntent(IntentType.ASIGNAR_TAREA);
+            return resultado;
+        }
+
+        // 10. Sin coincidencia
         return intentDesconocido();
     }
 
