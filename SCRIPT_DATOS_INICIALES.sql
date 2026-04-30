@@ -42,6 +42,9 @@ DECLARE
   v_usr_elian     NUMBER;
   v_usr_alejandro NUMBER;
 
+  -- Sprint
+  v_sprint_1 NUMBER;
+
   -- Tareas
   v_tar_login    NUMBER;
   v_tar_bd       NUMBER;
@@ -59,6 +62,7 @@ BEGIN
   DELETE FROM COMENTARIOS_TAREA;
   DELETE FROM MIEMBROS_EQUIPO;
   DELETE FROM TAREAS;
+  DELETE FROM SPRINTS;
   DELETE FROM USUARIOS;
   DELETE FROM PRIORIDAD_TAREA;
   DELETE FROM ESTATUS_TAREA;
@@ -144,41 +148,56 @@ BEGIN
 
 
   -- ============================================================================
-  -- 6. TAREAS
+  -- 6. SPRINTS
+  -- ============================================================================
+  INSERT INTO SPRINTS (NOMBRE, FECHA_INICIO, FECHA_FIN, ACTIVO, CREADO_EN)
+  VALUES ('Sprint 1', TO_DATE('2026-04-21','YYYY-MM-DD'), TO_DATE('2026-05-04','YYYY-MM-DD'), 1, SYSDATE)
+  RETURNING ID_SPRINT INTO v_sprint_1;
+
+  DBMS_OUTPUT.PUT_LINE('Sprint: Sprint1=' || v_sprint_1);
+
+
+  -- ============================================================================
+  -- 7. TAREAS
   -- ============================================================================
   INSERT INTO TAREAS (TITULO, DESCRIPCION, ID_ESTATUS, ID_PRIORIDAD,
-                      ID_USUARIO_CREADOR, ID_USUARIO_ASIGNADO, FECHA_VENCIMIENTO, CREADO_EN, ACTUALIZADO_EN)
+                      ID_USUARIO_CREADOR, ID_USUARIO_ASIGNADO, FECHA_VENCIMIENTO,
+                      HORAS_ESTIMADAS, ID_SPRINT, CREADO_EN, ACTUALIZADO_EN)
   VALUES ('Implementar login con JWT', 'Crear pantalla de login y endpoint de autenticación con JWT',
           v_est_pendiente, v_pri_alta, v_usr_gabriel, v_usr_rutilo,
-          TO_DATE('2026-04-30','YYYY-MM-DD'), SYSDATE, SYSDATE)
+          TO_DATE('2026-04-30','YYYY-MM-DD'), 3, v_sprint_1, SYSDATE, SYSDATE)
   RETURNING ID_TAREA INTO v_tar_login;
 
   INSERT INTO TAREAS (TITULO, DESCRIPCION, ID_ESTATUS, ID_PRIORIDAD,
-                      ID_USUARIO_CREADOR, ID_USUARIO_ASIGNADO, FECHA_VENCIMIENTO, CREADO_EN, ACTUALIZADO_EN)
+                      ID_USUARIO_CREADOR, ID_USUARIO_ASIGNADO, FECHA_VENCIMIENTO,
+                      HORAS_ESTIMADAS, ID_SPRINT, CREADO_EN, ACTUALIZADO_EN)
   VALUES ('Diseñar base de datos', 'Modelar entidades y relaciones en Oracle ADB',
           v_est_progreso, v_pri_media, v_usr_gabriel, v_usr_grecia,
-          TO_DATE('2026-04-25','YYYY-MM-DD'), SYSDATE, SYSDATE)
+          TO_DATE('2026-04-25','YYYY-MM-DD'), 2, v_sprint_1, SYSDATE, SYSDATE)
   RETURNING ID_TAREA INTO v_tar_bd;
 
   INSERT INTO TAREAS (TITULO, DESCRIPCION, ID_ESTATUS, ID_PRIORIDAD,
-                      ID_USUARIO_CREADOR, ID_USUARIO_ASIGNADO, FECHA_VENCIMIENTO, CREADO_EN, ACTUALIZADO_EN)
+                      ID_USUARIO_CREADOR, ID_USUARIO_ASIGNADO, FECHA_VENCIMIENTO,
+                      HORAS_ESTIMADAS, ID_SPRINT, CREADO_EN, ACTUALIZADO_EN)
   VALUES ('Configurar CI/CD pipeline', 'Pipeline de despliegue automático en OCI',
           v_est_pendiente, v_pri_media, v_usr_rutilo, v_usr_eugenio,
-          TO_DATE('2026-05-10','YYYY-MM-DD'), SYSDATE, SYSDATE)
+          TO_DATE('2026-05-10','YYYY-MM-DD'), 4, v_sprint_1, SYSDATE, SYSDATE)
   RETURNING ID_TAREA INTO v_tar_cicd;
 
   INSERT INTO TAREAS (TITULO, DESCRIPCION, ID_ESTATUS, ID_PRIORIDAD,
-                      ID_USUARIO_CREADOR, ID_USUARIO_ASIGNADO, FECHA_VENCIMIENTO, CREADO_EN, ACTUALIZADO_EN)
+                      ID_USUARIO_CREADOR, ID_USUARIO_ASIGNADO, FECHA_VENCIMIENTO,
+                      HORAS_ESTIMADAS, ID_SPRINT, CREADO_EN, ACTUALIZADO_EN)
   VALUES ('Integrar bot de Telegram', 'Conectar el bot con los endpoints REST de la API',
           v_est_progreso, v_pri_alta, v_usr_gabriel, v_usr_elian,
-          TO_DATE('2026-05-05','YYYY-MM-DD'), SYSDATE, SYSDATE)
+          TO_DATE('2026-05-05','YYYY-MM-DD'), 3, v_sprint_1, SYSDATE, SYSDATE)
   RETURNING ID_TAREA INTO v_tar_telegram;
 
   INSERT INTO TAREAS (TITULO, DESCRIPCION, ID_ESTATUS, ID_PRIORIDAD,
-                      ID_USUARIO_CREADOR, ID_USUARIO_ASIGNADO, FECHA_VENCIMIENTO, CREADO_EN, ACTUALIZADO_EN)
+                      ID_USUARIO_CREADOR, ID_USUARIO_ASIGNADO, FECHA_VENCIMIENTO,
+                      HORAS_ESTIMADAS, HORAS_REALES, ID_SPRINT, CREADO_EN, ACTUALIZADO_EN)
   VALUES ('Documentar API con Swagger', 'Crear documentación completa de todos los endpoints',
           v_est_completada, v_pri_baja, v_usr_rutilo, v_usr_alejandro,
-          TO_DATE('2026-04-20','YYYY-MM-DD'), SYSDATE, SYSDATE)
+          TO_DATE('2026-04-20','YYYY-MM-DD'), 2, 1.5, v_sprint_1, SYSDATE, SYSDATE)
   RETURNING ID_TAREA INTO v_tar_swagger;
 
   DBMS_OUTPUT.PUT_LINE('Tareas: login=' || v_tar_login || ', bd=' || v_tar_bd ||
@@ -187,7 +206,7 @@ BEGIN
 
 
   -- ============================================================================
-  -- 7. MIEMBROS DE EQUIPOS
+  -- 8. MIEMBROS DE EQUIPOS
   -- ============================================================================
   INSERT INTO MIEMBROS_EQUIPO (ID_EQUIPO, ID_USUARIO, SE_UNIO_EN) VALUES (v_eq_alpha, v_usr_gabriel,   SYSDATE);
   INSERT INTO MIEMBROS_EQUIPO (ID_EQUIPO, ID_USUARIO, SE_UNIO_EN) VALUES (v_eq_alpha, v_usr_rutilo,    SYSDATE);
@@ -199,7 +218,7 @@ BEGIN
 
 
   -- ============================================================================
-  -- 8. COMENTARIOS EN TAREAS
+  -- 9. COMENTARIOS EN TAREAS
   -- ============================================================================
   INSERT INTO COMENTARIOS_TAREA (ID_TAREA, ID_USUARIO_AUTOR, CUERPO, CREADO_EN)
   VALUES (v_tar_login, v_usr_rutilo, 'Empece con la estructura base del JWT. Usamos RS256 o HS256?', SYSDATE);
@@ -223,7 +242,7 @@ BEGIN
 
 
   -- ============================================================================
-  -- 9. EVIDENCIAS DE TAREAS
+  -- 10. EVIDENCIAS DE TAREAS
   -- ============================================================================
   INSERT INTO EVIDENCIAS_TAREA (ID_TAREA, ID_USUARIO_SUBIO, URL_ARCHIVO, NOTA, CREADO_EN)
   VALUES (v_tar_login, v_usr_rutilo,
@@ -254,7 +273,7 @@ BEGIN
 
 
   -- ============================================================================
-  -- 10. LOGS DE CAMBIOS EN TAREAS
+  -- 11. LOGS DE CAMBIOS EN TAREAS
   -- ============================================================================
   INSERT INTO LOGS_TAREA (ID_TAREA, ID_USUARIO, ID_ESTATUS_ORIGEN, ID_ESTATUS_DESTINO, MENSAJE, CREADO_EN)
   VALUES (v_tar_login, v_usr_gabriel, v_est_pendiente, v_est_progreso,
@@ -302,6 +321,7 @@ SELECT 'ESTATUS_TAREA',              COUNT(*)           FROM ESTATUS_TAREA    UN
 SELECT 'PRIORIDAD_TAREA',            COUNT(*)           FROM PRIORIDAD_TAREA  UNION ALL
 SELECT 'EQUIPOS',                    COUNT(*)           FROM EQUIPOS           UNION ALL
 SELECT 'USUARIOS',                   COUNT(*)           FROM USUARIOS          UNION ALL
+SELECT 'SPRINTS',                    COUNT(*)           FROM SPRINTS           UNION ALL
 SELECT 'TAREAS',                     COUNT(*)           FROM TAREAS            UNION ALL
 SELECT 'MIEMBROS_EQUIPO',            COUNT(*)           FROM MIEMBROS_EQUIPO   UNION ALL
 SELECT 'COMENTARIOS_TAREA',          COUNT(*)           FROM COMENTARIOS_TAREA UNION ALL
@@ -314,6 +334,7 @@ SELECT 'LOGS_TAREA',                 COUNT(*)           FROM LOGS_TAREA;
 -- PRIORIDAD_TAREA    3
 -- EQUIPOS            3
 -- USUARIOS           6
+-- SPRINTS            1
 -- TAREAS             5
 -- MIEMBROS_EQUIPO    6
 -- COMENTARIOS_TAREA  6

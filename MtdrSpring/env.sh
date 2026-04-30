@@ -73,3 +73,21 @@ alias sshpod1='kubectl exec -i -t $(kubectl get pod --namespace mtdrworkshop --s
 
 
 export PATH=$PATH:$MTDRWORKSHOP_LOCATION/utils/
+
+# ============================================================================
+# Application Environment Variables
+# ============================================================================
+export SPRING_ADMIN_USER=admin
+export SPRING_ADMIN_PASSWORD='gWGa#BR%9@1peRbN'
+
+export ORACLE_DB_USERNAME=EQUIPO51
+export ORACLE_DB_PASSWORD=None00010001
+
+export TELEGRAM_BOT_NAME=Eq51_bot
+export TELEGRAM_BOT_TOKEN=8611801334:AAHsDArpy-7k593SUx3Qx2ehBiyASlaY1gk
+
+export DEEPSEEK_API_KEY=PLACEHOLDER_DEEPSEEK_KEY
+
+# OCI Container Registry auth token (for docker login to mx-queretaro-1.ocir.io)
+export DOCKER_AUTH_TOKEN='ro1KlA9kpjiqKN6EA[NG'
+export DOCKER_REGISTRY=mx-queretaro-1.ocir.io/axx2gmncrzyo
