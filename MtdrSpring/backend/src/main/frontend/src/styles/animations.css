@@ -105,6 +105,11 @@
 .animate-stagger > *:nth-child(9)  { animation-delay: 400ms; }
 .animate-stagger > *:nth-child(10) { animation-delay: 450ms; }
 
+/* Spin — used for loading spinners */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* Respect reduced motion preferences */
 @media (prefers-reduced-motion: reduce) {
   *,
