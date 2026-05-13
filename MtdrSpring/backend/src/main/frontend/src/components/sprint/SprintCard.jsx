@@ -201,7 +201,7 @@ export default function SprintCard({ sprint, onCompleteSprint }) {
           {onCompleteSprint && (
             <button
               style={estiloBtnCompletar}
-              onClick={() => onCompleteSprint(sprint.id)}
+              onClick={() => onCompleteSprint(sprint.idSprint)}
               onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8'; }}
               onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
             >
