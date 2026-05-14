@@ -90,14 +90,6 @@ public class BotUpdateDispatcher {
             return;
         }
 
-        BotActions actions = new BotActions(telegramClient, toDoItemService, deepSeekService, orquestador);
-        actions.setRequestText(mensajeEfectivo);
-        actions.setChatId(chatId);
-        if (actions.getTodoService() == null) {
-            logger.info("Servicio to-do no inyectado correctamente — reinyectando");
-            actions.setTodoService(toDoItemService);
-        }
-
         TareaBotActions tareaActions = new TareaBotActions(
                 telegramClient,
                 tareaService,
@@ -112,6 +104,35 @@ public class BotUpdateDispatcher {
         tareaActions.setTelegramFirstName(telegramFirstName);
         tareaActions.setTelegramLastName(telegramLastName);
         tareaActions.setTelegramUsername(telegramUsername);
+
+        logger.info("[dispatch] chatId={} tieneConversacion={} texto='{}'",
+                chatId, conversationManager.tieneConversacionActiva(chatId), mensajeEfectivo);
+
+        // Wizard activo: entregar el mensaje DIRECTAMENTE al handler correspondiente,
+        // sin pasar por los handlers legacy ni por el LLM/AgentOrchestrator.
+        if (conversationManager.tieneConversacionActiva(chatId)) {
+            tareaActions.fnNuevatarea();
+            tareaActions.fnAsignarSprint();
+            tareaActions.fnCompletarTarea();
+            tareaActions.fnNuevoSprint();
+            tareaActions.fnModificarTarea();
+            tareaActions.fnModificarSprint();
+
+            if (!tareaActions.isExit()) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        "Escribe 'cancelar' para cancelar la operacion actual.", telegramClient);
+            }
+            return;
+        }
+
+        // Sin wizard activo: cadena completa de handlers + LLM como fallback.
+        BotActions actions = new BotActions(telegramClient, toDoItemService, deepSeekService, orquestador);
+        actions.setRequestText(mensajeEfectivo);
+        actions.setChatId(chatId);
+        if (actions.getTodoService() == null) {
+            logger.info("Servicio to-do no inyectado correctamente — reinyectando");
+            actions.setTodoService(toDoItemService);
+        }
 
         actions.fnDone();
         actions.fnUndo();
@@ -131,22 +152,16 @@ public class BotUpdateDispatcher {
         tareaActions.fnModificarSprint();
 
         if (!tareaActions.isExit() && !actions.isExit()) {
-            if (!conversationManager.tieneConversacionActiva(chatId)) {
-                String respuesta;
-                try {
-                    respuesta = orquestador.manejarMensaje(mensajeEfectivo);
-                } catch (Exception ex) {
-                    logger.error("Error al invocar AgentOrchestrator desde free-text", ex);
-                    respuesta = "Ocurrio un error al procesar tu mensaje. Intenta de nuevo.";
-                }
-                conversationManager.agregarAlHistorialLlm(chatId, "user", mensajeEfectivo);
-                conversationManager.agregarAlHistorialLlm(chatId, "assistant", respuesta);
-                BotHelper.sendMessageToTelegram(chatId, respuesta, telegramClient);
-            } else {
-                BotHelper.sendMessageToTelegram(chatId,
-                        "Comando no reconocido. Usa /start para ver los comandos disponibles.",
-                        telegramClient);
+            String respuesta;
+            try {
+                respuesta = orquestador.manejarMensaje(mensajeEfectivo);
+            } catch (Exception ex) {
+                logger.error("Error al invocar AgentOrchestrator desde free-text", ex);
+                respuesta = "Ocurrio un error al procesar tu mensaje. Intenta de nuevo.";
             }
+            conversationManager.agregarAlHistorialLlm(chatId, "user", mensajeEfectivo);
+            conversationManager.agregarAlHistorialLlm(chatId, "assistant", respuesta);
+            BotHelper.sendMessageToTelegram(chatId, respuesta, telegramClient);
         }
     }
 

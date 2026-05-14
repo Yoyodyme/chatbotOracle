@@ -11,6 +11,8 @@ import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.api.objects.chat.Chat;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  * Endpoint exclusivo del perfil "test" que inyecta un Update sintético
  * directamente en BotUpdateDispatcher, eliminando la dependencia de la
@@ -22,6 +24,8 @@ import org.telegram.telegrambots.meta.api.objects.message.Message;
 @RequestMapping("/test")
 @Profile("test")
 public class TestBotController {
+
+    private static final AtomicInteger UPDATE_ID_SEQ = new AtomicInteger(1);
 
     private final BotUpdateDispatcher dispatcher;
 
@@ -48,13 +52,15 @@ public class TestBotController {
                 .build();
 
         Message message = Message.builder()
-                .messageId(1)
+                .messageId(UPDATE_ID_SEQ.get())
+                .date((int) (System.currentTimeMillis() / 1000))
                 .from(user)
                 .chat(chat)
                 .text(text)
                 .build();
 
         Update update = new Update();
+        update.setUpdateId(UPDATE_ID_SEQ.getAndIncrement());
         update.setMessage(message);
 
         dispatcher.dispatch(update);
