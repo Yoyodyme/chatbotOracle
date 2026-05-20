@@ -4,7 +4,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   BarChart, Bar, ResponsiveContainer,
 } from 'recharts';
-import { fetchTodoDashboard, fetchWeeklyHours } from '../api/dashboard';
+import { fetchTodoDashboard, fetchSprintHours } from '../api/dashboard';
 
 const ACENTO      = '#066FCC';
 const ACENTO_SOFT = '#c5d9f0';
@@ -103,8 +103,8 @@ export default function Dashboard() {
   const [cargando, setCargando]     = useState(true);
   const [error, setError]           = useState(null);
   const [ultimaAct, setUltimaAct]   = useState(null);
-  const [periodoHoras, setPeriodoHoras] = useState('week');
-  const [horasCargando, setHorasCargando] = useState(false);
+  const [periodoSprint, setPeriodoSprint] = useState('current');
+  const [sprintHorasCargando, setSprintHorasCargando] = useState(false);
 
   const cargar = useCallback(async () => {
     try {
@@ -125,19 +125,19 @@ export default function Dashboard() {
     return () => clearInterval(id);
   }, [cargar]);
 
-  const cambiarPeriodo = useCallback(async (p) => {
-    if (p === periodoHoras) return;
-    setPeriodoHoras(p);
-    setHorasCargando(true);
+  const cambiarSprint = useCallback(async (s) => {
+    if (s === periodoSprint) return;
+    setPeriodoSprint(s);
+    setSprintHorasCargando(true);
     try {
-      const horas = await fetchWeeklyHours(p);
+      const horas = await fetchSprintHours(s);
       setDatos(prev => ({ ...prev, weeklyHours: horas }));
     } catch (_) {
       // mantiene los datos anteriores si falla
     } finally {
-      setHorasCargando(false);
+      setSprintHorasCargando(false);
     }
-  }, [periodoHoras]);
+  }, [periodoSprint]);
 
   /* ── Datos normalizados ── */
   const s           = datos?.stats          ?? {};
@@ -223,25 +223,6 @@ export default function Dashboard() {
               <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>{s.featuresMesActual ?? 0}</div>
               <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Last month</div>
               <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>{s.featuresMesAnterior ?? 0}</div>
-            </div>
-          </div>
-        </Tarjeta>
-
-        <Tarjeta>
-          <Etiqueta>Statistics</Etiqueta>
-          <Titulo mb={12}>Bugs closed</Titulo>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 20 }}>
-            <div>
-              <div style={{ fontSize: 44, fontWeight: 700, lineHeight: 1, color: 'var(--text-primary)', letterSpacing: '-0.04em' }}>
-                {s.bugsCerrados ?? '—'}
-              </div>
-              <Tendencia valor={tendencia(s.bugsMesActual ?? 0, s.bugsMesAnterior ?? 0)} />
-            </div>
-            <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 2 }}>
-              <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Current month</div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>{s.bugsMesActual ?? 0}</div>
-              <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Last month</div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>{s.bugsMesAnterior ?? 0}</div>
             </div>
           </div>
         </Tarjeta>
@@ -407,20 +388,20 @@ export default function Dashboard() {
           )}
         </Tarjeta>
 
-        {/* ── Fila 5: Weekly Hours (ancho completo) ── */}
+        {/* ── Sprint Hours (ancho completo) ── */}
         <Tarjeta style={{ gridColumn: '1 / -1' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-            <div><Etiqueta>Statistics</Etiqueta><Titulo mb={0}>Weekly Hours</Titulo></div>
+            <div><Etiqueta>Statistics</Etiqueta><Titulo mb={0}>Sprint Hours</Titulo></div>
             <div style={{ display: 'flex', gap: 6 }}>
-              {[{ label: 'Day', value: 'day' }, { label: 'Week', value: 'week' }, { label: 'Month', value: 'month' }].map(({ label, value }) => (
+              {[{ label: 'Past Sprint', value: 'past' }, { label: 'Current Sprint', value: 'current' }, { label: 'Next Sprint', value: 'next' }].map(({ label, value }) => (
                 <button
                   key={value}
-                  onClick={() => cambiarPeriodo(value)}
+                  onClick={() => cambiarSprint(value)}
                   style={{
                     padding: '3px 10px', borderRadius: 4, fontSize: 11, cursor: 'pointer',
-                    background: periodoHoras === value ? '#1d2939' : 'transparent',
-                    color: periodoHoras === value ? '#fff' : 'var(--text-muted)',
-                    border: periodoHoras === value ? 'none' : '1px solid var(--border)',
+                    background: periodoSprint === value ? '#1d2939' : 'transparent',
+                    color: periodoSprint === value ? '#fff' : 'var(--text-muted)',
+                    border: periodoSprint === value ? 'none' : '1px solid var(--border)',
                     fontFamily: 'var(--font-body)',
                   }}
                 >
@@ -437,7 +418,7 @@ export default function Dashboard() {
               <span style={{ width: 20, height: 2, background: ACENTO, display: 'inline-block', borderRadius: 1 }} /> Real hours
             </span>
           </div>
-          {horasCargando ? (
+          {sprintHorasCargando ? (
             <div style={{ height: 210, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13, gap: 8 }}>
               <div style={{ width: 14, height: 14, border: `2px solid var(--border)`, borderTopColor: ACENTO, borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
               Loading…
@@ -455,7 +436,7 @@ export default function Dashboard() {
             </ResponsiveContainer>
           ) : (
             <div style={{ height: 210, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-              No hours data for this period
+              No hours data for this sprint
             </div>
           )}
         </Tarjeta>

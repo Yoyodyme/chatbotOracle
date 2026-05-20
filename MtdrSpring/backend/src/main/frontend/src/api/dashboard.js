@@ -6,7 +6,8 @@ const fetchTimeComparison = () => apiFetch('/api/dashboard/time-comparison');
 const fetchTeamVelocity   = () => apiFetch('/api/dashboard/team-velocity');
 const fetchPersonalWork   = () => apiFetch('/api/dashboard/personal-work');
 const fetchStatusDist     = () => apiFetch('/api/dashboard/status-distribution');
-export const fetchWeeklyHours = (periodo = 'week') => apiFetch(`/api/dashboard/weekly-hours?periodo=${periodo}`);
+export const fetchWeeklyHours  = (periodo = 'week')    => apiFetch(`/api/dashboard/weekly-hours?periodo=${periodo}`);
+export const fetchSprintHours  = (sprint  = 'current') => apiFetch(`/api/dashboard/weekly-hours?periodo=${sprint}`);
 const fetchContributions  = () => apiFetch('/api/dashboard/contributions');
 
 export async function fetchTodoDashboard() {
