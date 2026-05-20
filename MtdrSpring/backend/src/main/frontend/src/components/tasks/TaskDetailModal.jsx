@@ -64,7 +64,7 @@ const ESTILO_LABEL = {
 
 function CampoEditable({ label, children }) {
   return (
-    <div style={{ marginBottom: '16px' }}>
+    <div>
       <label style={ESTILO_LABEL}>{label}</label>
       {children}
     </div>
@@ -326,6 +326,10 @@ export default function TaskDetailModal() {
     padding: '20px 22px',
     overflowY: 'auto',
     borderRight: '1px solid var(--border)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem',
+    alignItems: 'stretch',
   };
 
   const estiloColumnaDer = {
@@ -551,7 +555,7 @@ export default function TaskDetailModal() {
 
               {/* Fechas de auditoría */}
               {selectedTask.creadoEn && (
-                <div style={{ marginTop: '8px', fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                   Created: {formatearFechaHora(selectedTask.creadoEn)}
                 </div>
               )}

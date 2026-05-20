@@ -61,3 +61,5 @@ frontend/package-lock.json
 frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/yarn-error.log*
+*.yaml
+MtdrSpring/backend/src/main/frontend/dist/

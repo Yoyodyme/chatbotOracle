@@ -30,12 +30,23 @@ public class OracleConfiguration {
         String walletPath = System.getenv().getOrDefault("WALLET_PATH",
                 new File("wallet").getAbsolutePath().replace("\\", "/"));
 
-        // TNS_ADMIN: donde Oracle JDBC busca tnsnames.ora y sqlnet.ora
+        // TNS_ADMIN: donde Oracle JDBC busca tnsnames.ora, ojdbc.properties y sqlnet.ora
         System.setProperty("oracle.net.tns_admin", walletPath);
 
-        // Wallet location
+        // Wallet location (SSO wallet — cwallet.sso, sin contraseña)
         System.setProperty("oracle.net.wallet_location",
                 "(SOURCE=(METHOD=FILE)(METHOD_DATA=(DIRECTORY=" + walletPath + ")))");
+
+        // JVM SSL truststore — permite que el JDK valide el certificado de Oracle ADB.
+        // WALLET_PASSWORD es la contraseña elegida al descargar el wallet desde la consola OCI.
+        String walletPassword = System.getenv("WALLET_PASSWORD");
+        if (walletPassword != null && !walletPassword.isBlank()) {
+            System.setProperty("javax.net.ssl.trustStore", walletPath + "/truststore.jks");
+            System.setProperty("javax.net.ssl.trustStorePassword", walletPassword);
+            System.setProperty("javax.net.ssl.keyStore", walletPath + "/keystore.jks");
+            System.setProperty("javax.net.ssl.keyStorePassword", walletPassword);
+            logger.info("JVM SSL truststore configurado con WALLET_PASSWORD");
+        }
 
         String jdbcUrl = System.getenv().getOrDefault("DB_URL",
                 "jdbc:oracle:thin:@yoyodymemavyk_high?TNS_ADMIN=" + walletPath);
