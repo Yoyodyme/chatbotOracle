@@ -19,7 +19,7 @@ export async function fetchTodoDashboard() {
       fetchTeamVelocity(),
       fetchPersonalWork(),
       fetchStatusDist(),
-      fetchWeeklyHours(),
+      fetchSprintHours('current'),
       fetchContributions(),
     ]);
   return { stats, sprint, timeComparison, teamVelocity, personalWork, statusDist, weeklyHours, contributions };
