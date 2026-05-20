@@ -36,7 +36,7 @@ function TaskFormModal({ open, onClose, initialEstatus }) {
       addToast({ id: `cre-${Date.now()}`, message: 'Task created', type: 'success' });
       onClose();
     } catch (err) {
-      addToast({ id: `err-${Date.now()}`, message: 'Error creating the task', type: 'error' });
+      addToast({ id: `err-${Date.now()}`, message: 'Error creating task', type: 'error' });
     }
   }
 
@@ -74,7 +74,7 @@ function TaskFormModal({ open, onClose, initialEstatus }) {
     <div style={estiloOverlay} onClick={onClose}>
       <div style={estiloPanel} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <h2 style={estiloTitulo}>
-          New Task
+          New task
           {initialEstatus && (
             <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-secondary)', marginLeft: '10px' }}>
               in {initialEstatus.nombre}
@@ -156,7 +156,7 @@ export default function KanbanBoard({ loading = false }) {
       updateTarea(idTarea, { estatus: tarea.estatus });
       addToast({
         id: `err-${idTarea}-${Date.now()}`,
-        message: 'Could not move the task. Please try again.',
+        message: 'Could not move task. Please try again.',
         type: 'error',
       });
     }

@@ -86,6 +86,9 @@ public class TareaBotActions {
         boolean tieneConversacionNewtask = conversationManager.tieneConversacionActiva(chatId)
                 && "newtask".equals(conversationManager.obtenerEstado(chatId).getComando());
 
+        logger.info("[fnNuevatarea] chatId={} esComandoInicio={} tieneConversacionNewtask={}",
+                chatId, esComandoInicio, tieneConversacionNewtask);
+
         if (!esComandoInicio && !tieneConversacionNewtask) return;
 
         if (esComandoInicio) {
@@ -477,7 +480,13 @@ public class TareaBotActions {
     private void iniciarFlujoCompletarTarea() {
         Usuario usuarioDone = obtenerOAutoRegistrarUsuario();
 
+        logger.info("[donetask] Buscando tareas activas — telegramUserId={}, idUsuario={}",
+                telegramUserId, usuarioDone.getIdUsuario());
+
         List<Tarea> tareasActivas = tareaService.obtenerTareasActivasPorUsuario(usuarioDone.getIdUsuario());
+
+        logger.info("[donetask] Tareas activas encontradas: {}", tareasActivas.size());
+
         if (tareasActivas.isEmpty()) {
             BotHelper.sendMessageToTelegram(chatId, BotMessages.DONETASK_NO_TASKS.getMessage(), telegramClient);
             return;
@@ -511,6 +520,13 @@ public class TareaBotActions {
 
             Tarea tarea = tareaService.obtenerTareaPorId(idTarea);
             Long idUsuario = (Long) estado.getDato("idUsuario");
+
+            logger.info("[donetask] paso 0 — idTarea recibido={}, idUsuario esperado={}, idUsuario en tarea={}",
+                    idTarea,
+                    idUsuario,
+                    (tarea != null && tarea.getUsuarioAsignado() != null)
+                            ? tarea.getUsuarioAsignado().getIdUsuario()
+                            : "null");
 
             if (tarea == null || tarea.getUsuarioAsignado() == null
                     || !tarea.getUsuarioAsignado().getIdUsuario().equals(idUsuario)) {

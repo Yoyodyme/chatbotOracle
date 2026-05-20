@@ -126,7 +126,7 @@ export default function BacklogPage() {
       addToast({ id: `cre-${Date.now()}`, message: 'Task created', type: 'success' });
       setShowForm(false);
     } catch {
-      addToast({ id: `err-${Date.now()}`, message: 'Error creating the task', type: 'error' });
+      addToast({ id: `err-${Date.now()}`, message: 'Error creating task', type: 'error' });
     }
   }
 
@@ -162,14 +162,14 @@ export default function BacklogPage() {
               addTarea(restaurada);
               addToast({ id: `rest-${Date.now()}`, message: 'Task restored', type: 'success' });
             } catch {
-              addToast({ id: `errrest-${Date.now()}`, message: 'Could not restore the task', type: 'error' });
+              addToast({ id: `errrest-${Date.now()}`, message: 'Could not restore task', type: 'error' });
             }
           },
         },
       });
     } catch {
       addTareaStore(tarea);
-      addToast({ id: `errdel-${Date.now()}`, message: 'Error deleting the task', type: 'error' });
+      addToast({ id: `errdel-${Date.now()}`, message: 'Error deleting task', type: 'error' });
     }
   }
 
@@ -549,7 +549,7 @@ export default function BacklogPage() {
                 marginBottom: '20px',
               }}
             >
-              New Task
+              New task
             </h2>
             <TaskForm
               onSubmit={handleCrearTarea}
@@ -559,7 +559,7 @@ export default function BacklogPage() {
         </div>
       )}
 
-      {/* Confirm deletion */}
+      {/* Confirmar eliminación */}
       <ConfirmDialog
         open={Boolean(confirmEliminar)}
         title="Delete task?"

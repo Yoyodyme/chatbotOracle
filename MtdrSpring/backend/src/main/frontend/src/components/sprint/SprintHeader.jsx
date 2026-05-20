@@ -97,7 +97,7 @@ export default function SprintHeader({ sprint }) {
   return (
     <div style={estiloBanner}>
       <span style={estiloNombre}>{sprint.nombre}</span>
-      {sprint.activo && <span style={estiloActivoBadge}>ACTIVO</span>}
+      {sprint.activo && <span style={estiloActivoBadge}>ACTIVE</span>}
       <span style={estiloFechas}>
         {formatFechaCorta(sprint.fechaInicio)} → {formatFechaCorta(sprint.fechaFin)}
       </span>

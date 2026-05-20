@@ -6,6 +6,7 @@ shell: bash
 env:
   variables:
     JAVA_HOME: /usr/lib64/graalvm/graalvm-java22
+    DOCKER_REGISTRY: "mx-queretaro-1.ocir.io/axx2gmncrzyo/yoyodyme/mavyk"
 
   exportedVariables:
     - BuildServiceDemoVersion
@@ -23,10 +24,10 @@ steps:
   - type: Command
     name: "Docker Login"
     command: cd MtdrSpring;
-             oci os object get --bucket-name ${DEPLOYMENT_CONFIG_BUCKET} --name deployment_config.tgz --file deployment_config.tgz;
+             oci os object get --bucket-name "yoyodyme-mavyk" --name deployment_config.tgz --output-file deployment_config.tgz;
              tar -xzvf deployment_config.tgz;
              source env.sh;
-             cat at.cfg | docker login -u "axx2gmncrzyo/${OCI_USER_EMAIL}" --password-stdin mx-queretaro-1.ocir.io
+             docker login mx-queretaro-1.ocir.io -u "axx2gmncrzyo/a00838956@tec.mx" -p "$(cat at.cfg)"
 
   - type: Command
     name: "Build"

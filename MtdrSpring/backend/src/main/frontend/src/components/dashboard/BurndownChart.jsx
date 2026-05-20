@@ -22,7 +22,7 @@ function generarDatosBurndown(tareas, sprint) {
   const total = tareas.length;
   if (total === 0) return [];
 
-  // Generate array of days in the sprint
+  // Generar array de días en el sprint
   const dias = [];
   const cursor = new Date(inicio);
   while (cursor <= fin) {
@@ -34,19 +34,19 @@ function generarDatosBurndown(tareas, sprint) {
 
   const hoy = new Date();
 
-  // For each day, count tasks completed up to that date
+  // Para cada día, contar tareas completadas hasta esa fecha
   const datos = dias.map((dia, idx) => {
     const label = dia.toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
     const ideal = Math.round(total - (total / (dias.length - 1 || 1)) * idx);
 
-    // Only calculate actual if the date has passed or is today
+    // Solo calcular real si la fecha ya pasó o es hoy
     let real = undefined;
     if (dia <= hoy) {
       const completadasHastaHoy = tareas.filter((t) => {
         if (!t.estatus) return false;
         const nombre = (t.estatus.nombre || '').toLowerCase();
         if (nombre !== 'completada') return false;
-        // If it has an update date, use it; otherwise assume completed
+        // Si tiene fecha de actualización, usarla; de lo contrario, asumir completada
         const fechaComp = t.actualizadoEn || t.creadoEn;
         if (!fechaComp) return true;
         return new Date(fechaComp) <= dia;
@@ -108,7 +108,7 @@ export default function BurndownChart({ tareas = [], sprint }) {
       <EmptyState
         icon="📉"
         title="No burndown data"
-        message="Select an active sprint with tasks to see the chart."
+        message="Select an active sprint with tasks to view the chart."
       />
     );
   }
@@ -148,7 +148,7 @@ export default function BurndownChart({ tareas = [], sprint }) {
               paddingTop: '8px',
             }}
           />
-          {/* Ideal line — dashed, muted color */}
+          {/* Línea ideal — punteada, color muted */}
           <Line
             type="monotone"
             dataKey="ideal"
@@ -159,7 +159,7 @@ export default function BurndownChart({ tareas = [], sprint }) {
             dot={false}
             activeDot={false}
           />
-          {/* Actual line — solid, accent color */}
+          {/* Línea real — sólida, color accent */}
           <Line
             type="monotone"
             dataKey="real"

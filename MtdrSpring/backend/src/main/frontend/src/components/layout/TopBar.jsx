@@ -26,7 +26,7 @@ export default function TopBar({ titulo }) {
       addToast({ id: `cre-${Date.now()}`, type: 'success', message: 'Task created successfully' });
       setMostrarFormulario(false);
     } catch {
-      addToast({ id: `err-${Date.now()}`, type: 'error', message: 'Error creating the task' });
+      addToast({ id: `err-${Date.now()}`, type: 'error', message: 'Error creating task' });
     }
   }
 
@@ -89,7 +89,7 @@ export default function TopBar({ titulo }) {
         </button>
       </header>
 
-      {/* Task creation modal */}
+      {/* Modal de creación de tarea */}
       {mostrarFormulario && (
         <ModalNuevaTarea
           onSubmit={manejarCrearTarea}
@@ -141,7 +141,7 @@ function ModalNuevaTarea({ onSubmit, onCancel }) {
   return (
     <div style={estiloOverlay} onClick={onCancel}>
       <div style={estiloPanel} onClick={(e) => e.stopPropagation()}>
-        <h2 style={estiloTitulo}>New Task</h2>
+        <h2 style={estiloTitulo}>New task</h2>
         <TaskForm onSubmit={onSubmit} onCancel={onCancel} />
       </div>
     </div>

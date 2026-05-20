@@ -50,7 +50,7 @@ export default function ActivityFeed() {
       try {
         const data = await getLogs();
         if (!cancelado) {
-          // Sort by date descending, take the last 10
+          // Ordenar por fecha descendente, tomar últimos 10
           const ordenados = [...(data ?? [])].sort(
             (a, b) => new Date(b.creadoEn || 0) - new Date(a.creadoEn || 0)
           );
@@ -180,7 +180,7 @@ export default function ActivityFeed() {
               />
               {/* Contenido */}
               <div style={estiloContenidoTexto}>
-                <p style={estiloMensaje}>{log.mensaje || 'Activity recorded'}</p>
+                <p style={estiloMensaje}>{log.mensaje || 'Activity logged'}</p>
                 {log.tarea?.titulo && (
                   <span style={estiloTareaRef} title={log.tarea.titulo}>
                     {log.tarea.titulo}

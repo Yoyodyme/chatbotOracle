@@ -170,7 +170,7 @@ export default function TeamPage() {
         <EmptyState
           icon="👥"
           title="No members"
-          message="No users were found in the system."
+          message="No users found in the system."
         />
       </div>
     );

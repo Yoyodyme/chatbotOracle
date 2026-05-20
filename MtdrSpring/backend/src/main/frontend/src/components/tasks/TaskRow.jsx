@@ -9,7 +9,7 @@ function formatearFecha(fecha) {
   try {
     const parsed = typeof fecha === 'string' ? parseISO(fecha) : new Date(fecha);
     if (!isValid(parsed)) return null;
-    return format(parsed, 'd MMM yyyy');
+    return format(parsed, 'MMM d, yyyy');
   } catch {
     return null;
   }
@@ -123,7 +123,7 @@ export default function TaskRow({ tarea, onClick, onDelete }) {
         <span style={estiloID}>YD-{tarea?.idTarea}</span>
       </td>
 
-      {/* Title */}
+      {/* Título */}
       <td style={estiloCelda}>
         <span style={estiloTitulo} title={tarea?.titulo}>
           {tarea?.titulo ?? '—'}

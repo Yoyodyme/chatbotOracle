@@ -21,4 +21,4 @@ source "$ENV_FILE"
 set +a
 
 cd "$SCRIPT_DIR"
-./mvnw spring-boot:run
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev

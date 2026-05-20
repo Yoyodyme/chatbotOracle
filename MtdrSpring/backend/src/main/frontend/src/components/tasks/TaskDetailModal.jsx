@@ -14,7 +14,7 @@ function formatearFechaHora(fecha) {
   try {
     const parsed = typeof fecha === 'string' ? parseISO(fecha) : new Date(fecha);
     if (!isValid(parsed)) return '';
-    return format(parsed, "d MMM yyyy 'at' HH:mm");
+    return format(parsed, "MMM d, yyyy 'at' HH:mm");
   } catch {
     return '';
   }
@@ -64,7 +64,7 @@ const ESTILO_LABEL = {
 
 function CampoEditable({ label, children }) {
   return (
-    <div style={{ marginBottom: '16px' }}>
+    <div>
       <label style={ESTILO_LABEL}>{label}</label>
       {children}
     </div>
@@ -170,7 +170,7 @@ export default function TaskDetailModal() {
         setComentarios(datos);
       }
     } catch (err) {
-      // Silent failure — section remains empty
+      // Fallo silencioso — la sección queda vacía
     } finally {
       setCargandoComentarios(false);
     }
@@ -195,7 +195,7 @@ export default function TaskDetailModal() {
       updateTarea(selectedTask.idTarea, actualizada ?? payload);
       addToast({ id: `upd-${Date.now()}`, type: 'success', message: 'Task updated successfully' });
     } catch (err) {
-      addToast({ id: `err-${Date.now()}`, type: 'error', message: 'Error saving the task' });
+      addToast({ id: `err-${Date.now()}`, type: 'error', message: 'Error saving task' });
     } finally {
       setGuardando(false);
     }
@@ -209,7 +209,7 @@ export default function TaskDetailModal() {
       addToast({ id: `del-${Date.now()}`, type: 'success', message: `Task YD-${selectedTask.idTarea} deleted` });
       setSelectedTask(null);
     } catch (err) {
-      addToast({ id: `err-${Date.now()}`, type: 'error', message: 'Error deleting the task' });
+      addToast({ id: `err-${Date.now()}`, type: 'error', message: 'Error deleting task' });
     }
     setConfirmarEliminar(false);
   }
@@ -233,10 +233,10 @@ export default function TaskDetailModal() {
         setComentarios((prev) => [...prev, nuevo]);
         setNuevoComentario('');
       } else {
-        addToast({ type: 'error', message: 'Error posting the comment' });
+        addToast({ type: 'error', message: 'Error posting comment' });
       }
     } catch {
-      addToast({ type: 'error', message: 'Error posting the comment' });
+      addToast({ type: 'error', message: 'Error al publicar el comentario' });
     } finally {
       setEnviandoComentario(false);
     }
@@ -326,6 +326,10 @@ export default function TaskDetailModal() {
     padding: '20px 22px',
     overflowY: 'auto',
     borderRight: '1px solid var(--border)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem',
+    alignItems: 'stretch',
   };
 
   const estiloColumnaDer = {
@@ -473,9 +477,9 @@ export default function TaskDetailModal() {
             </button>
           </div>
 
-          {/* Body in two columns */}
+          {/* Cuerpo en dos columnas */}
           <div style={estiloCuerpo}>
-            {/* Left column — edit form */}
+            {/* Columna izquierda — formulario de edición */}
             <div style={estiloColumnaIzq}>
               <CampoEditable label="Title">
                 <InputFocusable
@@ -549,15 +553,15 @@ export default function TaskDetailModal() {
                 />
               </CampoEditable>
 
-              {/* Audit dates */}
+              {/* Fechas de auditoría */}
               {selectedTask.creadoEn && (
-                <div style={{ marginTop: '8px', fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                   Created: {formatearFechaHora(selectedTask.creadoEn)}
                 </div>
               )}
             </div>
 
-            {/* Right column — comments */}
+            {/* Columna derecha — comentarios */}
             <div style={estiloColumnaDer}>
               <div style={estiloSeccionComentarios}>
                 <p style={estiloTituloSeccion}>Comments</p>

@@ -78,7 +78,7 @@ export default function SprintList({ sprints = [], onCreateSprint, onCompleteSpr
       ) : (
         ordenados.map((sprint) => (
           <SprintCard
-            key={sprint.id}
+            key={sprint.idSprint}
             sprint={sprint}
             onCompleteSprint={onCompleteSprint}
           />
