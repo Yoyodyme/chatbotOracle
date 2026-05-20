@@ -1,26 +1,25 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import useTareas from '../hooks/useTareas';
 import useAppStore from '../store/index';
 import KanbanBoard from '../components/kanban/KanbanBoard';
-
-function leerSprints() {
-  try {
-    const raw = localStorage.getItem('eq51_sprints');
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
+import { getSprints } from '../api/sprints';
 
 export default function KanbanPage() {
   const { loading } = useTareas();
   const estatuses = useAppStore((s) => s.estatuses);
-  const sprints = useMemo(() => leerSprints(), []);
-  const sprintActivo = sprints.find((s) => s.activo) ?? null;
+  const [sprints, setSprints] = useState([]);
+  const [sprintSeleccionado, setSprintSeleccionado] = useState('');
 
-  const [sprintSeleccionado, setSprintSeleccionado] = useState(
-    sprintActivo?.id ?? ''
-  );
+  useEffect(() => {
+    getSprints()
+      .then((data) => {
+        const lista = data ?? [];
+        setSprints(lista);
+        const activo = lista.find((s) => s.activo);
+        if (activo) setSprintSeleccionado(String(activo.idSprint));
+      })
+      .catch(() => {});
+  }, []);
 
   const estiloPage = {
     display: 'flex',
@@ -124,11 +123,11 @@ export default function KanbanPage() {
             onChange={(e) => setSprintSeleccionado(e.target.value)}
             style={estiloSelector}
           >
-            <option value="">Todos los sprints</option>
+            <option value="">All sprints</option>
             {sprints.map((s) => (
-              <option key={s.id} value={s.id}>
+              <option key={s.idSprint} value={String(s.idSprint)}>
                 {s.nombre}
-                {s.activo ? ' (activo)' : ''}
+                {s.activo ? ' (active)' : ''}
               </option>
             ))}
           </select>

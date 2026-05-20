@@ -51,7 +51,23 @@ public enum BotMessages {
 	NEWSPRINT_FECHA_FIN("Paso 3/3 — Fecha de fin (dd/MM/yyyy):"),
 	NEWSPRINT_FECHA_INVALIDA("Formato de fecha invalido. Usa dd/MM/yyyy (ej: 25/04/2025):"),
 	NEWSPRINT_CREADO("Sprint '{nombre}' creado y activado."),
-	NEWSPRINT_CANCELLED("Creacion de sprint cancelada.");
+	NEWSPRINT_CANCELLED("Creacion de sprint cancelada."),
+
+	// seleccionar asignado en newtask
+	SELECCIONAR_ASIGNADO("Selecciona a quien asignar la tarea:\n(Responde con el numero)"),
+
+	// confirmacion de nueva tarea
+	TAREA_CONFIRMACION("Resumen de la tarea:\nTitulo: %s\nDescripcion: %s\nHoras estimadas: %.1f\nPrioridad: %s\nAsignado a: %s\n\nEs correcto? Responde 'si' para guardar, o 'editar [campo]' para corregir.\nEjemplo: editar titulo, editar horas, editar prioridad, editar asignado"),
+
+	// modificar tarea
+	MODIFICAR_CAMPO("Que campo deseas editar?\n1. Titulo\n2. Descripcion\n3. Horas estimadas\n4. Prioridad\n5. Asignado a\n6. Sprint\n7. Estatus\n\nResponde con el numero."),
+	CAMBIOS_GUARDADOS("Cambios guardados correctamente."),
+
+	// confirmacion de sprint
+	SPRINT_CONFIRMACION("Resumen del sprint:\nNombre: %s\nInicio: %s\nFin: %s\n\nEs correcto? Responde 'si' para guardar o 'no' para cancelar."),
+
+	// seleccionar tarea a modificar
+	SELECCIONAR_TAREA_MODIFICAR("Selecciona la tarea que deseas modificar (escribe el ID):");
 
 	private String message;
 

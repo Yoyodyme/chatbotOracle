@@ -106,7 +106,7 @@ function ToastItem({ toast }) {
       <button
         style={estiloBotonCerrar}
         onClick={() => removeToast(toast.id)}
-        aria-label="Cerrar notificación"
+        aria-label="Close notification"
         onMouseEnter={(e) => {
           e.currentTarget.style.color = 'var(--text-primary)';
           e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
@@ -144,7 +144,7 @@ export default function Toast() {
   if (!toasts || toasts.length === 0) return null;
 
   return (
-    <div style={estiloContenedor} aria-label="Notificaciones">
+    <div style={estiloContenedor} aria-label="Notifications">
       {toasts.map((toast) => (
         <div key={toast.id} style={estiloItemWrapper}>
           <ToastItem toast={toast} />

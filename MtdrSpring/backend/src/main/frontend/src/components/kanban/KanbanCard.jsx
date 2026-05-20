@@ -86,7 +86,7 @@ export default function KanbanCard({ tarea }) {
       }}
     >
       <div style={estiloTopRow}>
-        <span style={estiloId}>EQ51-{tarea.idTarea}</span>
+        <span style={estiloId}>YD-{tarea.idTarea}</span>
         <PriorityBadge prioridad={tarea.prioridad} />
       </div>
 
@@ -108,7 +108,7 @@ export default function KanbanCard({ tarea }) {
               justifyContent: 'center',
               flexShrink: 0,
             }}
-            title="Sin asignar"
+            title="Unassigned"
           />
         )}
       </div>

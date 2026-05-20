@@ -63,6 +63,9 @@ public class TareaService {
             if (tareaActualizada.getFechaVencimiento() != null) {
                 tarea.setFechaVencimiento(tareaActualizada.getFechaVencimiento());
             }
+            if (tareaActualizada.getHorasEstimadas() != null) {
+                tarea.setHorasEstimadas(tareaActualizada.getHorasEstimadas());
+            }
             if (tareaActualizada.getHorasReales() != null) {
                 tarea.setHorasReales(tareaActualizada.getHorasReales());
             }

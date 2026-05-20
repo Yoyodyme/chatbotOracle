@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { format, parseISO, isValid } from 'date-fns';
-import { es } from 'date-fns/locale';
 import useAppStore from '../../store/index';
 import { updateTarea as apiActualizarTarea, deleteTarea as apiEliminarTarea } from '../../api/tareas';
 import ConfirmDialog from '../shared/ConfirmDialog';
@@ -15,7 +14,7 @@ function formatearFechaHora(fecha) {
   try {
     const parsed = typeof fecha === 'string' ? parseISO(fecha) : new Date(fecha);
     if (!isValid(parsed)) return '';
-    return format(parsed, "d MMM yyyy 'a las' HH:mm", { locale: es });
+    return format(parsed, "MMM d, yyyy 'at' HH:mm");
   } catch {
     return '';
   }
@@ -194,9 +193,9 @@ export default function TaskDetailModal() {
       };
       const actualizada = await apiActualizarTarea(selectedTask.idTarea, payload);
       updateTarea(selectedTask.idTarea, actualizada ?? payload);
-      addToast({ id: `upd-${Date.now()}`, type: 'success', message: 'Tarea actualizada correctamente' });
+      addToast({ id: `upd-${Date.now()}`, type: 'success', message: 'Task updated successfully' });
     } catch (err) {
-      addToast({ id: `err-${Date.now()}`, type: 'error', message: 'Error al guardar la tarea' });
+      addToast({ id: `err-${Date.now()}`, type: 'error', message: 'Error saving task' });
     } finally {
       setGuardando(false);
     }
@@ -207,10 +206,10 @@ export default function TaskDetailModal() {
     try {
       await apiEliminarTarea(selectedTask.idTarea);
       deleteTarea(selectedTask.idTarea);
-      addToast({ id: `del-${Date.now()}`, type: 'success', message: `Tarea EQ51-${selectedTask.idTarea} eliminada` });
+      addToast({ id: `del-${Date.now()}`, type: 'success', message: `Task YD-${selectedTask.idTarea} deleted` });
       setSelectedTask(null);
     } catch (err) {
-      addToast({ id: `err-${Date.now()}`, type: 'error', message: 'Error al eliminar la tarea' });
+      addToast({ id: `err-${Date.now()}`, type: 'error', message: 'Error deleting task' });
     }
     setConfirmarEliminar(false);
   }
@@ -234,7 +233,7 @@ export default function TaskDetailModal() {
         setComentarios((prev) => [...prev, nuevo]);
         setNuevoComentario('');
       } else {
-        addToast({ type: 'error', message: 'Error al publicar el comentario' });
+        addToast({ type: 'error', message: 'Error posting comment' });
       }
     } catch {
       addToast({ type: 'error', message: 'Error al publicar el comentario' });
@@ -455,12 +454,12 @@ export default function TaskDetailModal() {
         <div style={estiloCard} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
           {/* Header */}
           <div style={estiloHeader}>
-            <span style={estiloIDHeader}>EQ51-{selectedTask.idTarea}</span>
+            <span style={estiloIDHeader}>YD-{selectedTask.idTarea}</span>
             <span style={estiloTituloHeader}>{campos.titulo || selectedTask.titulo}</span>
             <button
               style={estiloBotonCerrar}
               onClick={cerrarModal}
-              aria-label="Cerrar"
+              aria-label="Close"
               onMouseEnter={(e) => {
                 e.currentTarget.style.color = 'var(--text-primary)';
                 e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
@@ -478,32 +477,32 @@ export default function TaskDetailModal() {
           <div style={estiloCuerpo}>
             {/* Columna izquierda — formulario de edición */}
             <div style={estiloColumnaIzq}>
-              <CampoEditable label="Título">
+              <CampoEditable label="Title">
                 <InputFocusable
                   type="text"
                   value={campos.titulo}
                   onChange={(e) => setCampos((p) => ({ ...p, titulo: e.target.value }))}
-                  placeholder="Título de la tarea"
+                  placeholder="Task title"
                   maxLength={200}
                 />
               </CampoEditable>
 
-              <CampoEditable label="Descripción">
+              <CampoEditable label="Description">
                 <TextareaFocusable
                   value={campos.descripcion}
                   onChange={(e) => setCampos((p) => ({ ...p, descripcion: e.target.value }))}
-                  placeholder="Descripción detallada..."
+                  placeholder="Detailed description..."
                   style={{ minHeight: '100px' }}
                 />
               </CampoEditable>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                <CampoEditable label="Estatus">
+                <CampoEditable label="Status">
                   <SelectFocusable
                     value={campos.idEstatus}
                     onChange={(e) => setCampos((p) => ({ ...p, idEstatus: e.target.value }))}
                   >
-                    <option value="">Sin estatus</option>
+                    <option value="">No status</option>
                     {(estatuses || []).map((est) => (
                       <option key={est.idEstatus} value={est.idEstatus}>
                         {est.nombre}
@@ -512,12 +511,12 @@ export default function TaskDetailModal() {
                   </SelectFocusable>
                 </CampoEditable>
 
-                <CampoEditable label="Prioridad">
+                <CampoEditable label="Priority">
                   <SelectFocusable
                     value={campos.idPrioridad}
                     onChange={(e) => setCampos((p) => ({ ...p, idPrioridad: e.target.value }))}
                   >
-                    <option value="">Sin prioridad</option>
+                    <option value="">No priority</option>
                     {(prioridades || []).map((pri) => (
                       <option key={pri.idPrioridad} value={pri.idPrioridad}>
                         {pri.nombre}
@@ -527,12 +526,12 @@ export default function TaskDetailModal() {
                 </CampoEditable>
               </div>
 
-              <CampoEditable label="Asignado a">
+              <CampoEditable label="Assigned to">
                 <SelectFocusable
                   value={campos.idUsuarioAsignado}
                   onChange={(e) => setCampos((p) => ({ ...p, idUsuarioAsignado: e.target.value }))}
                 >
-                  <option value="">Sin asignar</option>
+                  <option value="">Unassigned</option>
                   {(usuarios || []).map((usr) => (
                     <option key={usr.idUsuario} value={usr.idUsuario}>
                       {usr.nombreCompleto || usr.nombreUsuario}
@@ -541,7 +540,7 @@ export default function TaskDetailModal() {
                 </SelectFocusable>
               </CampoEditable>
 
-              <CampoEditable label="Fecha de vencimiento">
+              <CampoEditable label="Due date">
                 <InputFocusable
                   type="date"
                   value={campos.fechaVencimiento}
@@ -553,7 +552,7 @@ export default function TaskDetailModal() {
               {/* Fechas de auditoría */}
               {selectedTask.creadoEn && (
                 <div style={{ marginTop: '8px', fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                  Creado: {formatearFechaHora(selectedTask.creadoEn)}
+                  Created: {formatearFechaHora(selectedTask.creadoEn)}
                 </div>
               )}
             </div>
@@ -561,7 +560,7 @@ export default function TaskDetailModal() {
             {/* Columna derecha — comentarios */}
             <div style={estiloColumnaDer}>
               <div style={estiloSeccionComentarios}>
-                <p style={estiloTituloSeccion}>Comentarios</p>
+                <p style={estiloTituloSeccion}>Comments</p>
 
                 <div style={estiloListaComentarios}>
                   {cargandoComentarios ? (
@@ -571,7 +570,7 @@ export default function TaskDetailModal() {
                     </>
                   ) : comentarios.length === 0 ? (
                     <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>
-                      Sin comentarios aún
+                      No comments yet
                     </p>
                   ) : (
                     comentarios.map((com, idx) => (
@@ -579,7 +578,7 @@ export default function TaskDetailModal() {
                         <div style={estiloAutorComentario}>
                           {com.usuarioAutor && <Avatar user={com.usuarioAutor} size="sm" />}
                           <span style={estiloNombreAutor}>
-                            {com.usuarioAutor?.nombreUsuario ?? 'Desconocido'}
+                            {com.usuarioAutor?.nombreUsuario ?? 'Unknown'}
                           </span>
                           <span style={estiloFechaComentario}>
                             {formatearFechaHora(com.creadoEn)}
@@ -596,7 +595,7 @@ export default function TaskDetailModal() {
                   <TextareaFocusable
                     value={nuevoComentario}
                     onChange={(e) => setNuevoComentario(e.target.value)}
-                    placeholder="Escribe un comentario..."
+                    placeholder="Write a comment..."
                     style={{ minHeight: '72px', fontSize: '0.875rem' }}
                   />
                   <button
@@ -616,7 +615,7 @@ export default function TaskDetailModal() {
                       transition: 'opacity 100ms',
                     }}
                   >
-                    {enviandoComentario ? 'Enviando…' : 'Comentar'}
+                    {enviandoComentario ? 'Sending…' : 'Comment'}
                   </button>
                 </form>
               </div>
@@ -631,7 +630,7 @@ export default function TaskDetailModal() {
               onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8'; }}
               onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
             >
-              Eliminar tarea
+              Delete task
             </button>
             <button
               style={estiloBotonGuardar}
@@ -640,7 +639,7 @@ export default function TaskDetailModal() {
               onMouseEnter={(e) => { if (!guardando) e.currentTarget.style.opacity = '0.85'; }}
               onMouseLeave={(e) => { e.currentTarget.style.opacity = guardando ? '0.7' : '1'; }}
             >
-              {guardando ? 'Guardando…' : 'Guardar cambios'}
+              {guardando ? 'Saving…' : 'Save changes'}
             </button>
           </div>
         </div>
@@ -648,11 +647,11 @@ export default function TaskDetailModal() {
 
       <ConfirmDialog
         open={confirmarEliminar}
-        title="Eliminar tarea"
-        message={`¿Estás seguro de que deseas eliminar la tarea EQ51-${selectedTask.idTarea}? Esta acción no se puede deshacer.`}
+        title="Delete task"
+        message={`Are you sure you want to delete task YD-${selectedTask.idTarea}? This action cannot be undone.`}
         onConfirm={manejarEliminar}
         onCancel={() => setConfirmarEliminar(false)}
-        confirmLabel="Eliminar"
+        confirmLabel="Delete"
         dangerous={true}
       />
     </>

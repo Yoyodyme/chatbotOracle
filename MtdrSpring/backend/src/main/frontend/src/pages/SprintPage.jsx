@@ -1,25 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import SprintList from '../components/sprint/SprintList';
+import { getSprints, createSprint, updateSprint } from '../api/sprints';
 import '../styles/animations.css';
-
-const LS_KEY = 'eq51_sprints';
-
-function generarId() {
-  return `sprint-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-}
-
-function leerSprints() {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function guardarSprints(sprints) {
-  localStorage.setItem(LS_KEY, JSON.stringify(sprints));
-}
 
 function ModalNuevoSprint({ onClose, onCrear }) {
   const [form, setForm] = useState({
@@ -28,6 +10,7 @@ function ModalNuevoSprint({ onClose, onCrear }) {
     fechaFin: '',
   });
   const [error, setError] = useState('');
+  const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onClose(); };
@@ -35,30 +18,32 @@ function ModalNuevoSprint({ onClose, onCrear }) {
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     if (!form.nombre.trim()) {
-      setError('El nombre del sprint es obligatorio.');
+      setError('Sprint name is required.');
       return;
     }
     if (!form.fechaInicio || !form.fechaFin) {
-      setError('Debes indicar las fechas de inicio y fin.');
+      setError('Please provide start and end dates.');
       return;
     }
     if (new Date(form.fechaFin) <= new Date(form.fechaInicio)) {
-      setError('La fecha de fin debe ser posterior a la de inicio.');
+      setError('End date must be after start date.');
       return;
     }
     setError('');
-    onCrear({
-      id: generarId(),
-      nombre: form.nombre.trim(),
-      fechaInicio: form.fechaInicio,
-      fechaFin: form.fechaFin,
-      activo: false,
-      tareaIds: [],
-      tareasCompletadas: 0,
-    });
+    setGuardando(true);
+    try {
+      await onCrear({
+        nombre: form.nombre.trim(),
+        fechaInicio: form.fechaInicio,
+        fechaFin: form.fechaFin,
+        activo: false,
+      });
+    } finally {
+      setGuardando(false);
+    }
   }
 
   const estiloOverlay = {
@@ -133,10 +118,10 @@ function ModalNuevoSprint({ onClose, onCrear }) {
   return (
     <div style={estiloOverlay} onClick={onClose}>
       <div style={estiloPanel} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-        <h2 style={estiloTitulo}>Nuevo Sprint</h2>
+        <h2 style={estiloTitulo}>New Sprint</h2>
         <form onSubmit={handleSubmit}>
           <div style={estiloGrupo}>
-            <label style={estiloLabel} htmlFor="sp-nombre">Nombre *</label>
+            <label style={estiloLabel} htmlFor="sp-nombre">Name *</label>
             <input
               id="sp-nombre"
               type="text"
@@ -151,7 +136,7 @@ function ModalNuevoSprint({ onClose, onCrear }) {
           </div>
           <div style={estiloFila2}>
             <div style={estiloGrupo}>
-              <label style={estiloLabel} htmlFor="sp-inicio">Inicio *</label>
+              <label style={estiloLabel} htmlFor="sp-inicio">Start *</label>
               <input
                 id="sp-inicio"
                 type="date"
@@ -163,7 +148,7 @@ function ModalNuevoSprint({ onClose, onCrear }) {
               />
             </div>
             <div style={estiloGrupo}>
-              <label style={estiloLabel} htmlFor="sp-fin">Fin *</label>
+              <label style={estiloLabel} htmlFor="sp-fin">End *</label>
               <input
                 id="sp-fin"
                 type="date"
@@ -193,10 +178,11 @@ function ModalNuevoSprint({ onClose, onCrear }) {
               onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
             >
-              Cancelar
+              Cancel
             </button>
             <button
               type="submit"
+              disabled={guardando}
               style={{
                 padding: '9px 20px',
                 borderRadius: 'var(--radius-md)',
@@ -205,12 +191,13 @@ function ModalNuevoSprint({ onClose, onCrear }) {
                 color: '#fff',
                 background: 'var(--accent)',
                 border: 'none',
-                cursor: 'pointer',
+                cursor: guardando ? 'not-allowed' : 'pointer',
+                opacity: guardando ? 0.7 : 1,
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.85'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+              onMouseEnter={(e) => { if (!guardando) e.currentTarget.style.opacity = '0.85'; }}
+              onMouseLeave={(e) => { if (!guardando) e.currentTarget.style.opacity = '1'; }}
             >
-              Crear Sprint
+              {guardando ? 'Creating…' : 'Create Sprint'}
             </button>
           </div>
         </form>
@@ -220,22 +207,39 @@ function ModalNuevoSprint({ onClose, onCrear }) {
 }
 
 export default function SprintPage() {
-  const [sprints, setSprints] = useState(leerSprints);
+  const [sprints, setSprints] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
-  function handleCrear(sprint) {
-    const nuevos = [...sprints, sprint];
-    setSprints(nuevos);
-    guardarSprints(nuevos);
+  async function cargarSprints() {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getSprints();
+      setSprints(data ?? []);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    cargarSprints();
+  }, []);
+
+  async function handleCrear(sprintData) {
+    const nuevo = await createSprint(sprintData);
+    setSprints((prev) => [...prev, nuevo]);
     setShowModal(false);
   }
 
-  function handleCompletar(id) {
-    const actualizados = sprints.map((s) =>
-      s.id === id ? { ...s, activo: false } : s
-    );
-    setSprints(actualizados);
-    guardarSprints(actualizados);
+  async function handleCompletar(id) {
+    const sprint = sprints.find((s) => s.idSprint === id);
+    if (!sprint) return;
+    const actualizado = await updateSprint(id, { ...sprint, activo: false });
+    setSprints((prev) => prev.map((s) => (s.idSprint === id ? actualizado : s)));
   }
 
   const estiloPage = { display: 'flex', flexDirection: 'column', gap: '24px' };
@@ -247,6 +251,32 @@ export default function SprintPage() {
     color: 'var(--text-primary)',
     letterSpacing: '-0.01em',
   };
+
+  if (loading) {
+    return (
+      <div style={estiloPage}>
+        <h1 style={estiloTitulo}>Sprints</h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Loading sprints…</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={estiloPage}>
+        <h1 style={estiloTitulo}>Sprints</h1>
+        <p style={{ color: 'var(--danger)', fontSize: '0.875rem' }}>
+          Could not load sprints.{' '}
+          <button
+            onClick={cargarSprints}
+            style={{ color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+          >
+            Retry
+          </button>
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div style={estiloPage}>

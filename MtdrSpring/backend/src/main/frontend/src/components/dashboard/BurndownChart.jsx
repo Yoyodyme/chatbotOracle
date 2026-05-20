@@ -36,7 +36,7 @@ function generarDatosBurndown(tareas, sprint) {
 
   // Para cada día, contar tareas completadas hasta esa fecha
   const datos = dias.map((dia, idx) => {
-    const label = dia.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
+    const label = dia.toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
     const ideal = Math.round(total - (total / (dias.length - 1 || 1)) * idx);
 
     // Solo calcular real si la fecha ya pasó o es hoy
@@ -107,8 +107,8 @@ export default function BurndownChart({ tareas = [], sprint }) {
     return (
       <EmptyState
         icon="📉"
-        title="Sin datos de burndown"
-        message="Selecciona un sprint activo con tareas para ver el gráfico."
+        title="No burndown data"
+        message="Select an active sprint with tasks to view the chart."
       />
     );
   }

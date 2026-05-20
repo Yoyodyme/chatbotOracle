@@ -127,7 +127,7 @@ export default function TaskForm({ onSubmit, onCancel, initialValues }) {
   function validar() {
     const nuevosErrores = {};
     if (!campos.titulo.trim()) {
-      nuevosErrores.titulo = 'El título es obligatorio';
+      nuevosErrores.titulo = 'Title is required';
     }
     setErrores(nuevosErrores);
     return Object.keys(nuevosErrores).length === 0;
@@ -194,32 +194,32 @@ export default function TaskForm({ onSubmit, onCancel, initialValues }) {
 
   return (
     <form style={estiloFormulario} onSubmit={manejarEnvio} noValidate>
-      <Campo label="Título *">
+      <Campo label="Title *">
         <InputConFoco
           type="text"
           value={campos.titulo}
           onChange={(e) => actualizarCampo('titulo', e.target.value)}
-          placeholder="Nombre de la tarea"
+          placeholder="Task name"
           maxLength={200}
         />
         {errores.titulo && <span style={estiloError}>{errores.titulo}</span>}
       </Campo>
 
-      <Campo label="Descripción">
+      <Campo label="Description">
         <TextareaConFoco
           value={campos.descripcion}
           onChange={(e) => actualizarCampo('descripcion', e.target.value)}
-          placeholder="Describe los detalles de la tarea..."
+          placeholder="Describe the task details..."
         />
       </Campo>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-        <Campo label="Estatus">
+        <Campo label="Status">
           <SelectConFoco
             value={campos.idEstatus}
             onChange={(e) => actualizarCampo('idEstatus', e.target.value)}
           >
-            <option value="">Sin estatus</option>
+            <option value="">No status</option>
             {(estatuses || []).map((est) => (
               <option key={est.idEstatus} value={est.idEstatus}>
                 {est.nombre}
@@ -228,12 +228,12 @@ export default function TaskForm({ onSubmit, onCancel, initialValues }) {
           </SelectConFoco>
         </Campo>
 
-        <Campo label="Prioridad">
+        <Campo label="Priority">
           <SelectConFoco
             value={campos.idPrioridad}
             onChange={(e) => actualizarCampo('idPrioridad', e.target.value)}
           >
-            <option value="">Sin prioridad</option>
+            <option value="">No priority</option>
             {(prioridades || []).map((pri) => (
               <option key={pri.idPrioridad} value={pri.idPrioridad}>
                 {pri.nombre}
@@ -243,12 +243,12 @@ export default function TaskForm({ onSubmit, onCancel, initialValues }) {
         </Campo>
       </div>
 
-      <Campo label="Asignado a">
+      <Campo label="Assigned to">
         <SelectConFoco
           value={campos.idUsuarioAsignado}
           onChange={(e) => actualizarCampo('idUsuarioAsignado', e.target.value)}
         >
-          <option value="">Sin asignar</option>
+          <option value="">Unassigned</option>
           {(usuarios || []).map((usr) => (
             <option key={usr.idUsuario} value={usr.idUsuario}>
               {usr.nombreCompleto || usr.nombreUsuario}
@@ -257,7 +257,7 @@ export default function TaskForm({ onSubmit, onCancel, initialValues }) {
         </SelectConFoco>
       </Campo>
 
-      <Campo label="Fecha de vencimiento">
+      <Campo label="Due date">
         <InputConFoco
           type="date"
           value={campos.fechaVencimiento}
@@ -280,7 +280,7 @@ export default function TaskForm({ onSubmit, onCancel, initialValues }) {
             e.currentTarget.style.color = 'var(--text-secondary)';
           }}
         >
-          Cancelar
+          Cancel
         </button>
         <button
           type="submit"
@@ -288,7 +288,7 @@ export default function TaskForm({ onSubmit, onCancel, initialValues }) {
           onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.85'; }}
           onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
         >
-          {esEdicion ? 'Guardar cambios' : 'Crear tarea'}
+          {esEdicion ? 'Save changes' : 'Create task'}
         </button>
       </div>
     </form>

@@ -89,7 +89,7 @@ const ITEMS_NAV = [
   { to: '/board',   label: 'Board',     icon: <IconBoard /> },
   { to: '/backlog', label: 'Backlog',   icon: <IconBacklog /> },
   { to: '/sprints', label: 'Sprints',   icon: <IconSprints /> },
-  { to: '/team',    label: 'Equipo',    icon: <IconTeam /> },
+  { to: '/team',    label: 'Team',      icon: <IconTeam /> },
 ];
 
 const ANCHO_EXPANDIDO = 220;
@@ -170,7 +170,7 @@ export default function Sidebar() {
       {/* Logo */}
       <div style={estiloLogo}>
         <IconCloud />
-        <span style={estiloTextoLogo}>EQ51</span>
+        <span style={estiloTextoLogo}>Yoyodyme</span>
       </div>
 
       {/* Navegación */}
@@ -191,8 +191,8 @@ export default function Sidebar() {
       <button
         style={estiloBotonColapsar}
         onClick={toggleSidebar}
-        title={sidebarCollapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
-        aria-label={sidebarCollapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
+        title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         onMouseEnter={(e) => { e.currentTarget.style.color = '#ffffff'; }}
         onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--sidebar-text)'; }}
       >

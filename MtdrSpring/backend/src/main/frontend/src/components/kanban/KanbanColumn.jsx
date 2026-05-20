@@ -103,7 +103,7 @@ export default function KanbanColumn({ estatus, tareas, onAddCard, loading = fal
         <button
           style={estiloBotonAgregar}
           onClick={() => onAddCard && onAddCard(estatus)}
-          title={`Agregar tarea a ${estatus.nombre}`}
+          title={`Add task to ${estatus.nombre}`}
           onMouseEnter={(e) => {
             e.currentTarget.style.color = 'var(--accent)';
             e.currentTarget.style.borderColor = 'var(--border)';
@@ -146,7 +146,7 @@ export default function KanbanColumn({ estatus, tareas, onAddCard, loading = fal
               padding: '16px',
             }}
           >
-            {isOver ? 'Soltar aquí' : 'Sin tareas'}
+            {isOver ? 'Drop here' : 'No tasks'}
           </div>
         )}
       </div>

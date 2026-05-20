@@ -15,7 +15,8 @@ import java.time.LocalDateTime;
 public class Sprint {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "sprints_seq")
+    @SequenceGenerator(name = "sprints_seq", sequenceName = "SPRINTS_SEQ", allocationSize = 1)
     @Column(name = "ID_SPRINT")
     private Long idSprint;
 

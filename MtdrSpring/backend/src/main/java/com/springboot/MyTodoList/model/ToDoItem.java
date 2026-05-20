@@ -1,56 +1,62 @@
 package com.springboot.MyTodoList.model;
 
-import jakarta.persistence.*;
-import jakarta.persistence.Column;
 import java.time.OffsetDateTime;
 
-@Entity
-@Table(name = "TAREAS")
+/**
+ * Clase adaptadora que envuelve una {@link Tarea} y expone la API que el
+ * código heredado del bot (BotActions) y el controlador REST /todolist esperan.
+ *
+ * Ya no es una entidad JPA — el mapeo a la tabla TAREAS lo gestiona
+ * únicamente {@link Tarea} para evitar el conflicto de doble @Entity.
+ */
 public class ToDoItem {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ID_TAREA")
-    private int id;
 
-    private String titulo;
-    private String descripcion;
-    @Column(name = "DONE", nullable = true)
-    private Boolean done;
-    @Column(name = "CREADO_EN")
-    private OffsetDateTime creation_ts;
+    private Tarea tarea;
 
-    @ManyToOne
-    @JoinColumn(name = "ID_USUARIO_ASIGNADO")
-    private User user;
+    /** Constructor requerido por Jackson para deserializar @RequestBody en el REST controller. */
+    public ToDoItem() {
+        this.tarea = new Tarea();
+    }
 
-    public ToDoItem() {}
+    public ToDoItem(Tarea tarea) {
+        this.tarea = tarea;
+    }
 
-    public int getID() { return id; }
-    public void setID(int id) { this.id = id; }
+    /** Acceso a la entidad subyacente, necesario para actualizaciones en ToDoItemService. */
+    public Tarea getTarea() { return tarea; }
 
-    public String getTitulo() { return titulo; }
-    public void setTitulo(String titulo) { this.titulo = titulo; }
+    public int getID() {
+        return tarea.getIdTarea() != null ? tarea.getIdTarea().intValue() : 0;
+    }
 
-    public String getDescription() { return descripcion; }
-    public void setDescription(String descripcion) { this.descripcion = descripcion; }
+    public String getTitulo() { return tarea.getTitulo(); }
+    public void setTitulo(String titulo) { tarea.setTitulo(titulo); }
 
-    public boolean isDone() { return done != null && done; }
-    public void setDone(boolean done) { this.done = done; }
+    public String getDescription() { return tarea.getDescripcion(); }
+    public void setDescription(String descripcion) { tarea.setDescripcion(descripcion); }
 
-    public OffsetDateTime getCreation_ts() { return creation_ts; }
-    public void setCreation_ts(OffsetDateTime creation_ts) { this.creation_ts = creation_ts; }
+    /**
+     * La columna DONE ya no existe en el esquema EQ51.
+     * Se considera "done" cuando el estatus es "Completada".
+     */
+    public boolean isDone() {
+        return tarea.getEstatus() != null
+                && "Completada".equalsIgnoreCase(tarea.getEstatus().getNombre());
+    }
 
-    public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
+    public void setDone(boolean done) {
+        // No-op: el estado de completado se gestiona vía EstatusTarea en TareaBotActions.
+        // BotActions llama a setDone() para marcar items; dado que la lógica de estatus
+        // completa ya vive en TareaBotActions, se mantiene como no-operación aquí.
+    }
+
+    public OffsetDateTime getCreation_ts() {
+        if (tarea.getCreadoEn() == null) return null;
+        return tarea.getCreadoEn().atOffset(java.time.ZoneOffset.UTC);
+    }
 
     @Override
     public String toString() {
-        return "ToDoItem{" +
-                "id=" + id +
-                ", titulo='" + titulo + '\'' +
-                ", descripcion='" + descripcion + '\'' +
-                ", done=" + done +
-                ", creation_ts=" + creation_ts +
-                '}';
+        return "ToDoItem{tarea=" + tarea + '}';
     }
 }
