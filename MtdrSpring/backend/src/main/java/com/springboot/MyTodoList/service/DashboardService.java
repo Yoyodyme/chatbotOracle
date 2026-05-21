@@ -1,9 +1,11 @@
 package com.springboot.MyTodoList.service;
 
 import com.springboot.MyTodoList.model.EstatusTarea;
+import com.springboot.MyTodoList.model.Sprint;
 import com.springboot.MyTodoList.model.Tarea;
 import com.springboot.MyTodoList.model.Usuario;
 import com.springboot.MyTodoList.repository.EstatusTareaRepository;
+import com.springboot.MyTodoList.repository.SprintRepository;
 import com.springboot.MyTodoList.repository.TareaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,9 @@ public class DashboardService {
 
     @Autowired
     private EstatusTareaRepository estatusRepository;
+
+    @Autowired
+    private SprintRepository sprintRepository;
 
     private Long getIdEstatusDone() {
         return estatusRepository.findAll().stream()
@@ -271,6 +276,132 @@ public class DashboardService {
         item.put("horasEstimadas", Math.round(estimadas * 10.0) / 10.0);
         item.put("horasReales", Math.round(reales * 10.0) / 10.0);
         return item;
+    }
+
+    private String getNombreCorto(Usuario u) {
+        if (u.getNombreCompleto() != null && !u.getNombreCompleto().isBlank()) {
+            return u.getNombreCompleto().split(" ")[0];
+        }
+        return u.getNombreUsuario() != null ? u.getNombreUsuario() : "Desconocido";
+    }
+
+    private String getEstadoSprint(Sprint s) {
+        if (Boolean.TRUE.equals(s.getActivo())) return "ACTIVO";
+        if (s.getFechaFin() != null && s.getFechaFin().isBefore(java.time.LocalDate.now())) return "PASADO";
+        return "FUTURO";
+    }
+
+    private List<Sprint> getSprintsOrdenados() {
+        return sprintRepository.findAll().stream()
+                .filter(s -> s.getFechaInicio() != null)
+                .sorted(Comparator.comparing(Sprint::getFechaInicio))
+                .collect(Collectors.toList());
+    }
+
+    public List<Map<String, Object>> getKpiPorSprint() {
+        Long idDone = getIdEstatusDone();
+        List<Sprint> sprints = getSprintsOrdenados();
+        List<Tarea> todas = tareaRepository.findAll();
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (Sprint sprint : sprints) {
+            Map<String, Long> countPorUsuario = new LinkedHashMap<>();
+            for (Tarea t : todas) {
+                if (t.getSprint() == null || !sprint.getIdSprint().equals(t.getSprint().getIdSprint())) continue;
+                String usuario = t.getUsuarioAsignado() != null ? getNombreCorto(t.getUsuarioAsignado()) : "Sin asignar";
+                boolean done = t.getEstatus() != null && idDone.equals(t.getEstatus().getIdEstatus());
+                countPorUsuario.merge(usuario, done ? 1L : 0L, Long::sum);
+            }
+            for (Map.Entry<String, Long> e : countPorUsuario.entrySet()) {
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("sprint", sprint.getNombre());
+                item.put("usuario", e.getKey());
+                item.put("tasksCompletadas", e.getValue());
+                result.add(item);
+            }
+        }
+        return result;
+    }
+
+    public List<Map<String, Object>> getHorasRealesPorSprint() {
+        List<Sprint> sprints = getSprintsOrdenados();
+        List<Tarea> todas = tareaRepository.findAll();
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (Sprint sprint : sprints) {
+            Map<String, Double> horasPorUsuario = new LinkedHashMap<>();
+            for (Tarea t : todas) {
+                if (t.getSprint() == null || !sprint.getIdSprint().equals(t.getSprint().getIdSprint())) continue;
+                String usuario = t.getUsuarioAsignado() != null ? getNombreCorto(t.getUsuarioAsignado()) : "Sin asignar";
+                double horas = t.getHorasReales() != null ? t.getHorasReales() : 0.0;
+                horasPorUsuario.merge(usuario, horas, Double::sum);
+            }
+            for (Map.Entry<String, Double> e : horasPorUsuario.entrySet()) {
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("sprint", sprint.getNombre());
+                item.put("usuario", e.getKey());
+                item.put("horasReales", Math.round(e.getValue() * 10.0) / 10.0);
+                result.add(item);
+            }
+        }
+        return result;
+    }
+
+    public List<Map<String, Object>> getResumenSprints() {
+        Long idDone = getIdEstatusDone();
+        List<Sprint> sprints = getSprintsOrdenados();
+        List<Tarea> todas = tareaRepository.findAll();
+
+        return sprints.stream().map(sprint -> {
+            List<Tarea> tareasSprint = todas.stream()
+                    .filter(t -> t.getSprint() != null && sprint.getIdSprint().equals(t.getSprint().getIdSprint()))
+                    .collect(Collectors.toList());
+
+            long totalTareas = tareasSprint.size();
+            long completadas = tareasSprint.stream()
+                    .filter(t -> t.getEstatus() != null && idDone.equals(t.getEstatus().getIdEstatus()))
+                    .count();
+            double horasEstimadas = tareasSprint.stream()
+                    .mapToDouble(t -> t.getHorasEstimadas() != null ? t.getHorasEstimadas() : 0.0)
+                    .sum();
+            double horasReales = tareasSprint.stream()
+                    .mapToDouble(t -> t.getHorasReales() != null ? t.getHorasReales() : 0.0)
+                    .sum();
+            long porcentaje = totalTareas > 0 ? (completadas * 100 / totalTareas) : 0;
+
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("sprint", sprint.getNombre());
+            item.put("estado", getEstadoSprint(sprint));
+            item.put("totalTareas", totalTareas);
+            item.put("completadas", completadas);
+            item.put("horasEstimadas", Math.round(horasEstimadas * 10.0) / 10.0);
+            item.put("horasReales", Math.round(horasReales * 10.0) / 10.0);
+            item.put("porcentaje", porcentaje);
+            return item;
+        }).collect(Collectors.toList());
+    }
+
+    public List<Map<String, Object>> getContribucionesPorSprint() {
+        List<Sprint> sprints = getSprintsOrdenados();
+        List<Tarea> todas = tareaRepository.findAll();
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (Sprint sprint : sprints) {
+            Map<String, Integer> countPorUsuario = new LinkedHashMap<>();
+            for (Tarea t : todas) {
+                if (t.getSprint() == null || !sprint.getIdSprint().equals(t.getSprint().getIdSprint())) continue;
+                String usuario = t.getUsuarioAsignado() != null ? getNombreCorto(t.getUsuarioAsignado()) : "Sin asignar";
+                countPorUsuario.merge(usuario, 1, Integer::sum);
+            }
+            for (Map.Entry<String, Integer> e : countPorUsuario.entrySet()) {
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("sprint", sprint.getNombre());
+                item.put("usuario", e.getKey());
+                item.put("tareas", e.getValue());
+                result.add(item);
+            }
+        }
+        return result;
     }
 
     public List<Map<String, Object>> getContribuciones() {

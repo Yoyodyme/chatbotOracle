@@ -56,4 +56,24 @@ public class DashboardController {
     public ResponseEntity<List<Map<String, Object>>> contributions() {
         return ResponseEntity.ok(dashboardService.getContribuciones());
     }
+
+    @GetMapping("/kpi-por-sprint")
+    public ResponseEntity<List<Map<String, Object>>> kpiPorSprint() {
+        return ResponseEntity.ok(dashboardService.getKpiPorSprint());
+    }
+
+    @GetMapping("/horas-por-sprint")
+    public ResponseEntity<List<Map<String, Object>>> horasPorSprint() {
+        return ResponseEntity.ok(dashboardService.getHorasRealesPorSprint());
+    }
+
+    @GetMapping("/resumen-sprints")
+    public ResponseEntity<List<Map<String, Object>>> resumenSprints() {
+        return ResponseEntity.ok(dashboardService.getResumenSprints());
+    }
+
+    @GetMapping("/contribuciones-por-sprint")
+    public ResponseEntity<List<Map<String, Object>>> contribucionesPorSprint() {
+        return ResponseEntity.ok(dashboardService.getContribucionesPorSprint());
+    }
 }

@@ -9,17 +9,33 @@ const fetchStatusDist     = () => apiFetch('/api/dashboard/status-distribution')
 export const fetchWeeklyHours = (periodo = 'week') => apiFetch(`/api/dashboard/weekly-hours?periodo=${periodo}`);
 const fetchContributions  = () => apiFetch('/api/dashboard/contributions');
 
+export const fetchKpiPorSprint            = () => apiFetch('/api/dashboard/kpi-por-sprint');
+export const fetchHorasPorSprint          = () => apiFetch('/api/dashboard/horas-por-sprint');
+export const fetchResumenSprints          = () => apiFetch('/api/dashboard/resumen-sprints');
+export const fetchContribucionesPorSprint = () => apiFetch('/api/dashboard/contribuciones-por-sprint');
+
 export async function fetchTodoDashboard() {
-  const [stats, sprint, timeComparison, teamVelocity, personalWork, statusDist, weeklyHours, contributions] =
-    await Promise.all([
-      fetchStats(),
-      fetchSprint(),
-      fetchTimeComparison(),
-      fetchTeamVelocity(),
-      fetchPersonalWork(),
-      fetchStatusDist(),
-      fetchWeeklyHours(),
-      fetchContributions(),
-    ]);
-  return { stats, sprint, timeComparison, teamVelocity, personalWork, statusDist, weeklyHours, contributions };
+  const [
+    stats, sprint, timeComparison, teamVelocity, personalWork,
+    statusDist, weeklyHours, contributions,
+    kpiPorSprint, horasPorSprint, resumenSprints, contribucionesPorSprint,
+  ] = await Promise.all([
+    fetchStats(),
+    fetchSprint(),
+    fetchTimeComparison(),
+    fetchTeamVelocity(),
+    fetchPersonalWork(),
+    fetchStatusDist(),
+    fetchWeeklyHours(),
+    fetchContributions(),
+    fetchKpiPorSprint(),
+    fetchHorasPorSprint(),
+    fetchResumenSprints(),
+    fetchContribucionesPorSprint(),
+  ]);
+  return {
+    stats, sprint, timeComparison, teamVelocity, personalWork,
+    statusDist, weeklyHours, contributions,
+    kpiPorSprint, horasPorSprint, resumenSprints, contribucionesPorSprint,
+  };
 }
