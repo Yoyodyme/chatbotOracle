@@ -51,7 +51,8 @@ steps:
       cd ..;
       cd .kube;
       oci ce cluster create-kubeconfig --cluster-id ocid1.cluster.oc1.mx-queretaro-1.aaaaaaaa4cftrwzuxhfemcx7ugldepluvdvguiwytz73tbehgcy6dvzvm6oa --file $HOME/.kube/config --region mx-queretaro-1 --token-version 2.0.0  --kube-endpoint PUBLIC_ENDPOINT;
-      
+
+  - type: Command
     name: "Undeploy"
     ignoreFailure: True
     command: export PATH=$PATH:$HOME/k8s;kubectl version;
