@@ -62,15 +62,15 @@ function KpiCard({ label, valor, suffix = '' }) {
   );
 }
 
-function GaugeSprint({ pct, completadas, nombre }) {
-  const seguro = Math.min(100, Math.max(0, pct));
-  const datos  = [{ value: seguro }, { value: 100 - seguro }];
+function GaugeSprint({ pct, completadas, restantes, nombreSprint }) {
+  const seguro = Math.min(100, Math.max(0, Number(pct) || 0));
+  const datosGauge = [{ value: seguro }, { value: 100 - seguro }];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <div style={{ position: 'relative', height: 158 }}>
         <PieChart width={280} height={158}>
           <Pie
-            data={datos}
+            data={datosGauge}
             startAngle={180} endAngle={0}
             cx={140} cy={143}
             innerRadius={84} outerRadius={126}
@@ -88,7 +88,9 @@ function GaugeSprint({ pct, completadas, nombre }) {
             {seguro}%
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
-            {nombre ? <strong>{nombre}</strong> : 'Sin sprint activo'} — {completadas} completadas
+            {nombreSprint
+              ? <><strong>{nombreSprint}</strong> — {completadas} completadas</>
+              : 'Sin sprint activo'}
           </div>
         </div>
       </div>
@@ -116,23 +118,34 @@ function BadgeEstado({ estado }) {
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
 
-function pivotarPorUsuario(datos, campoValor) {
-  if (!datos || datos.length === 0) return { pivotado: [], sprints: [] };
-  const sprints  = [...new Set(datos.map(d => d.sprint))];
+// FIX 3: pivot correcto — convierte lista plana en filas por usuario
+function pivotarDatos(datos, campoClave, campoValor) {
+  if (!datos || datos.length === 0) return [];
+  const sprints  = [...new Set(datos.map(d => d.sprint))].sort();
   const usuarios = [...new Set(datos.map(d => d.usuario))];
-  const pivotado = usuarios.map(u => {
-    const fila = { usuario: u };
-    sprints.forEach(s => {
-      const entrada = datos.find(d => d.sprint === s && d.usuario === u);
-      fila[s] = entrada ? entrada[campoValor] : 0;
+  return usuarios.map(usuario => {
+    const fila = { usuario };
+    sprints.forEach(sprint => {
+      const encontrado = datos.find(d => d.usuario === usuario && d.sprint === sprint);
+      fila[sprint] = encontrado ? (Number(encontrado[campoValor]) || 0) : 0;
     });
     return fila;
   });
-  return { pivotado, sprints };
 }
 
 function GraficaBarrasAgrupadas({ datos, campoValor, altura = 280 }) {
-  const { pivotado, sprints } = pivotarPorUsuario(datos, campoValor);
+  // FIX 7: verificar datos antes de renderizar
+  if (!datos || datos.length === 0) {
+    return (
+      <div style={{ height: altura, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+        No hay datos de sprints
+      </div>
+    );
+  }
+
+  const sprintsUnicos = [...new Set(datos.map(d => d.sprint))].sort();
+  const pivotado = pivotarDatos(datos, 'sprint', campoValor);
+
   if (pivotado.length === 0) {
     return (
       <div style={{ height: altura, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
@@ -140,6 +153,7 @@ function GraficaBarrasAgrupadas({ datos, campoValor, altura = 280 }) {
       </div>
     );
   }
+
   return (
     <ResponsiveContainer width="100%" height={altura}>
       <BarChart data={pivotado} margin={{ top: 4, right: 20, bottom: 0, left: -10 }} barGap={3} barCategoryGap="30%">
@@ -148,8 +162,10 @@ function GraficaBarrasAgrupadas({ datos, campoValor, altura = 280 }) {
         <YAxis tick={EJE_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
         <Tooltip contentStyle={{ borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }} />
         <Legend wrapperStyle={{ fontSize: 11, color: 'var(--text-muted)', paddingTop: 8 }} />
-        {sprints.map((s, i) => (
-          <Bar key={s} dataKey={s} name={s} fill={COLORES_SPRINT[i % COLORES_SPRINT.length]} radius={[3, 3, 0, 0]} />
+        {sprintsUnicos.map((sprint, i) => (
+          <Bar key={sprint} dataKey={sprint} name={sprint}
+               fill={COLORES_SPRINT[i % COLORES_SPRINT.length]}
+               radius={[3, 3, 0, 0]} />
         ))}
       </BarChart>
     </ResponsiveContainer>
@@ -159,11 +175,11 @@ function GraficaBarrasAgrupadas({ datos, campoValor, altura = 280 }) {
 /* ── Componente principal ────────────────────────────────────────────────── */
 
 export default function Dashboard() {
-  const [datos, setDatos]                   = useState(null);
-  const [cargando, setCargando]             = useState(true);
-  const [error, setError]                   = useState(null);
-  const [ultimaAct, setUltimaAct]           = useState(null);
-  const [sprintSeleccionado, setSprintSel]  = useState(null);
+  const [datos, setDatos]                  = useState(null);
+  const [cargando, setCargando]            = useState(true);
+  const [error, setError]                  = useState(null);
+  const [ultimaAct, setUltimaAct]          = useState(null);
+  const [sprintSeleccionado, setSprintSel] = useState(null);
 
   const cargar = useCallback(async () => {
     try {
@@ -184,6 +200,7 @@ export default function Dashboard() {
     return () => clearInterval(id);
   }, [cargar]);
 
+  // Seleccionar sprint activo por defecto al cargar
   useEffect(() => {
     if (datos?.resumenSprints?.length > 0 && !sprintSeleccionado) {
       const activo = datos.resumenSprints.find(s => s.estado === 'ACTIVO');
@@ -191,31 +208,77 @@ export default function Dashboard() {
     }
   }, [datos, sprintSeleccionado]);
 
+  // DEBUG: log datos crudos de cada endpoint
+  const resumenSprintsDebug    = datos?.resumenSprints       ?? [];
+  const kpiPorSprintDebug      = datos?.kpiPorSprint         ?? [];
+  const horasPorSprintDebug    = datos?.horasPorSprint       ?? [];
+  const contribPorSprintDebug  = datos?.contribucionesPorSprint ?? [];
+
+  useEffect(() => {
+    console.log('resumenSprints:', resumenSprintsDebug);
+    console.log('kpiPorSprint:', kpiPorSprintDebug);
+    console.log('horasPorSprint:', horasPorSprintDebug);
+    console.log('contribucionesPorSprint:', contribPorSprintDebug);
+  }, [resumenSprintsDebug, kpiPorSprintDebug, horasPorSprintDebug, contribPorSprintDebug]);
+
   /* ── Datos normalizados ── */
-  const sprint               = datos?.sprint               ?? {};
-  const timeCmp              = datos?.timeComparison       ?? [];
-  const velocity             = datos?.teamVelocity         ?? [];
-  const personal             = datos?.personalWork         ?? [];
-  const statusDist           = datos?.statusDist           ?? [];
-  const resumenSprints       = datos?.resumenSprints       ?? [];
-  const kpiPorSprint         = datos?.kpiPorSprint         ?? [];
-  const horasPorSprint       = datos?.horasPorSprint       ?? [];
+  const sprint                  = datos?.sprint                  ?? {};
+  const timeCmp                 = datos?.timeComparison          ?? [];
+  const velocity                = datos?.teamVelocity            ?? [];
+  const personal                = datos?.personalWork            ?? [];
+  const statusDist              = datos?.statusDist              ?? [];
+  const resumenSprints          = datos?.resumenSprints          ?? [];
+  const kpiPorSprint            = datos?.kpiPorSprint            ?? [];
+  const horasPorSprint          = datos?.horasPorSprint          ?? [];
   const contribucionesPorSprint = datos?.contribucionesPorSprint ?? [];
 
   const maxVel     = Math.max(...velocity.map(d => d.tareas ?? 0), 1);
   const maxEstatus = Math.max(...statusDist.map(d => d.cantidad ?? 0), 1);
 
-  /* ── KPI computados ── */
-  const sprintActivoResumen   = resumenSprints.find(s => s.estado === 'ACTIVO');
-  const totalCompletadas      = sprint.completadas ?? 0;
-  const totalHorasReales      = resumenSprints.reduce((sum, s) => sum + (s.horasReales || 0), 0);
-  const totalHorasEstimadas   = resumenSprints.reduce((sum, s) => sum + (s.horasEstimadas || 0), 0);
-  const eficiencia            = totalHorasEstimadas > 0
-    ? Math.round((totalHorasReales / totalHorasEstimadas) * 1000) / 10
+  /* ── KPI computados (FIX 9, 10, 8, 2) ── */
+  // FIX 9: Tasks completadas desde kpiPorSprint
+  const totalCompletadas = kpiPorSprint.reduce(
+    (sum, d) => sum + (Number(d.tasksCompletadas) || 0), 0
+  );
+
+  // FIX 10: Horas reales desde horasPorSprint
+  const totalHorasReales = horasPorSprint.reduce(
+    (sum, d) => sum + (Number(d.horasReales) || 0), 0
+  );
+
+  // FIX 8: Eficiencia desde resumenSprints (únicos con horasEstimadas y horasReales)
+  const totalEstimadas = resumenSprints.reduce(
+    (sum, s) => sum + (Number(s.horasEstimadas) || 0), 0
+  );
+  const totalRealesResumen = resumenSprints.reduce(
+    (sum, s) => sum + (Number(s.horasReales) || 0), 0
+  );
+  const eficiencia = totalEstimadas > 0
+    ? Math.round((totalRealesResumen / totalEstimadas) * 100)
     : 0;
 
-  const pctGauge        = sprintActivoResumen ? Number(sprintActivoResumen.porcentaje) : Number(sprint.porcentaje ?? 0);
-  const completadasGauge = sprintActivoResumen?.completadas ?? sprint.completadas ?? 0;
+  // FIX 2: Sprint activo por campo estado === 'ACTIVO' (no campo booleano)
+  const sprintActivoResumen = resumenSprints.find(s => s.estado === 'ACTIVO');
+
+  // FIX 6: Gauge con datos del sprint activo
+  const pctGauge        = Number(sprintActivoResumen?.porcentaje ?? 0);
+  const completadasGauge = sprintActivoResumen?.completadas ?? 0;
+  const restantesGauge   = (sprintActivoResumen?.totalTareas ?? 0) - (sprintActivoResumen?.completadas ?? 0);
+  const nombreSprintGauge = sprintActivoResumen?.sprint ?? null;
+
+  // FIX 4: Resumen — filtrar sprints con tareas y ordenar PASADO→ACTIVO→FUTURO
+  const ordenEstado = { PASADO: 0, ACTIVO: 1, FUTURO: 2 };
+  const sprintsFiltrados = resumenSprints
+    .filter(s => Number(s.totalTareas) > 0)
+    .slice()
+    .sort((a, b) => (ordenEstado[a.estado] ?? 3) - (ordenEstado[b.estado] ?? 3));
+
+  // FIX 5: Sprint Hours — solo 3 botones: el PASADO más reciente, ACTIVO, FUTURO más próximo
+  const sprintsPorEstado = {
+    past:    [...resumenSprints].reverse().find(s => s.estado === 'PASADO'),
+    current: resumenSprints.find(s => s.estado === 'ACTIVO'),
+    next:    resumenSprints.find(s => s.estado === 'FUTURO'),
+  };
 
   /* ── Loading ── */
   if (cargando) {
@@ -269,7 +332,7 @@ export default function Dashboard() {
 
         {/* ── Sección 1: KPI Cards ── */}
         <KpiCard label="Tasks Completadas"    valor={totalCompletadas} />
-        <KpiCard label="Horas Reales Totales" valor={Math.round(totalHorasReales * 10) / 10} suffix="h" />
+        <KpiCard label="Horas Reales Totales" valor={totalHorasReales.toFixed(1)} suffix="h" />
         <KpiCard label="Sprint Activo"        valor={sprintActivoResumen?.sprint ?? 'Sin sprint activo'} />
         <KpiCard label="Eficiencia"           valor={eficiencia} suffix="%" />
 
@@ -284,15 +347,17 @@ export default function Dashboard() {
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 11, color: ACENTO, fontWeight: 500 }}>Restantes</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
-                  {(sprintActivoResumen.totalTareas - sprintActivoResumen.completadas)} tareas
+                  {restantesGauge} tareas
                 </div>
               </div>
             )}
           </div>
+          {/* FIX 6: GaugeSprint con props correctos */}
           <GaugeSprint
             pct={pctGauge}
             completadas={completadasGauge}
-            nombre={sprintActivoResumen?.sprint}
+            restantes={restantesGauge}
+            nombreSprint={nombreSprintGauge}
           />
         </Tarjeta>
 
@@ -331,6 +396,7 @@ export default function Dashboard() {
         {/* ── Sección 3: Gráfica A — Tasks completadas por developer por sprint ── */}
         <Tarjeta style={{ gridColumn: '1 / -1' }}>
           <Titulo mb={4}>Tasks Completadas por Developer por Sprint</Titulo>
+          {/* FIX 3: usa pivotarDatos directamente en GraficaBarrasAgrupadas */}
           <GraficaBarrasAgrupadas datos={kpiPorSprint} campoValor="tasksCompletadas" altura={280} />
         </Tarjeta>
 
@@ -343,9 +409,10 @@ export default function Dashboard() {
         {/* ── Sección 5: Resumen de Sprints ── */}
         <Tarjeta style={{ gridColumn: '1 / -1' }}>
           <Titulo mb={14}>Resumen de Sprints</Titulo>
-          {resumenSprints.length > 0 ? (
+          {/* FIX 4: solo sprints con tareas, orden PASADO→ACTIVO→FUTURO */}
+          {sprintsFiltrados.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {resumenSprints.map((s, i) => (
+              {sprintsFiltrados.map((s, i) => (
                 <div key={i} style={{
                   display: 'grid',
                   gridTemplateColumns: '180px 80px 1fr 160px 120px',
@@ -384,7 +451,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-              No hay datos de sprints
+              No hay sprints con tareas registradas
             </div>
           )}
         </Tarjeta>
@@ -483,6 +550,7 @@ export default function Dashboard() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
             <div><Etiqueta>Code</Etiqueta><Titulo mb={0}>Contributions por Sprint</Titulo></div>
           </div>
+          {/* FIX 3 + FIX 7: pivot corregido y verificación de datos */}
           <GraficaBarrasAgrupadas datos={contribucionesPorSprint} campoValor="tareas" altura={160} />
         </Tarjeta>
 
@@ -490,25 +558,35 @@ export default function Dashboard() {
         <Tarjeta style={{ gridColumn: '1 / -1' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
             <div><Etiqueta>Statistics</Etiqueta><Titulo mb={0}>Sprint Hours</Titulo></div>
-            {resumenSprints.length > 0 && (
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                {resumenSprints.map(s => (
+            {/* FIX 5: solo 3 botones con nombres reales */}
+            <div style={{ display: 'flex', gap: 6 }}>
+              {[
+                { key: 'past',    label: sprintsPorEstado.past?.sprint    ?? 'Sin sprint anterior' },
+                { key: 'current', label: sprintsPorEstado.current?.sprint ?? 'Sin sprint activo'   },
+                { key: 'next',    label: sprintsPorEstado.next?.sprint    ?? 'Sin sprint siguiente' },
+              ].map(({ key, label }) => {
+                const existe    = sprintsPorEstado[key] != null;
+                const isSelected = sprintSeleccionado === sprintsPorEstado[key]?.sprint;
+                return (
                   <button
-                    key={s.sprint}
-                    onClick={() => setSprintSel(s.sprint)}
+                    key={key}
+                    onClick={() => existe && setSprintSel(sprintsPorEstado[key].sprint)}
+                    disabled={!existe}
                     style={{
-                      padding: '3px 10px', borderRadius: 4, fontSize: 11, cursor: 'pointer',
-                      background: sprintSeleccionado === s.sprint ? '#1d2939' : 'transparent',
-                      color: sprintSeleccionado === s.sprint ? '#fff' : 'var(--text-muted)',
-                      border: sprintSeleccionado === s.sprint ? 'none' : '1px solid var(--border)',
+                      padding: '3px 10px', borderRadius: 4, fontSize: 11,
+                      cursor: existe ? 'pointer' : 'not-allowed',
+                      opacity: existe ? 1 : 0.4,
+                      background: isSelected ? '#1d2939' : 'transparent',
+                      color: isSelected ? '#fff' : 'var(--text-muted)',
+                      border: isSelected ? 'none' : '1px solid var(--border)',
                       fontFamily: 'var(--font-body)',
                     }}
                   >
-                    {s.sprint}
+                    {label}
                   </button>
-                ))}
-              </div>
-            )}
+                );
+              })}
+            </div>
           </div>
           <div style={{ display: 'flex', gap: 16, marginBottom: 12 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)' }}>
