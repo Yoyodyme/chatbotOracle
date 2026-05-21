@@ -24,10 +24,10 @@ steps:
   - type: Command
     name: "Docker Login"
     command: cd MtdrSpring;
-      oci os object get --bucket-name "yoyodyme-mavyk" --name deployment_config.tgz --output-file deployment_config.tgz;
+      oci os object get --bucket-name "yoyodyme-mavyk" --name deployment_config.tgz --file deployment_config.tgz;
       tar -xzvf deployment_config.tgz;
       source env.sh;
-      docker login mx-queretaro-1.ocir.io -u "axx2gmncrzyo/a00838956@tec.mx" -p "$(cat at.cfg)"
+      cat at.cfg | docker login -u "axx2gmncrzyo/a00838956@tec.mx" --password-stdin mx-queretaro-1.ocir.io
 
   - type: Command
     name: "Build"
