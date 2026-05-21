@@ -217,6 +217,11 @@ public class DashboardService {
     }
 
     public List<Map<String, Object>> getHoras(String periodo) {
+        // DETECCIÓN: si no es "day", "week" o "month", tratar como filtro de Sprint
+        if (!"day".equals(periodo) && !"week".equals(periodo) && !"month".equals(periodo)) {
+            return getHorasPorSprint(periodo);
+        }
+
         Locale spanish = new Locale("es", "MX");
         LocalDateTime ahora = LocalDateTime.now();
         List<Tarea> recientes;
@@ -276,6 +281,56 @@ public class DashboardService {
         item.put("horasEstimadas", Math.round(estimadas * 10.0) / 10.0);
         item.put("horasReales", Math.round(reales * 10.0) / 10.0);
         return item;
+    }
+
+    private List<Map<String, Object>> getHorasPorSprint(String sprintName) {
+        // LÓGICA para 'current' o SPRINT ESPECÍFICO
+        Sprint sprint = null;
+
+        if ("current".equals(sprintName)) {
+            // Buscar sprint activo (activo == true)
+            sprint = sprintRepository.findAll().stream()
+                    .filter(s -> Boolean.TRUE.equals(s.getActivo()))
+                    .findFirst()
+                    .orElse(null);
+        } else {
+            // Buscar sprint por nombre específico (ej. "Sprint 0")
+            sprint = sprintRepository.findAll().stream()
+                    .filter(s -> sprintName.equals(s.getNombre()))
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        // Si no se encuentra sprint válido, retornar vacío
+        if (sprint == null) {
+            return Collections.emptyList();
+        }
+
+        // FILTRADO Y RETORNO DE HORAS POR SPRINT
+        // Manejo defensivo: evitar NullPointerException si tarea.getSprint() es nulo
+        final Sprint finalSprint = sprint;
+        List<Tarea> tareasSprint = tareaRepository.findAll().stream()
+                .filter(t -> t.getSprint() != null && finalSprint.getIdSprint().equals(t.getSprint().getIdSprint()))
+                .collect(Collectors.toList());
+
+        // Calcular horas estimadas (default 4.0 si es nulo)
+        double horasEstimadas = tareasSprint.stream()
+                .mapToDouble(t -> t.getHorasEstimadas() != null && t.getHorasEstimadas() > 0
+                        ? t.getHorasEstimadas() : 4.0)
+                .sum();
+
+        // Calcular horas reales (default 0.0 si es nulo)
+        double horasReales = tareasSprint.stream()
+                .mapToDouble(t -> t.getHorasReales() != null ? t.getHorasReales() : 0.0)
+                .sum();
+
+        // Construir respuesta en formato esperado por el gráfico
+        Map<String, Object> resultado = new LinkedHashMap<>();
+        resultado.put("periodo", sprint.getNombre());
+        resultado.put("horasEstimadas", Math.round(horasEstimadas * 10.0) / 10.0);
+        resultado.put("horasReales", Math.round(horasReales * 10.0) / 10.0);
+
+        return Collections.singletonList(resultado);
     }
 
     private String getNombreCorto(Usuario u) {
