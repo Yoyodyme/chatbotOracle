@@ -735,7 +735,7 @@ public class TareaBotActions {
             Optional<Sprint> sprintPrevioOpt = sprintService.obtenerSprintActivo();
             if (sprintPrevioOpt.isPresent()) {
                 Sprint sprintPrevio = sprintPrevioOpt.get();
-                sprintPrevio.setActivo(false);
+                sprintPrevio.setEstado("PASADO");
                 Sprint resultado = sprintService.actualizarSprint(sprintPrevio.getIdSprint(), sprintPrevio);
                 if (resultado == null) {
                     logger.warn("No se pudo desactivar el sprint anterior con ID {}", sprintPrevio.getIdSprint());
@@ -747,7 +747,7 @@ public class TareaBotActions {
             nuevoSprint.setNombre((String) estado.getDato("nombreSprint"));
             nuevoSprint.setFechaInicio((LocalDate) estado.getDato("fechaInicio"));
             nuevoSprint.setFechaFin((LocalDate) estado.getDato("fechaFin"));
-            nuevoSprint.setActivo(true);
+            nuevoSprint.setEstado("ACTIVO");
             sprintService.crearSprint(nuevoSprint);
             conversationManager.terminarConversacion(chatId);
 
@@ -915,7 +915,7 @@ public class TareaBotActions {
                         sbS.append(" (").append(s.getFechaInicio().format(FORMATO_FECHA))
                            .append(" - ").append(s.getFechaFin().format(FORMATO_FECHA)).append(")");
                     }
-                    if (Boolean.TRUE.equals(s.getActivo())) sbS.append(" [Activo]");
+                    if ("ACTIVO".equals(s.getEstado())) sbS.append(" [Activo]");
                     sbS.append("\n");
                 }
                 BotHelper.sendMessageToTelegram(chatId, sbS.toString(), telegramClient);
@@ -1134,7 +1134,7 @@ public class TareaBotActions {
                 sb.append(" (").append(s.getFechaInicio().format(FORMATO_FECHA_COMPLETO))
                   .append(" -> ").append(s.getFechaFin().format(FORMATO_FECHA_COMPLETO)).append(")");
             }
-            sb.append(Boolean.TRUE.equals(s.getActivo()) ? " [Activo]" : " [Inactivo]");
+            sb.append(s.getEstado() != null ? " [" + s.getEstado() + "]" : "");
             sb.append("\n");
         }
         sb.append("\nEscribe el ID del sprint que deseas modificar:");
@@ -1198,7 +1198,7 @@ public class TareaBotActions {
         if (sprint.getFechaFin() != null) {
             detalle.append("Fin: ").append(sprint.getFechaFin().format(FORMATO_FECHA_COMPLETO)).append("\n");
         }
-        detalle.append("Activo: ").append(Boolean.TRUE.equals(sprint.getActivo()) ? "Si" : "No").append("\n\n");
+        detalle.append("Estado: ").append(sprint.getEstado() != null ? sprint.getEstado() : "—").append("\n\n");
         detalle.append("Que campo deseas editar?\n1. Nombre\n2. Fecha inicio\n3. Fecha fin");
         BotHelper.sendMessageToTelegram(chatId, detalle.toString(), telegramClient);
     }
@@ -1308,7 +1308,6 @@ public class TareaBotActions {
 
     private void procesarConfirmacionModificarSprint(ConversationState estado) {
         String texto = textoMensaje.trim().toLowerCase();
-        Sprint sprintActual = (Sprint) estado.getDato("sprintActual");
         Long idSprint = (Long) estado.getDato("idSprint");
 
         if (texto.equals("si") || texto.equals("sí")) {

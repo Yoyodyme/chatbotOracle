@@ -17,11 +17,11 @@ import { getSprints } from "../api/sprints";
  * @returns {'ACTIVO'|'FUTURO'|'PASADO'}
  */
 export function deriveSprintStatus(sprint) {
-  if (sprint.activo) return "ACTIVO";
+  if (sprint.estado) return sprint.estado;
+  // fallback for rows that predate the ESTADO column
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  if (sprint.fechaInicio && new Date(sprint.fechaInicio) > today)
-    return "FUTURO";
+  if (sprint.fechaInicio && new Date(sprint.fechaInicio) > today) return "FUTURO";
   return "PASADO";
 }
 

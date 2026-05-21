@@ -29,3 +29,7 @@ export function updateSprint(id, data) {
  */
 export const getTareasBySprint = (idSprint) =>
   apiFetch(`/api/tareas/sprint/${idSprint}`);
+
+export function deleteSprint(id) {
+  return apiFetch(`/api/sprints/${id}`, { method: "DELETE" });
+}

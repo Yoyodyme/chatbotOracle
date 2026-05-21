@@ -11,6 +11,7 @@
 
 import React, { useEffect, useState } from "react";
 import { apiFetch } from "../../api/client";
+import { updateSprint } from "../../api/sprints";
 import { deriveSprintStatus } from "../../hooks/useSprints";
 import Skeleton from "../shared/Skeleton";
 import { StatusBadge, PriorityBadge } from "../tasks/TaskBadge";
@@ -102,12 +103,38 @@ function SkeletonTaskRows() {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function SprintDetailPanel({ sprint, onClose }) {
+const STATUS_OPTIONS = ["ACTIVO", "FUTURO", "PASADO"];
+
+const STATUS_CFG = {
+  ACTIVO: { bg: "var(--accent-soft)", border: "rgba(6,111,204,0.25)", color: "var(--accent)", dot: "var(--accent)" },
+  FUTURO: { bg: "#f1efe8", border: "rgba(141,141,141,0.3)", color: "#5f5e5a", dot: "#888780" },
+  PASADO: { bg: "#f5c4b3", border: "rgba(153,60,29,0.35)", color: "#712b13", dot: "#993c1d" },
+};
+
+export default function SprintDetailPanel({ sprint, onClose, onStatusChange }) {
   const [tareas, setTareas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [localEstado, setLocalEstado] = useState(
+    sprint.estado ?? deriveSprintStatus(sprint),
+  );
+  const [showPicker, setShowPicker] = useState(false);
+  const [savingStatus, setSavingStatus] = useState(false);
 
-  const status = deriveSprintStatus(sprint);
+  const status = localEstado;
+
+  async function handlePickStatus(newEstado) {
+    if (newEstado === localEstado || savingStatus) return;
+    setSavingStatus(true);
+    try {
+      await updateSprint(sprint.idSprint, { ...sprint, estado: newEstado });
+      setLocalEstado(newEstado);
+      onStatusChange?.(newEstado);
+    } finally {
+      setSavingStatus(false);
+      setShowPicker(false);
+    }
+  }
 
   useEffect(() => {
     if (!sprint?.idSprint) return;
@@ -131,14 +158,17 @@ export default function SprintDetailPanel({ sprint, onClose }) {
     };
   }, [sprint.idSprint]);
 
-  // Close on Escape
+  // Close modal on Escape; close picker on Escape (before closing modal)
   useEffect(() => {
     const handler = (e) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        if (showPicker) { setShowPicker(false); }
+        else { onClose(); }
+      }
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [onClose]);
+  }, [onClose, showPicker]);
 
   const total = tareas.length;
   const done = tareas.filter((t) => {
@@ -301,9 +331,7 @@ export default function SprintDetailPanel({ sprint, onClose }) {
       {/* Header */}
       <div style={S.header}>
         <div>
-          <div style={S.sub}>
-            idSprint: {sprint.idSprint} · activo: {String(sprint.activo)}
-          </div>
+          <div style={S.sub}>idSprint: {sprint.idSprint}</div>
           <div style={S.title}>{sprint.nombre}</div>
         </div>
         <button
@@ -327,8 +355,81 @@ export default function SprintDetailPanel({ sprint, onClose }) {
       <div style={S.metaGrid}>
         <div>
           <div style={S.metaLabel}>Status</div>
-          <div style={S.metaValue}>
-            <StatusPill status={status} />
+          <div style={{ ...S.metaValue, position: "relative" }}>
+            <button
+              onClick={() => setShowPicker((v) => !v)}
+              disabled={savingStatus}
+              style={{
+                all: "unset",
+                cursor: savingStatus ? "not-allowed" : "pointer",
+                opacity: savingStatus ? 0.6 : 1,
+              }}
+              title="Change status"
+            >
+              <StatusPill status={status} />
+            </button>
+            {showPicker && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 6px)",
+                  left: 0,
+                  zIndex: 100,
+                  background: "var(--bg-surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-md)",
+                  boxShadow: "var(--shadow-md)",
+                  padding: "6px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 4,
+                  minWidth: 120,
+                }}
+              >
+                {STATUS_OPTIONS.map((opt) => {
+                  const cfg = STATUS_CFG[opt];
+                  const isActive = opt === localEstado;
+                  return (
+                    <button
+                      key={opt}
+                      onClick={() => handlePickStatus(opt)}
+                      style={{
+                        all: "unset",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 5,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        padding: "4px 9px",
+                        borderRadius: 8,
+                        background: isActive ? cfg.bg : "transparent",
+                        border: isActive ? `1px solid ${cfg.border}` : "1px solid transparent",
+                        color: isActive ? cfg.color : "var(--text-secondary)",
+                        cursor: "pointer",
+                        transition: "background 80ms",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive) e.currentTarget.style.background = "var(--bg-hover)";
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) e.currentTarget.style.background = "transparent";
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: "50%",
+                          background: cfg.dot,
+                          flexShrink: 0,
+                        }}
+                      />
+                      {opt.charAt(0) + opt.slice(1).toLowerCase()}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
         <div>
@@ -359,9 +460,7 @@ export default function SprintDetailPanel({ sprint, onClose }) {
       </div>
 
       {/* Task table */}
-      <div style={S.sectionTitle}>
-        Tasks — GET /api/tareas/sprint/{sprint.idSprint}
-      </div>
+      <div style={S.sectionTitle}>Tasks</div>
 
       {error && (
         <p style={{ fontSize: 12, color: "var(--danger)", padding: "8px 0" }}>
@@ -436,9 +535,6 @@ export default function SprintDetailPanel({ sprint, onClose }) {
         </div>
       )}
 
-      <div style={S.apiNote}>
-        PUT /api/sprints/{sprint.idSprint} to update this sprint
-      </div>
     </div>
     </div>
   );

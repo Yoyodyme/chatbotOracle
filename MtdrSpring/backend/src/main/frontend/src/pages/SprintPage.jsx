@@ -1,359 +1,3 @@
-// import React, { useState, useEffect } from "react";
-// import SprintList from "../components/sprint/SprintList";
-// import { getSprints, createSprint, updateSprint } from "../api/sprints";
-// import "../styles/animations.css";
-
-// function ModalNuevoSprint({ onClose, onCrear }) {
-//   const [form, setForm] = useState({
-//     nombre: "",
-//     fechaInicio: "",
-//     fechaFin: "",
-//   });
-//   const [error, setError] = useState("");
-//   const [guardando, setGuardando] = useState(false);
-
-//   useEffect(() => {
-//     const handler = (e) => {
-//       if (e.key === "Escape") onClose();
-//     };
-//     document.addEventListener("keydown", handler);
-//     return () => document.removeEventListener("keydown", handler);
-//   }, [onClose]);
-
-//   async function handleSubmit(e) {
-//     e.preventDefault();
-//     if (!form.nombre.trim()) {
-//       setError("Sprint name is required.");
-//       return;
-//     }
-//     if (!form.fechaInicio || !form.fechaFin) {
-//       setError("Please provide start and end dates.");
-//       return;
-//     }
-//     if (new Date(form.fechaFin) <= new Date(form.fechaInicio)) {
-//       setError("End date must be after start date.");
-//       return;
-//     }
-//     setError("");
-//     setGuardando(true);
-//     try {
-//       await onCrear({
-//         nombre: form.nombre.trim(),
-//         fechaInicio: form.fechaInicio,
-//         fechaFin: form.fechaFin,
-//         activo: false,
-//       });
-//     } finally {
-//       setGuardando(false);
-//     }
-//   }
-
-//   const estiloOverlay = {
-//     position: "fixed",
-//     inset: 0,
-//     backgroundColor: "rgba(0,0,0,0.5)",
-//     zIndex: 10000,
-//     display: "flex",
-//     alignItems: "center",
-//     justifyContent: "center",
-//     padding: "16px",
-//   };
-
-//   const estiloPanel = {
-//     backgroundColor: "var(--bg-surface)",
-//     border: "1px solid var(--border)",
-//     borderRadius: "var(--radius-lg)",
-//     padding: "28px",
-//     width: "100%",
-//     maxWidth: "440px",
-//     boxShadow: "var(--shadow-md)",
-//     animation: "scaleIn 150ms ease-out both",
-//   };
-
-//   const estiloTitulo = {
-//     fontFamily: "var(--font-heading)",
-//     fontWeight: 600,
-//     fontSize: "1.125rem",
-//     color: "var(--text-primary)",
-//     marginBottom: "20px",
-//   };
-
-//   const estiloLabel = {
-//     display: "block",
-//     fontSize: "0.8125rem",
-//     fontWeight: 500,
-//     color: "var(--text-secondary)",
-//     marginBottom: "6px",
-//     fontFamily: "var(--font-body)",
-//   };
-
-//   const estiloInputBase = {
-//     fontFamily: "var(--font-body)",
-//     fontSize: "0.875rem",
-//     color: "var(--text-primary)",
-//     backgroundColor: "var(--bg-surface)",
-//     border: "1px solid var(--border)",
-//     borderRadius: "var(--radius-md)",
-//     padding: "8px 12px",
-//     width: "100%",
-//     outline: "none",
-//     boxSizing: "border-box",
-//   };
-
-//   const estiloGrupo = { marginBottom: "16px" };
-
-//   const estiloFila2 = {
-//     display: "grid",
-//     gridTemplateColumns: "1fr 1fr",
-//     gap: "12px",
-//   };
-
-//   const estiloError = {
-//     color: "var(--danger)",
-//     fontSize: "0.8125rem",
-//     marginBottom: "12px",
-//   };
-
-//   const estiloAcciones = {
-//     display: "flex",
-//     justifyContent: "flex-end",
-//     gap: "10px",
-//     marginTop: "24px",
-//   };
-
-//   return (
-//     <div style={estiloOverlay} onClick={onClose}>
-//       <div
-//         style={estiloPanel}
-//         onClick={(e) => e.stopPropagation()}
-//         role="dialog"
-//         aria-modal="true"
-//       >
-//         <h2 style={estiloTitulo}>New Sprint</h2>
-//         <form onSubmit={handleSubmit}>
-//           <div style={estiloGrupo}>
-//             <label style={estiloLabel} htmlFor="sp-nombre">
-//               Name *
-//             </label>
-//             <input
-//               id="sp-nombre"
-//               type="text"
-//               placeholder="Sprint 1"
-//               value={form.nombre}
-//               onChange={(e) =>
-//                 setForm((p) => ({ ...p, nombre: e.target.value }))
-//               }
-//               autoFocus
-//               style={estiloInputBase}
-//               onFocus={(e) => {
-//                 e.currentTarget.style.borderColor = "var(--accent)";
-//                 e.currentTarget.style.boxShadow =
-//                   "0 0 0 3px rgba(6,111,204,0.18)";
-//               }}
-//               onBlur={(e) => {
-//                 e.currentTarget.style.borderColor = "var(--border)";
-//                 e.currentTarget.style.boxShadow = "none";
-//               }}
-//             />
-//           </div>
-//           <div style={estiloFila2}>
-//             <div style={estiloGrupo}>
-//               <label style={estiloLabel} htmlFor="sp-inicio">
-//                 Start *
-//               </label>
-//               <input
-//                 id="sp-inicio"
-//                 type="date"
-//                 value={form.fechaInicio}
-//                 onChange={(e) =>
-//                   setForm((p) => ({ ...p, fechaInicio: e.target.value }))
-//                 }
-//                 style={{ ...estiloInputBase, colorScheme: "light" }}
-//                 onFocus={(e) => {
-//                   e.currentTarget.style.borderColor = "var(--accent)";
-//                 }}
-//                 onBlur={(e) => {
-//                   e.currentTarget.style.borderColor = "var(--border)";
-//                 }}
-//               />
-//             </div>
-//             <div style={estiloGrupo}>
-//               <label style={estiloLabel} htmlFor="sp-fin">
-//                 End *
-//               </label>
-//               <input
-//                 id="sp-fin"
-//                 type="date"
-//                 value={form.fechaFin}
-//                 onChange={(e) =>
-//                   setForm((p) => ({ ...p, fechaFin: e.target.value }))
-//                 }
-//                 style={{ ...estiloInputBase, colorScheme: "light" }}
-//                 onFocus={(e) => {
-//                   e.currentTarget.style.borderColor = "var(--accent)";
-//                 }}
-//                 onBlur={(e) => {
-//                   e.currentTarget.style.borderColor = "var(--border)";
-//                 }}
-//               />
-//             </div>
-//           </div>
-//           {error && <p style={estiloError}>{error}</p>}
-//           <div style={estiloAcciones}>
-//             <button
-//               type="button"
-//               onClick={onClose}
-//               style={{
-//                 padding: "9px 16px",
-//                 borderRadius: "var(--radius-md)",
-//                 fontSize: "0.875rem",
-//                 fontWeight: 500,
-//                 color: "var(--text-secondary)",
-//                 background: "transparent",
-//                 border: "1px solid var(--border)",
-//                 cursor: "pointer",
-//               }}
-//               onMouseEnter={(e) => {
-//                 e.currentTarget.style.backgroundColor = "var(--bg-hover)";
-//                 e.currentTarget.style.color = "var(--text-primary)";
-//               }}
-//               onMouseLeave={(e) => {
-//                 e.currentTarget.style.backgroundColor = "transparent";
-//                 e.currentTarget.style.color = "var(--text-secondary)";
-//               }}
-//             >
-//               Cancel
-//             </button>
-//             <button
-//               type="submit"
-//               disabled={guardando}
-//               style={{
-//                 padding: "9px 20px",
-//                 borderRadius: "var(--radius-md)",
-//                 fontSize: "0.875rem",
-//                 fontWeight: 600,
-//                 color: "#fff",
-//                 background: "var(--accent)",
-//                 border: "none",
-//                 cursor: guardando ? "not-allowed" : "pointer",
-//                 opacity: guardando ? 0.7 : 1,
-//               }}
-//               onMouseEnter={(e) => {
-//                 if (!guardando) e.currentTarget.style.opacity = "0.85";
-//               }}
-//               onMouseLeave={(e) => {
-//                 if (!guardando) e.currentTarget.style.opacity = "1";
-//               }}
-//             >
-//               {guardando ? "Creating…" : "Create Sprint"}
-//             </button>
-//           </div>
-//         </form>
-//       </div>
-//     </div>
-//   );
-// }
-
-// export default function SprintPage() {
-//   const [sprints, setSprints] = useState([]);
-//   const [loading, setLoading] = useState(true);
-//   const [error, setError] = useState(null);
-//   const [showModal, setShowModal] = useState(false);
-
-//   async function cargarSprints() {
-//     setLoading(true);
-//     setError(null);
-//     try {
-//       const data = await getSprints();
-//       setSprints(data ?? []);
-//     } catch (err) {
-//       setError(err);
-//     } finally {
-//       setLoading(false);
-//     }
-//   }
-
-//   useEffect(() => {
-//     cargarSprints();
-//   }, []);
-
-//   async function handleCrear(sprintData) {
-//     const nuevo = await createSprint(sprintData);
-//     setSprints((prev) => [...prev, nuevo]);
-//     setShowModal(false);
-//   }
-
-//   async function handleCompletar(id) {
-//     const sprint = sprints.find((s) => s.idSprint === id);
-//     if (!sprint) return;
-//     const actualizado = await updateSprint(id, { ...sprint, activo: false });
-//     setSprints((prev) =>
-//       prev.map((s) => (s.idSprint === id ? actualizado : s)),
-//     );
-//   }
-
-//   const estiloPage = { display: "flex", flexDirection: "column", gap: "24px" };
-
-//   const estiloTitulo = {
-//     fontFamily: "var(--font-heading)",
-//     fontWeight: 600,
-//     fontSize: "1.375rem",
-//     color: "var(--text-primary)",
-//     letterSpacing: "-0.01em",
-//   };
-
-//   if (loading) {
-//     return (
-//       <div style={estiloPage}>
-//         <h1 style={estiloTitulo}>Sprints</h1>
-//         <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
-//           Loading sprints…
-//         </p>
-//       </div>
-//     );
-//   }
-
-//   if (error) {
-//     return (
-//       <div style={estiloPage}>
-//         <h1 style={estiloTitulo}>Sprints</h1>
-//         <p style={{ color: "var(--danger)", fontSize: "0.875rem" }}>
-//           Could not load sprints.{" "}
-//           <button
-//             onClick={cargarSprints}
-//             style={{
-//               color: "var(--accent)",
-//               background: "none",
-//               border: "none",
-//               cursor: "pointer",
-//               textDecoration: "underline",
-//             }}
-//           >
-//             Retry
-//           </button>
-//         </p>
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <div style={estiloPage}>
-//       <h1 style={estiloTitulo}>Sprints</h1>
-//       <SprintList
-//         sprints={sprints}
-//         onCreateSprint={() => setShowModal(true)}
-//         onCompleteSprint={handleCompletar}
-//       />
-//       {showModal && (
-//         <ModalNuevoSprint
-//           onClose={() => setShowModal(false)}
-//           onCrear={handleCrear}
-//         />
-//       )}
-//     </div>
-//   );
-// }
-
 /**
  * SprintPage — /sprints route
  *
@@ -376,8 +20,8 @@
 
 import React, { useState, useMemo, useCallback } from "react";
 import useSprints, { deriveSprintStatus } from "../hooks/useSprints";
-import { createSprint, updateSprint } from "../api/sprints";
-import SprintDetailPanel from "../components/sprint/SprintDetailPanel";
+import { createSprint, updateSprint, deleteSprint } from "../api/sprints";
+import SprintDetailPanel from "../components/sprint/SprintDetailModal";
 import ConfirmDialog from "../components/shared/ConfirmDialog";
 import Skeleton from "../components/shared/Skeleton";
 import EmptyState from "../components/shared/EmptyState";
@@ -792,24 +436,9 @@ function ChangeStatusModal({ count, onClose, onApply }) {
   const [picked, setPicked] = useState(null);
 
   const OPTIONS = [
-    {
-      status: "ACTIVO",
-      activo: true,
-      label: "Activo",
-      hint: "Sets activo: true",
-    },
-    {
-      status: "FUTURO",
-      activo: false,
-      label: "Futuro",
-      hint: "Sets activo: false · derived from dates",
-    },
-    {
-      status: "PASADO",
-      activo: false,
-      label: "Pasado",
-      hint: "Sets activo: false · derived from dates",
-    },
+    { status: "ACTIVO", label: "Activo" },
+    { status: "FUTURO", label: "Futuro" },
+    { status: "PASADO", label: "Pasado" },
   ];
 
   const CFG = {
@@ -888,36 +517,13 @@ function ChangeStatusModal({ count, onClose, onApply }) {
             marginBottom: 16,
           }}
         >
-          Applies to {count} sprint{count !== 1 ? "s" : ""}.{" "}
-          <span
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: 11,
-              background: "var(--bg-hover)",
-              padding: "1px 5px",
-              borderRadius: 3,
-            }}
-          >
-            activo
-          </span>{" "}
-          is the only field sent to{" "}
-          <span
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: 11,
-              background: "var(--bg-hover)",
-              padding: "1px 5px",
-              borderRadius: 3,
-            }}
-          >
-            PUT /api/sprints/{"{id}"}
-          </span>
-          . Display status is derived from dates on the frontend.
+          Applies to {count} sprint{count !== 1 ? "s" : ""}.
         </p>
         <div
           style={{
             display: "flex",
-            flexDirection: "column",
+            flexDirection: "row",
+            flexWrap: "wrap",
             gap: 8,
             marginBottom: 20,
           }}
@@ -926,64 +532,39 @@ function ChangeStatusModal({ count, onClose, onApply }) {
             const cfg = CFG[opt.status];
             const isSelected = picked?.status === opt.status;
             return (
-              <div
+              <span
                 key={opt.status}
                 onClick={() => setPicked(opt)}
                 style={{
-                  display: "flex",
+                  display: "inline-flex",
                   alignItems: "center",
-                  gap: 10,
-                  padding: "9px 12px",
-                  borderRadius: "var(--radius-md)",
+                  gap: 6,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  padding: "5px 13px",
+                  borderRadius: 999,
                   cursor: "pointer",
+                  background: cfg.bg,
+                  color: cfg.color,
                   border: isSelected
-                    ? `1px solid ${cfg.border}`
-                    : "1px solid var(--border)",
-                  background: isSelected ? cfg.bg : "transparent",
-                  transition: "background 100ms, border-color 100ms",
+                    ? `2px solid ${cfg.dot}`
+                    : `1px solid ${cfg.border}`,
+                  boxShadow: isSelected ? `0 0 0 3px ${cfg.bg}` : "none",
+                  transition: "border 100ms, box-shadow 100ms",
+                  userSelect: "none",
                 }}
               >
-                <input
-                  type="radio"
-                  name="status-pick"
-                  readOnly
-                  checked={isSelected}
-                  style={{ accentColor: "var(--accent)", flexShrink: 0 }}
+                <span
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: "50%",
+                    background: cfg.dot,
+                    flexShrink: 0,
+                  }}
                 />
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 5,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    padding: "2px 9px",
-                    borderRadius: 10,
-                    background: cfg.bg,
-                    border: `1px solid ${cfg.border}`,
-                    color: cfg.color,
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: "50%",
-                      background: cfg.dot,
-                    }}
-                  />
-                  {opt.label}
-                </span>
-                <span
-                  style={{
-                    fontSize: 11,
-                    color: "var(--text-muted)",
-                    marginLeft: "auto",
-                  }}
-                >
-                  {opt.hint}
-                </span>
-              </div>
+                {opt.label}
+              </span>
             );
           })}
         </div>
@@ -1011,7 +592,7 @@ function ChangeStatusModal({ count, onClose, onApply }) {
           </button>
           <button
             disabled={!picked}
-            onClick={() => picked && onApply(picked.activo)}
+            onClick={() => picked && onApply(picked.status)}
             style={{
               padding: "9px 20px",
               borderRadius: "var(--radius-md)",
@@ -1110,10 +691,8 @@ export default function SprintPage() {
 
   const handleRowClick = useCallback(
     (sprint) => {
-      if (selected.size > 0) {
-        toggleOne(sprint.idSprint);
-        return;
-      }
+      toggleOne(sprint.idSprint);
+      if (selected.size > 0) return;
       setActiveSprint((prev) =>
         prev?.idSprint === sprint.idSprint ? null : sprint,
       );
@@ -1145,7 +724,7 @@ export default function SprintPage() {
     }
   }
 
-  async function handleApplyStatus(activo) {
+  async function handleApplyStatus(estado) {
     const ids = [...selected];
     setShowStatus(false);
     clearSelection();
@@ -1154,12 +733,12 @@ export default function SprintPage() {
         ids.map((id) => {
           const sprint = sprints.find((s) => s.idSprint === id);
           if (!sprint) return Promise.resolve();
-          return updateSprint(id, { ...sprint, activo });
+          return updateSprint(id, { ...sprint, estado });
         }),
       );
       // Optimistic update
       setSprints((prev) =>
-        prev.map((s) => (ids.includes(s.idSprint) ? { ...s, activo } : s)),
+        prev.map((s) => (ids.includes(s.idSprint) ? { ...s, estado } : s)),
       );
       addToast({
         id: `st-${Date.now()}`,
@@ -1175,18 +754,25 @@ export default function SprintPage() {
     }
   }
 
-  function handleDeleteConfirmed() {
-    // No DELETE /api/sprints/{id} endpoint exists yet.
-    // Inform the developer and close.
+  async function handleDeleteConfirmed() {
+    const ids = [...selected];
     setConfirmDelete(false);
     clearSelection();
-    addToast({
-      id: `nodl-${Date.now()}`,
-      message:
-        "DELETE /api/sprints/{id} not yet implemented on the backend. Add it to SprintController.java.",
-      type: "error",
-      duration: 6000,
-    });
+    try {
+      await Promise.all(ids.map((id) => deleteSprint(id)));
+      setSprints((prev) => prev.filter((s) => !ids.includes(s.idSprint)));
+      addToast({
+        id: `del-${Date.now()}`,
+        message: `${ids.length} sprint${ids.length !== 1 ? "s" : ""} deleted.`,
+        type: "success",
+      });
+    } catch {
+      addToast({
+        id: `err-${Date.now()}`,
+        message: "Error deleting sprint(s). Try again.",
+        type: "error",
+      });
+    }
   }
 
   // ── Shared input style ────────────────────────────────────────────────────
@@ -1266,15 +852,7 @@ export default function SprintPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {/* ── Page header ── */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-          flexWrap: "wrap",
-        }}
-      >
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <h1
           style={{
             fontFamily: "var(--font-heading)",
@@ -1291,8 +869,8 @@ export default function SprintPage() {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 8,
-            flexWrap: "wrap",
+            gap: 12,
+            flexWrap: "nowrap",
           }}
         >
           {/* Search */}
@@ -1343,6 +921,7 @@ export default function SprintPage() {
             onChange={(e) => setSort(e.target.value)}
             style={{
               ...inputStyle,
+              width: "auto",
               paddingRight: 28,
               cursor: "pointer",
               backgroundImage:
@@ -1605,7 +1184,23 @@ export default function SprintPage() {
                 </svg>
                 Sprint name
               </th>
-              <th style={thStyle}>Status</th>
+              <th style={thStyle}>
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ verticalAlign: -2, marginRight: 4 }}
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                </svg>
+                Status
+              </th>
               <th style={thStyle}>
                 <svg
                   width="12"
@@ -1626,8 +1221,54 @@ export default function SprintPage() {
                 </svg>
                 Dates
               </th>
-              <th style={{ ...thStyle, textAlign: "center" }}>Total</th>
-              <th style={{ ...thStyle, textAlign: "center" }}>Done</th>
+              <th style={{ ...thStyle, textAlign: "center" }}>
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                >
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M18 7H6l6 5-6 5h12" />
+                  </svg>
+                  Total
+                </span>
+              </th>
+              <th style={{ ...thStyle, textAlign: "center" }}>
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                >
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  Done
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -1845,7 +1486,18 @@ export default function SprintPage() {
       {activeSprint && !showCreate && !showStatus && (
         <SprintDetailPanel
           sprint={activeSprint}
-          onClose={() => setActiveSprint(null)}
+          onStatusChange={(newEstado) => {
+            setSprints((prev) =>
+              prev.map((s) =>
+                s.idSprint === activeSprint.idSprint ? { ...s, estado: newEstado } : s,
+              ),
+            );
+            setActiveSprint((prev) => (prev ? { ...prev, estado: newEstado } : prev));
+          }}
+          onClose={() => {
+            setActiveSprint(null);
+            clearSelection();
+          }}
         />
       )}
 
@@ -1868,8 +1520,8 @@ export default function SprintPage() {
       <ConfirmDialog
         open={confirmDelete}
         title="Delete sprint(s)?"
-        message={`You are about to delete ${selected.size} sprint${selected.size !== 1 ? "s" : ""}. Note: DELETE /api/sprints/{id} is not yet implemented — you will see an error toast until the backend endpoint is added.`}
-        confirmLabel="Delete anyway"
+        message={`You are about to delete ${selected.size} sprint${selected.size !== 1 ? "s" : ""}. This action cannot be undone.`}
+        confirmLabel="Delete"
         dangerous
         onConfirm={handleDeleteConfirmed}
         onCancel={() => setConfirmDelete(false)}
