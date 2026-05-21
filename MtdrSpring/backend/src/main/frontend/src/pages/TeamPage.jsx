@@ -154,6 +154,11 @@ export default function TeamPage() {
     margin: '0',
   };
 
+  const EXCLUIDOS = ['luis martinez', 'ana garcia'];
+  const usuariosFiltrados = usuarios.filter(
+    (u) => !EXCLUIDOS.includes((u.nombreCompleto || '').toLowerCase())
+  );
+
   if (loading) {
     return (
       <div style={estiloPage}>
@@ -175,11 +180,6 @@ export default function TeamPage() {
       </div>
     );
   }
-
-  const EXCLUIDOS = ['luis martinez', 'ana garcia'];
-  const usuariosFiltrados = usuarios.filter(
-    (u) => !EXCLUIDOS.includes((u.nombreCompleto || '').toLowerCase())
-  );
 
   const usuariosConEquipo = new Set();
   const secciones = equipos.map((equipo) => {
