@@ -31,12 +31,15 @@ export default function AppShell({ tituloPagina }) {
     paddingTop: ALTO_TOPBAR,
     flex: 1,
     minWidth: 0,
+    minHeight: '100vh',
+    backgroundColor: '#f8fafc',
     transition: 'margin-left 250ms cubic-bezier(0.4, 0, 0.2, 1)',
   };
 
   const estiloContenido = {
-    padding: '24px',
+    padding: '0 24px 24px',
     minHeight: `calc(100vh - ${ALTO_TOPBAR}px)`,
+    backgroundColor: '#f8fafc',
   };
 
   return (

@@ -65,7 +65,7 @@ export default function SprintList({ sprints = [], onCreateSprint, onCompleteSpr
             onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
           >
             <span style={{ fontSize: '16px', lineHeight: 1 }}>+</span>
-            Nuevo Sprint
+            New Sprint
           </button>
         )}
       </div>
@@ -73,7 +73,7 @@ export default function SprintList({ sprints = [], onCreateSprint, onCompleteSpr
       {ordenados.length === 0 ? (
         <div style={estiloVacio}>
           <div style={{ fontSize: '40px', marginBottom: '12px' }}>🏃</div>
-          <p>No hay sprints. Crea el primero.</p>
+          <p>No sprints yet. Create the first one.</p>
         </div>
       ) : (
         ordenados.map((sprint) => (

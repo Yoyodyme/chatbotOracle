@@ -13,10 +13,10 @@ export default function App() {
     <Routes>
       <Route path="/" element={<AppShell />}>
         <Route index element={<Dashboard />} />
-        <Route path="board" element={<KanbanPage />} />
+        <Route path="board"   element={<KanbanPage />} />
         <Route path="backlog" element={<BacklogPage />} />
         <Route path="sprints" element={<SprintPage />} />
-        <Route path="team" element={<TeamPage />} />
+        <Route path="team"    element={<TeamPage />} />
       </Route>
     </Routes>
   );

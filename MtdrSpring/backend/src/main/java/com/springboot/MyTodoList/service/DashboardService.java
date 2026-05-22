@@ -349,6 +349,7 @@ public class DashboardService {
     private List<Sprint> getSprintsOrdenados() {
         return sprintRepository.findAll().stream()
                 .filter(s -> s.getFechaInicio() != null)
+                .filter(s -> s.getNombre() != null && !s.getNombre().isBlank())
                 .sorted(Comparator.comparing(Sprint::getFechaInicio))
                 .collect(Collectors.toList());
     }
@@ -369,7 +370,7 @@ public class DashboardService {
             }
             for (Map.Entry<String, Long> e : countPorUsuario.entrySet()) {
                 Map<String, Object> item = new LinkedHashMap<>();
-                item.put("sprint", sprint.getNombre());
+                item.put("sprint", sprint.getNombre() != null ? sprint.getNombre() : "Sin nombre");
                 item.put("usuario", e.getKey());
                 item.put("tasksCompletadas", e.getValue());
                 result.add(item);
@@ -393,7 +394,7 @@ public class DashboardService {
             }
             for (Map.Entry<String, Double> e : horasPorUsuario.entrySet()) {
                 Map<String, Object> item = new LinkedHashMap<>();
-                item.put("sprint", sprint.getNombre());
+                item.put("sprint", sprint.getNombre() != null ? sprint.getNombre() : "Sin nombre");
                 item.put("usuario", e.getKey());
                 item.put("horasReales", Math.round(e.getValue() * 10.0) / 10.0);
                 result.add(item);
@@ -425,7 +426,7 @@ public class DashboardService {
             long porcentaje = totalTareas > 0 ? (completadas * 100 / totalTareas) : 0;
 
             Map<String, Object> item = new LinkedHashMap<>();
-            item.put("sprint", sprint.getNombre());
+            item.put("sprint", sprint.getNombre() != null ? sprint.getNombre() : "Sin nombre");
             item.put("estado", getEstadoSprint(sprint));
             item.put("totalTareas", totalTareas);
             item.put("completadas", completadas);
@@ -450,12 +451,67 @@ public class DashboardService {
             }
             for (Map.Entry<String, Integer> e : countPorUsuario.entrySet()) {
                 Map<String, Object> item = new LinkedHashMap<>();
-                item.put("sprint", sprint.getNombre());
+                item.put("sprint", sprint.getNombre() != null ? sprint.getNombre() : "Sin nombre");
                 item.put("usuario", e.getKey());
                 item.put("tareas", e.getValue());
                 result.add(item);
             }
         }
+        return result;
+    }
+
+    public Map<String, Object> getKpiPersonal(Long idUsuario) {
+        Long idDone = getIdEstatusDone();
+        List<Sprint> sprints = getSprintsOrdenados();
+        List<Tarea> tareasFiltradas = tareaRepository.findAll().stream()
+                .filter(t -> t.getUsuarioAsignado() != null
+                        && idUsuario.equals(t.getUsuarioAsignado().getIdUsuario()))
+                .collect(Collectors.toList());
+
+        List<Map<String, Object>> kpiSprint   = new ArrayList<>();
+        List<Map<String, Object>> horasSprint  = new ArrayList<>();
+        List<Map<String, Object>> contribSprint = new ArrayList<>();
+
+        for (Sprint sprint : sprints) {
+            List<Tarea> ts = tareasFiltradas.stream()
+                    .filter(t -> t.getSprint() != null
+                            && sprint.getIdSprint().equals(t.getSprint().getIdSprint()))
+                    .collect(Collectors.toList());
+            if (ts.isEmpty()) continue;
+
+            String nombre    = getNombreCorto(ts.get(0).getUsuarioAsignado());
+            String sprintNom = sprint.getNombre() != null ? sprint.getNombre() : "Sin nombre";
+
+            long completadas = ts.stream()
+                    .filter(t -> t.getEstatus() != null && idDone.equals(t.getEstatus().getIdEstatus()))
+                    .count();
+            double horasReales = ts.stream()
+                    .mapToDouble(t -> t.getHorasReales() != null ? t.getHorasReales() : 0.0)
+                    .sum();
+
+            Map<String, Object> kpi = new LinkedHashMap<>();
+            kpi.put("sprint", sprintNom);
+            kpi.put("usuario", nombre);
+            kpi.put("tasksCompletadas", completadas);
+            kpiSprint.add(kpi);
+
+            Map<String, Object> horas = new LinkedHashMap<>();
+            horas.put("sprint", sprintNom);
+            horas.put("usuario", nombre);
+            horas.put("horasReales", Math.round(horasReales * 10.0) / 10.0);
+            horasSprint.add(horas);
+
+            Map<String, Object> contrib = new LinkedHashMap<>();
+            contrib.put("sprint", sprintNom);
+            contrib.put("usuario", nombre);
+            contrib.put("tareas", ts.size());
+            contribSprint.add(contrib);
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("kpiPorSprint",             kpiSprint);
+        result.put("horasPorSprint",           horasSprint);
+        result.put("contribucionesPorSprint",  contribSprint);
         return result;
     }
 

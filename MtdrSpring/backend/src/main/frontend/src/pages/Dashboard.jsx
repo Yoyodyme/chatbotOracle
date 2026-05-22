@@ -4,504 +4,506 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   BarChart, Bar, ResponsiveContainer,
 } from 'recharts';
-import { fetchTodoDashboard } from '../api/dashboard';
+import { apiFetch } from '../api/client';
 
-// DevOps Modern Palette: Indigo, Cyan, Emerald, Violet
-const ACCENT           = '#6366f1';
-const ACCENT_SOFT      = '#4f46e5';
-const ACCENT_LIGHTER   = '#e0e7ff';
-const GRID_COLOR       = '#1e293b';
-const TICK_COLOR       = '#64748b';
-const COLORS_PIE       = ['#6366f1', '#06b6d4', '#10b981', '#8b5cf6', '#ec4899', '#f59e0b'];
-const COLORS_SPRINT    = ['#6366f1', '#06b6d4', '#10b981', '#8b5cf6', '#ec4899'];
-const EJE_TICK         = { fontSize: 11, fill: TICK_COLOR };
+const ACENTO        = '#066FCC';
+const ACENTO_SOFT   = '#c5d9f0';
+const COLORES_SPRINTS = ['#066FCC', '#2d7d46', '#f59e0b', '#a855f7', '#06b6d4'];
+const EJE_TICK      = { fontSize: 11, fill: '#8d8d8d' };
 
-/* ── Sub-componentes ─────────────────────────────────────────────────────── */
+const TOOLTIP = {
+  backgroundColor: '#1e293b',
+  border: '1px solid #334155',
+  color: '#f1f5f9',
+  borderRadius: 8,
+  fontSize: 12,
+};
 
-function Card({ children, style = {} }) {
-  return (
-    <div style={{
-      backgroundColor: 'rgba(15, 23, 42, 0.5)',
-      backdropFilter: 'blur(8px)',
-      border: '1px solid rgba(71, 85, 105, 0.3)',
-      borderRadius: '12px',
-      padding: '20px 22px',
-      boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
-      minWidth: 0,
-      ...style,
-    }}>
-      {children}
-    </div>
-  );
-}
+const CARD = {
+  backgroundColor: '#1e293b',
+  border: '1px solid #334155',
+  borderRadius: 'var(--radius-xl)',
+  padding: '20px 22px',
+  boxShadow: 'var(--shadow-sm)',
+};
 
-function Label({ children }) {
-  return (
-    <div style={{
-      fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
-      letterSpacing: '0.07em', color: '#94a3b8', marginBottom: 3,
-    }}>
-      {children}
-    </div>
-  );
-}
-
-function Title({ children, mb = 16 }) {
-  return (
-    <div style={{ fontSize: 15, fontWeight: 600, color: '#f1f5f9', marginBottom: mb }}>
-      {children}
-    </div>
-  );
-}
-
-function KpiCard({ label, valor, suffix = '' }) {
-  return (
-    <Card>
-      <Label>{label}</Label>
-      <div style={{ fontSize: 48, fontWeight: 700, lineHeight: 1.1, color: ACCENT, letterSpacing: '-0.04em', marginTop: 6 }}>
-        {valor}
-        {suffix && <span style={{ fontSize: 22, fontWeight: 600, marginLeft: 3 }}>{suffix}</span>}
-      </div>
-    </Card>
-  );
+function pivotarDatos(datos, campoValor) {
+  if (!datos || datos.length === 0) return { pivotado: [], sprints: [] };
+  const sprints  = [...new Set(datos.map(d => d.sprint).filter(Boolean))].sort();
+  const usuarios = [...new Set(datos.map(d => d.usuario).filter(Boolean))];
+  const pivotado = usuarios.map(usuario => {
+    const fila = { usuario };
+    sprints.forEach(sprint => {
+      const enc = datos.find(d => d.usuario === usuario && d.sprint === sprint);
+      fila[sprint] = enc ? (Number(enc[campoValor]) || 0) : 0;
+    });
+    return fila;
+  });
+  return { pivotado, sprints };
 }
 
 function GaugeSprint({ pct, completadas, restantes, nombreSprint }) {
-  const seguro = Math.min(100, Math.max(0, Number(pct) || 0));
-  const datosGauge = [{ value: seguro }, { value: 100 - seguro }];
+  const safe = Math.min(100, Math.max(0, Number(pct) || 0));
+  const data = [{ value: safe }, { value: 100 - safe }];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <div style={{ position: 'relative', height: 158 }}>
-        <PieChart width={280} height={158}>
-          <Pie
-            data={datosGauge}
-            startAngle={180} endAngle={0}
-            cx={140} cy={143}
-            innerRadius={84} outerRadius={126}
-            dataKey="value" stroke="none"
-          >
-            <Cell fill={ACCENT} />
-            <Cell fill='#334155' />
-          </Pie>
-        </PieChart>
-        <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0,
-          textAlign: 'center', lineHeight: 1,
-        }}>
-          <div style={{ fontSize: 42, fontWeight: 700, color: '#f1f5f9', letterSpacing: '-0.03em' }}>
-            {seguro}%
-          </div>
+      <div style={{ position: 'relative', height: 160, width: '100%', maxWidth: 320 }}>
+        <ResponsiveContainer width="100%" height={160}>
+          <PieChart>
+            <Pie
+              data={data}
+              startAngle={180} endAngle={0}
+              cx="50%" cy="100%"
+              innerRadius={78} outerRadius={110}
+              dataKey="value" stroke="none"
+            >
+              <Cell fill={ACENTO} />
+              <Cell fill="#334155" />
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+        <div style={{ position: 'absolute', bottom: 2, left: 0, right: 0, textAlign: 'center' }}>
+          <div style={{ fontSize: 34, fontWeight: 700, color: ACENTO, lineHeight: 1 }}>{safe}%</div>
           <div style={{ fontSize: 12, color: '#cbd5e1', marginTop: 4 }}>
             {nombreSprint
-              ? <><strong>{nombreSprint}</strong> — {completadas} completed</>
+              ? <><strong style={{ color: '#f1f5f9' }}>{nombreSprint}</strong> — {completadas} completed</>
               : 'No active sprint'}
           </div>
         </div>
       </div>
+      <div style={{ marginTop: 10, fontSize: 12, color: '#94a3b8' }}>{restantes} remaining</div>
     </div>
   );
 }
 
-function BadgeStatus({ status }) {
-  const statusMap = {
-    PASADO: { label: 'Past', bg: '#1e3a5f', color: '#93c5fd' },
-    ACTIVO: { label: 'Active', bg: '#064e3b', color: '#86efac' },
-    FUTURO: { label: 'Upcoming', bg: '#1e3a8a', color: '#93c5fd' },
-  };
-  const s = statusMap[status] ?? statusMap.FUTURO;
+function BadgeEstado({ estado }) {
+  const cfg = {
+    PASADO: { label: 'Past',   bg: 'var(--bg-base)',  color: '#94a3b8' },
+    ACTIVO: { label: 'Active', bg: '#d1fae5',         color: '#065f46'           },
+    FUTURO: { label: 'Future', bg: ACENTO_SOFT,       color: ACENTO              },
+  }[estado] ?? { label: estado, bg: 'var(--bg-base)', color: '#94a3b8' };
   return (
     <span style={{
-      fontSize: 10, fontWeight: 600, padding: '4px 10px',
-      borderRadius: 99, background: s.bg, color: s.color,
-      textTransform: 'uppercase', letterSpacing: '0.05em',
-      border: `1px solid ${s.color}33`,
+      display: 'inline-flex', alignItems: 'center',
+      borderRadius: 999, padding: '2px 10px',
+      fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',
+      backgroundColor: cfg.bg, color: cfg.color, border: `1px solid ${cfg.color}55`,
     }}>
-      {s.label}
+      {cfg.label}
     </span>
   );
 }
 
-/* ── Helpers ─────────────────────────────────────────────────────────────── */
-
-function pivotarDatos(datos, campoClave, campoValor) {
-  if (!datos || datos.length === 0) return [];
-  const sprints  = [...new Set(datos.map(d => d.sprint))].sort();
-  const usuarios = [...new Set(datos.map(d => d.usuario))];
-  return usuarios.map(usuario => {
-    const fila = { usuario };
-    sprints.forEach(sprint => {
-      const encontrado = datos.find(d => d.usuario === usuario && d.sprint === sprint);
-      fila[sprint] = encontrado ? (Number(encontrado[campoValor]) || 0) : 0;
-    });
-    return fila;
-  });
-}
-
-function GroupedBarChart({ datos, campoValor, altura = 280 }) {
-  if (!datos || datos.length === 0) {
-    return (
-      <div style={{ height: altura, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 13 }}>
-        No sprint data available
-      </div>
-    );
-  }
-
-  const sprintsUnicos = [...new Set(datos.map(d => d.sprint))].sort();
-  const pivotado = pivotarDatos(datos, 'sprint', campoValor);
-
-  if (pivotado.length === 0) {
-    return (
-      <div style={{ height: altura, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 13 }}>
-        No sprint data available
-      </div>
-    );
-  }
-
-  return (
-    <ResponsiveContainer width="100%" height={altura}>
-      <BarChart data={pivotado} margin={{ top: 4, right: 20, bottom: 0, left: -20 }} barGap={3} barCategoryGap="30%">
-        <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} vertical={false} />
-        <XAxis dataKey="usuario" tick={EJE_TICK} axisLine={false} tickLine={false} />
-        <YAxis tick={EJE_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
-        <Tooltip contentStyle={{ borderRadius: 8, border: `1px solid ${GRID_COLOR}`, fontSize: 12, background: '#0f172a', color: '#f1f5f9' }} />
-        <Legend wrapperStyle={{ fontSize: 11, color: '#94a3b8', paddingTop: 8 }} />
-        {sprintsUnicos.map((sprint, i) => (
-          <Bar key={sprint} dataKey={sprint} name={sprint}
-               fill={COLORS_SPRINT[i % COLORS_SPRINT.length]}
-               radius={[3, 3, 0, 0]} />
-        ))}
-      </BarChart>
-    </ResponsiveContainer>
-  );
-}
-
-/* ── Componente principal ────────────────────────────────────────────────── */
-
 export default function Dashboard() {
-  const [datos, setDatos]                  = useState(null);
-  const [cargando, setCargando]            = useState(true);
-  const [error, setError]                  = useState(null);
-  const [ultimaAct, setUltimaAct]          = useState(null);
-  const [sprintSeleccionado, setSprintSel] = useState(null);
+  const [datos,    setDatos]    = useState({});
+  const [cargando, setCargando] = useState(true);
+  const [error,    setError]    = useState(null);
+  const [ultimaAct, setUltimaAct] = useState(null);
 
-  const cargar = useCallback(async () => {
+  const cargarDashboard = useCallback(async () => {
     try {
-      const res = await fetchTodoDashboard();
-      setDatos(res);
+      const [personalWork, statusDist,
+             kpiPorSprint, horasPorSprint, resumenSprints, contribucionesPorSprint] =
+        await Promise.all([
+          apiFetch('/api/dashboard/personal-work'),
+          apiFetch('/api/dashboard/status-distribution'),
+          apiFetch('/api/dashboard/kpi-por-sprint'),
+          apiFetch('/api/dashboard/horas-por-sprint'),
+          apiFetch('/api/dashboard/resumen-sprints'),
+          apiFetch('/api/dashboard/contribuciones-por-sprint'),
+        ]);
+      setDatos({ personalWork, statusDist,
+                 kpiPorSprint, horasPorSprint, resumenSprints, contribucionesPorSprint });
       setUltimaAct(new Date());
       setError(null);
     } catch (e) {
-      setError(e.message);
+      setError(e.message || 'Failed to load dashboard');
     } finally {
       setCargando(false);
     }
   }, []);
 
   useEffect(() => {
-    cargar();
-    const id = setInterval(cargar, 3_600_000);
+    cargarDashboard();
+    const id = setInterval(cargarDashboard, 3_600_000);
     return () => clearInterval(id);
-  }, [cargar]);
+  }, [cargarDashboard]);
 
-  useEffect(() => {
-    if (datos?.resumenSprints?.length > 0 && !sprintSeleccionado) {
-      const activo = datos.resumenSprints.find(s => s.estado === 'ACTIVO');
-      setSprintSel(activo?.sprint ?? datos.resumenSprints[datos.resumenSprints.length - 1].sprint);
-    }
-  }, [datos, sprintSeleccionado]);
+  const personal  = datos.personalWork            ?? [];
+  const statusDist = datos.statusDist             ?? [];
+  const resumen   = datos.resumenSprints          ?? [];
+  const kpi       = datos.kpiPorSprint            ?? [];
+  const horas     = datos.horasPorSprint          ?? [];
+  const contrib   = datos.contribucionesPorSprint ?? [];
 
-  /* ── Datos normalizados ── */
-  const sprint                  = datos?.sprint                  ?? {};
-  const timeCmp                 = datos?.timeComparison          ?? [];
-  const velocity                = datos?.teamVelocity            ?? [];
-  const personal                = datos?.personalWork            ?? [];
-  const statusDist              = datos?.statusDist              ?? [];
-  const resumenSprints          = datos?.resumenSprints          ?? [];
-  const kpiPorSprint            = datos?.kpiPorSprint            ?? [];
-  const horasPorSprint          = datos?.horasPorSprint          ?? [];
-  const contribucionesPorSprint = datos?.contribucionesPorSprint ?? [];
+  const totalCompletadas = kpi.reduce((s, d)    => s + (Number(d.tasksCompletadas) || 0), 0);
+  const totalHorasReales = horas.reduce((s, d)  => s + (Number(d.horasReales)      || 0), 0);
+  const totalEstimadas   = resumen.reduce((s, r) => s + (Number(r.horasEstimadas)  || 0), 0);
+  const totalReales      = resumen.reduce((s, r) => s + (Number(r.horasReales)     || 0), 0);
+  const eficiencia       = totalEstimadas > 0 ? Math.round((totalReales / totalEstimadas) * 100) : 0;
 
-  const maxVel     = Math.max(...velocity.map(d => d.tareas ?? 0), 1);
+  const activo     = resumen.find(s => s.estado === 'ACTIVO');
+  const pctGauge   = Number(activo?.porcentaje ?? 0);
+  const complGauge = activo?.completadas ?? 0;
+  const restGauge  = (activo?.totalTareas ?? 0) - (activo?.completadas ?? 0);
+
   const maxEstatus = Math.max(...statusDist.map(d => d.cantidad ?? 0), 1);
 
-  /* ── KPI Calculations ── */
-  const totalCompletadas = kpiPorSprint.reduce((sum, d) => sum + (Number(d.tasksCompletadas) || 0), 0);
-  const totalHorasReales = horasPorSprint.reduce((sum, d) => sum + (Number(d.horasReales) || 0), 0);
-  const totalEstimadas = resumenSprints.reduce((sum, s) => sum + (Number(s.horasEstimadas) || 0), 0);
-  const totalRealesResumen = resumenSprints.reduce((sum, s) => sum + (Number(s.horasReales) || 0), 0);
-  const eficiencia = totalEstimadas > 0 ? Math.round((totalRealesResumen / totalEstimadas) * 100) : 0;
+  const ORDER = { ACTIVO: 0, FUTURO: 1, PASADO: 2 };
+  const resumenConTareas = resumen
+    .filter(s => (s.totalTareas ?? 0) > 0)
+    .sort((a, b) => (ORDER[a.estado] ?? 3) - (ORDER[b.estado] ?? 3));
 
-  const sprintActivoResumen = resumenSprints.find(s => s.estado === 'ACTIVO');
-  const pctGauge        = Number(sprintActivoResumen?.porcentaje ?? 0);
-  const completadasGauge = sprintActivoResumen?.completadas ?? 0;
-  const restantesGauge   = (sprintActivoResumen?.totalTareas ?? 0) - (sprintActivoResumen?.completadas ?? 0);
-  const nombreSprintGauge = sprintActivoResumen?.sprint ?? null;
+  const { pivotado: dataKpi,   sprints: sprintsKpi   } = pivotarDatos(kpi,    'tasksCompletadas');
+  const { pivotado: dataHoras, sprints: sprintsHoras  } = pivotarDatos(horas,  'horasReales');
+  const { pivotado: dataCont,  sprints: sprintsCont   } = pivotarDatos(contrib, 'tareas');
 
-  const ordenEstado = { PASADO: 0, ACTIVO: 1, FUTURO: 2 };
-  const sprintsFiltrados = resumenSprints
-    .filter(s => Number(s.totalTareas) > 0)
-    .slice()
-    .sort((a, b) => (ordenEstado[a.estado] ?? 3) - (ordenEstado[b.estado] ?? 3));
+  if (cargando) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  minHeight: 320, color: '#94a3b8', fontSize: 14 }}>
+      Loading sprint metrics…
+    </div>
+  );
 
-  // FIX 1: Eliminar duplicados de sprints únicos para botones
-  const sprintButtonsUnicos = Array.from(new Set(resumenSprints.map(s => s.sprint)));
-
-  const sprintsPorEstado = {
-    past:    [...resumenSprints].reverse().find(s => s.estado === 'PASADO'),
-    current: resumenSprints.find(s => s.estado === 'ACTIVO'),
-    next:    resumenSprints.find(s => s.estado === 'FUTURO'),
-  };
-
-  /* ── Loading ── */
-  if (cargando) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400, color: '#94a3b8', gap: 10, fontSize: 14 }}>
-        <div style={{ width: 16, height: 16, border: `2px solid ${ACCENT}`, borderTopColor: ACCENT, borderBottomColor: 'transparent', borderLeftColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-        Loading Sprint metrics…
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={{ padding: 20, color: '#f87171', background: 'rgba(127, 29, 29, 0.2)', borderRadius: 8, border: '1px solid rgba(248, 113, 113, 0.3)', fontSize: 14 }}>
-        Error: {error}
-        <button onClick={cargar} style={{ marginLeft: 12, padding: '4px 12px', borderRadius: 4, border: `1px solid #f87171`, background: 'transparent', color: '#f87171', cursor: 'pointer', fontSize: 13 }}>
-          Retry
-        </button>
-      </div>
-    );
-  }
+  if (error) return (
+    <div style={{ ...CARD, borderColor: 'var(--danger)', color: 'var(--danger)', fontSize: 14 }}>
+      <strong>Error:</strong> {error}
+      <br />
+      <button onClick={cargarDashboard} style={{
+        marginTop: 12, padding: '6px 14px', borderRadius: 8, cursor: 'pointer',
+        border: '1px solid var(--danger)', background: 'transparent',
+        color: 'var(--danger)', fontSize: 13, fontWeight: 600,
+      }}>
+        Retry
+      </button>
+    </div>
+  );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', paddingBottom: 48, background: '#0f172a' }}>
+    <div style={{ padding: '24px 28px', background: '#f8fafc', minHeight: '100vh',
+                  display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+      {/* ── SECTION 1 — Header ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
+                    flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: '1.375rem', fontWeight: 600, color: '#f1f5f9', letterSpacing: '-0.02em', marginBottom: 2 }}>
-            Project Dashboard
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#1a1a2e' }}>
+            Dashboard
           </h1>
           {ultimaAct && (
-            <span style={{ fontSize: 12, color: '#94a3b8' }}>
-              Updated {ultimaAct.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} · refreshes hourly
-            </span>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#666666' }}>
+              Updated {ultimaAct.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })} · refreshes every hour
+            </p>
           )}
         </div>
-        <button
-          onClick={cargar}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 6, border: '1px solid rgba(71, 85, 105, 0.3)', background: 'rgba(15, 23, 42, 0.5)', color: '#cbd5e1', cursor: 'pointer', fontSize: 13, fontFamily: 'var(--font-body)' }}
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+        <button onClick={cargarDashboard} style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+          border: '1px solid #334155', background: '#1e293b',
+          color: '#f1f5f9', boxShadow: 'var(--shadow-sm)',
+        }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="23 4 23 10 17 10" />
+            <polyline points="1 20 1 14 7 14" />
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
           </svg>
           Refresh
         </button>
       </div>
 
-      {/* ── Grid principal (4 columnas) ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 14 }}>
-
-        {/* ── Sección 1: KPI Cards ── */}
-        <KpiCard label="Completed Tasks"    valor={totalCompletadas} />
-        <KpiCard label="Total Actual Hours" valor={totalHorasReales.toFixed(1)} suffix="h" />
-        <KpiCard label="Active Sprint"      valor={sprintActivoResumen?.sprint ?? 'None'} />
-        <KpiCard label="Efficiency"         valor={eficiencia} suffix="%" />
-
-        {/* ── Sección 2: Gauge Sprint + Status Distribution ── */}
-        <Card style={{ gridColumn: 'span 2' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-            <div>
-              <Label>Sprint</Label>
-              <Title mb={0}>Progress</Title>
+      {/* ── SECTION 2 — 4 KPI Cards ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+        {[
+          { label: 'COMPLETED TASKS',    value: String(totalCompletadas)            },
+          { label: 'TOTAL ACTUAL HOURS', value: `${totalHorasReales.toFixed(1)}h`  },
+          { label: 'ACTIVE SPRINT',      value: activo?.sprint ?? 'None'            },
+          { label: 'EFFICIENCY',         value: `${eficiencia}%`                    },
+        ].map(({ label, value }) => (
+          <div key={label} style={CARD}>
+            <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
+                          letterSpacing: '0.07em', color: '#94a3b8', marginBottom: 8 }}>
+              {label}
             </div>
-            {sprintActivoResumen && (
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 11, color: ACCENT, fontWeight: 500 }}>Remaining</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9' }}>
-                  {restantesGauge} items
-                </div>
-              </div>
-            )}
+            <div style={{ fontSize: 44, fontWeight: 700, color: ACENTO, lineHeight: 1.1,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {value}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── SECTION 3 — Gauge + Status Distribution ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        <div style={CARD}>
+          <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
+                        letterSpacing: '0.07em', color: '#94a3b8', marginBottom: 4 }}>
+            Current Sprint
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9', marginBottom: 16 }}>
+            Progress
           </div>
           <GaugeSprint
             pct={pctGauge}
-            completadas={completadasGauge}
-            restantes={restantesGauge}
-            nombreSprint={nombreSprintGauge}
+            completadas={complGauge}
+            restantes={restGauge}
+            nombreSprint={activo?.sprint ?? null}
           />
-        </Card>
+        </div>
 
-        <Card style={{ gridColumn: 'span 2' }}>
-          <Label>Tasks</Label>
-          <Title>Status Distribution</Title>
+        <div style={CARD}>
+          <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
+                        letterSpacing: '0.07em', color: '#94a3b8', marginBottom: 4 }}>
+            Tasks
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9', marginBottom: 16 }}>
+            Status Distribution
+          </div>
           {statusDist.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {statusDist.map((item, i) => (
                 <div key={i}>
-                  <div style={{ height: 10, borderRadius: 99, background: '#1e293b', overflow: 'hidden', marginBottom: 5 }}>
+                  <div style={{ height: 6, borderRadius: 999, backgroundColor: '#334155',
+                                overflow: 'hidden', marginBottom: 6 }}>
                     <div style={{
-                      height: '100%',
+                      height: '100%', borderRadius: 999, transition: 'width 0.5s ease',
                       width: `${Math.round((item.cantidad / maxEstatus) * 100)}%`,
-                      background: i === 0 ? '#475569' : i === statusDist.length - 1 ? ACCENT : ACCENT_LIGHTER,
-                      borderRadius: 99,
-                      transition: 'width 0.6s ease',
+                      backgroundColor: i === 0 ? ACENTO
+                        : i === statusDist.length - 1 ? '#94a3b8' : ACENTO_SOFT,
                     }} />
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                    <span style={{ color: '#cbd5e1', textTransform: 'capitalize' }}>{item.estatus}</span>
-                    <span style={{ color: '#f1f5f9', fontWeight: 600 }}>
-                      {item.cantidad} <span style={{ color: '#94a3b8', fontWeight: 400 }}>({item.porcentaje}%)</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between',
+                                fontSize: 13, color: '#cbd5e1' }}>
+                    <span style={{ textTransform: 'capitalize' }}>{item.estatus}</span>
+                    <span style={{ fontWeight: 600, color: '#f1f5f9' }}>
+                      {item.cantidad}{' '}
+                      <span style={{ color: '#94a3b8', fontWeight: 400 }}>
+                        ({item.porcentaje}%)
+                      </span>
                     </span>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 13 }}>
+            <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, padding: '32px 0' }}>
               No tasks registered
             </div>
           )}
-        </Card>
+        </div>
+      </div>
 
-        {/* ── Sección 3: Gráfica A ── */}
-        <Card style={{ gridColumn: '1 / -1' }}>
-          <Title mb={4}>Tasks Completed by Developer per Sprint</Title>
-          <GroupedBarChart datos={kpiPorSprint} campoValor="tasksCompletadas" altura={280} />
-        </Card>
-
-        {/* ── Sección 4: Gráfica B ── */}
-        <Card style={{ gridColumn: '1 / -1' }}>
-          <Title mb={4}>Actual Hours Invested by Developer per Sprint</Title>
-          <GroupedBarChart datos={horasPorSprint} campoValor="horasReales" altura={280} />
-        </Card>
-
-        {/* ── Sección 5: Resumen de Sprints ── */}
-        <Card style={{ gridColumn: '1 / -1' }}>
-          <Title mb={14}>Sprint Summary</Title>
-          {sprintsFiltrados.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {sprintsFiltrados.map((s, i) => (
-                <div key={i} style={{
-                  display: 'grid',
-                  gridTemplateColumns: '180px 100px 1fr 160px 120px',
-                  alignItems: 'center',
-                  gap: 16,
-                  padding: '10px 14px',
-                  borderRadius: '12px',
-                  background: s.estado === 'ACTIVO' ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
-                  border: s.estado === 'ACTIVO' ? `1px solid ${ACCENT}33` : '1px solid transparent',
-                }}>
-                  <div style={{ fontWeight: 600, fontSize: 14, color: '#f1f5f9' }}>{s.sprint}</div>
-                  <BadgeStatus estado={s.estado} />
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <div style={{ height: 8, borderRadius: 99, background: '#1e293b', overflow: 'hidden' }}>
-                      <div style={{
-                        height: '100%',
-                        width: `${s.porcentaje}%`,
-                        background: s.estado === 'ACTIVO' ? ACCENT : s.estado === 'PASADO' ? '#10b981' : ACCENT_LIGHTER,
-                        borderRadius: 99,
-                        transition: 'width 0.6s ease',
-                      }} />
-                    </div>
-                    <span style={{ fontSize: 11, color: '#94a3b8' }}>{s.porcentaje}% complete</span>
-                  </div>
-                  <div style={{ fontSize: 12, color: '#cbd5e1' }}>
-                    <span style={{ color: '#94a3b8' }}>Est:</span> {s.horasEstimadas}h
-                    {' · '}
-                    <span style={{ color: '#94a3b8' }}>Real:</span> {s.horasReales}h
-                  </div>
-                  <div style={{ fontSize: 12, color: '#cbd5e1', textAlign: 'right' }}>
-                    <span style={{ fontWeight: 600, color: '#f1f5f9' }}>{s.completadas}</span>
-                    <span style={{ color: '#94a3b8' }}> / {s.totalTareas} tasks</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 13 }}>
-              No sprints with tasks
-            </div>
-          )}
-        </Card>
-
-        {/* ── Sección 6: Time Comparison + Team Velocity ── */}
-        <Card style={{ gridColumn: 'span 2' }}>
-          <Label>Planning Effectiveness</Label>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <Title mb={0}>Estimated vs Actual Hours</Title>
-            <div style={{ display: 'flex', gap: 10, fontSize: 11, color: '#94a3b8' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: ACCENT_LIGHTER, display: 'inline-block' }} /> Estimated
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: ACCENT, display: 'inline-block' }} /> Actual
-              </span>
-            </div>
-          </div>
-          {timeCmp.length > 0 ? (
-            <ResponsiveContainer width="100%" height={190}>
-              <LineChart data={timeCmp} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} vertical={false} />
-                <XAxis dataKey="mes" tick={EJE_TICK} axisLine={false} tickLine={false} />
-                <YAxis tick={EJE_TICK} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ borderRadius: 8, border: `1px solid ${GRID_COLOR}`, fontSize: 12, background: '#0f172a', color: '#f1f5f9' }} />
-                <Line type="monotone" dataKey="horasEstimadas" stroke={ACCENT_LIGHTER} strokeWidth={2} dot={{ r: 3, fill: ACCENT_LIGHTER }} name="Estimated (h)" />
-                <Line type="monotone" dataKey="horasReales"    stroke={ACCENT}     strokeWidth={2} dot={{ r: 4, fill: ACCENT }}     name="Actual (h)" />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div style={{ height: 190, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 13 }}>
-              No closed tasks in the last 6 months
-            </div>
-          )}
-        </Card>
-
-        <Card style={{ gridColumn: 'span 2' }}>
-          <Label>Team Velocity</Label>
-          <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 22, fontWeight: 700, color: '#f1f5f9' }}>{sprint.completadas ?? 0} tasks</span>
-            <span style={{ fontSize: 11, color: '#10b981', fontWeight: 500 }}>● completed</span>
-          </div>
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={velocity} margin={{ top: 4, right: 4, bottom: 0, left: -20 }} barSize={22}>
-              <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} vertical={false} />
-              <XAxis dataKey="dia" tick={EJE_TICK} axisLine={false} tickLine={false} />
+      {/* ── SECTION 4 — Tasks Completadas por Developer por Sprint ── */}
+      <div style={CARD}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9', marginBottom: 16 }}>
+          Tasks Completed by Developer per Sprint
+        </div>
+        {dataKpi.length > 0 ? (
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={dataKpi} margin={{ top: 10, right: 10, left: -15, bottom: 5 }}
+                      barGap={6} barCategoryGap="35%">
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="usuario" tick={EJE_TICK} axisLine={false} tickLine={false} />
               <YAxis tick={EJE_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
-              <Tooltip contentStyle={{ borderRadius: 8, border: `1px solid ${GRID_COLOR}`, fontSize: 12, background: '#0f172a', color: '#f1f5f9' }} formatter={v => [`${v} tasks`, 'Completed']} />
-              <Bar dataKey="tareas" radius={[3, 3, 0, 0]}>
-                {velocity.map((entry, i) => (
-                  <Cell key={i} fill={entry.tareas === maxVel && entry.tareas > 0 ? ACCENT : ACCENT_LIGHTER} />
-                ))}
-              </Bar>
+              <Tooltip contentStyle={TOOLTIP} />
+              <Legend wrapperStyle={{ fontSize: 11, color: '#8d8d8d', paddingTop: 8 }} />
+              {sprintsKpi.map((sprint, i) => (
+                <Bar key={sprint} dataKey={sprint} name={sprint}
+                     fill={COLORES_SPRINTS[i % COLORES_SPRINTS.length]} radius={[3, 3, 0, 0]} />
+              ))}
             </BarChart>
           </ResponsiveContainer>
-        </Card>
+        ) : (
+          <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, padding: '60px 0' }}>
+            No sprint KPI data
+          </div>
+        )}
+      </div>
 
-        {/* ── Sección 7: Personal Work + Contributions por Sprint ── */}
-        <Card style={{ gridColumn: 'span 2' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
-            <div><Label>Statistics</Label><Title mb={0}>Individual Performance</Title></div>
-            <div style={{ fontSize: 11, padding: '4px 10px', border: `1px solid ${ACCENT}33`, borderRadius: 4, color: '#cbd5e1', background: 'rgba(99, 102, 241, 0.05)' }}>
-              Overall
+      {/* ── SECTION 5 — Total Horas Reales por Developer por Sprint ── */}
+      <div style={CARD}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9', marginBottom: 16 }}>
+          Total Actual Hours by Developer per Sprint
+        </div>
+        {dataHoras.length > 0 ? (
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={dataHoras} margin={{ top: 10, right: 10, left: -15, bottom: 5 }}
+                      barGap={6} barCategoryGap="35%">
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="usuario" tick={EJE_TICK} axisLine={false} tickLine={false} />
+              <YAxis tick={EJE_TICK} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={TOOLTIP} />
+              <Legend wrapperStyle={{ fontSize: 11, color: '#8d8d8d', paddingTop: 8 }} />
+              {sprintsHoras.map((sprint, i) => (
+                <Bar key={sprint} dataKey={sprint} name={sprint}
+                     fill={COLORES_SPRINTS[i % COLORES_SPRINTS.length]} radius={[3, 3, 0, 0]} />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, padding: '60px 0' }}>
+            No sprint hours data
+          </div>
+        )}
+      </div>
+
+      {/* ── SECTION 6 — Sprint Hours Breakdown ── */}
+      <div style={CARD}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9' }}>
+            Sprint Hours Breakdown
+          </div>
+          <div style={{ display: 'flex', gap: 16, fontSize: 12, color: '#94a3b8' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%',
+                             backgroundColor: ACENTO_SOFT, display: 'inline-block' }} />
+              Estimated
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%',
+                             backgroundColor: ACENTO, display: 'inline-block' }} />
+              Actual
+            </span>
+          </div>
+        </div>
+        {resumenConTareas.length > 0 ? (
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={resumenConTareas} margin={{ top: 10, right: 10, left: -15, bottom: 5 }}
+                      barGap={6} barCategoryGap="36%">
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="sprint" tick={EJE_TICK} axisLine={false} tickLine={false} />
+              <YAxis tick={EJE_TICK} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={TOOLTIP} />
+              <Bar dataKey="horasEstimadas" name="Estimated (h)" radius={[3, 3, 0, 0]} fill={ACENTO_SOFT} />
+              <Bar dataKey="horasReales"    name="Actual (h)"    radius={[3, 3, 0, 0]} fill={ACENTO} />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, padding: '60px 0' }}>
+            No sprint hours data
+          </div>
+        )}
+      </div>
+
+      {/* ── SECTION 7 — Horas por Sprint + Velocidad del Equipo ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        <div style={CARD}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
+                            letterSpacing: '0.07em', color: '#94a3b8', marginBottom: 4 }}>
+                Planning Effectiveness
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9' }}>
+                Estimated vs Actual Hours per Sprint
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 12, fontSize: 11, color: '#94a3b8' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 2,
+                               backgroundColor: ACENTO_SOFT, display: 'inline-block' }} />
+                Estimated
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 2,
+                               backgroundColor: ACENTO, display: 'inline-block' }} />
+                Actual
+              </span>
             </div>
           </div>
+          {resumenConTareas.length > 0 ? (
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={resumenConTareas} margin={{ top: 10, right: 10, left: -15, bottom: 5 }} barSize={18} barCategoryGap="30%">
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="sprint" tick={EJE_TICK} axisLine={false} tickLine={false} />
+                <YAxis tick={EJE_TICK} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={TOOLTIP} formatter={(v, name) => [`${v} h`, name]} />
+                <Bar dataKey="horasEstimadas" name="Estimated" fill={ACENTO_SOFT} radius={[3, 3, 0, 0]} />
+                <Bar dataKey="horasReales" name="Actual" fill={ACENTO} radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, padding: '60px 0' }}>
+              No sprint hours data
+            </div>
+          )}
+        </div>
+
+        <div style={CARD}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        marginBottom: 16 }}>
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
+                            letterSpacing: '0.07em', color: '#94a3b8', marginBottom: 4 }}>
+                Team Velocity
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9' }}>
+                Tasks Completed per Sprint
+              </div>
+            </div>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5,
+                           fontSize: 11, color: '#94a3b8' }}>
+              <span style={{ width: 8, height: 8, borderRadius: 2,
+                             backgroundColor: ACENTO, display: 'inline-block' }} />
+              Completed
+            </span>
+          </div>
+          {resumenConTareas.length > 0 ? (
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={resumenConTareas} margin={{ top: 10, right: 10, left: -15, bottom: 5 }} barSize={24}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="sprint" tick={EJE_TICK} axisLine={false} tickLine={false} />
+                <YAxis tick={EJE_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip contentStyle={TOOLTIP} formatter={v => [`${v} tasks`, 'Completed']} />
+                <Bar dataKey="completadas" name="Completed" fill={ACENTO} radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, padding: '60px 0' }}>
+              No sprint velocity data
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── SECTION 8 — Personal Work + Contributions ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        <div style={CARD}>
+          <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
+                        letterSpacing: '0.07em', color: '#94a3b8', marginBottom: 4 }}>
+            Statistics
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9', marginBottom: 16 }}>
+            Individual Work
+          </div>
           {personal.length > 0 ? (
-            <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-              <PieChart width={140} height={140}>
-                <Pie data={personal} dataKey="tareas" nameKey="nombre" cx={70} cy={70} innerRadius={38} outerRadius={64} stroke="none">
-                  {personal.map((_, i) => <Cell key={i} fill={COLORS_PIE[i % COLORS_PIE.length]} />)}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+              <PieChart width={160} height={160}>
+                <Pie data={personal} dataKey="tareas" nameKey="nombre"
+                     cx={80} cy={80} innerRadius={40} outerRadius={72} stroke="none">
+                  {personal.map((_, i) => (
+                    <Cell key={i} fill={COLORES_SPRINTS[i % COLORES_SPRINTS.length]} />
+                  ))}
                 </Pie>
-                <Tooltip contentStyle={{ borderRadius: 8, border: `1px solid ${GRID_COLOR}`, fontSize: 11, background: '#0f172a', color: '#f1f5f9' }} formatter={(v, n) => [`${v} tasks`, n]} />
+                <Tooltip contentStyle={TOOLTIP} formatter={(v, n) => [`${v} tasks`, n]} />
               </PieChart>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 7 }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {personal.slice(0, 5).map((u, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS_PIE[i % COLORS_PIE.length], display: 'inline-block', flexShrink: 0 }} />
-                      <span style={{ color: '#f1f5f9' }}>{u.nombre}</span>
+                  <div key={i} style={{ display: 'flex', alignItems: 'center',
+                                        justifyContent: 'space-between', fontSize: 13 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{
+                        width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
+                        display: 'inline-block',
+                        backgroundColor: COLORES_SPRINTS[i % COLORES_SPRINTS.length],
+                      }} />
+                      <span style={{ color: '#f1f5f9', fontWeight: 500 }}>
+                        {u.nombre || u.usuario || u.name}
+                      </span>
                     </div>
-                    <span style={{ color: '#cbd5e1', fontWeight: 500, marginLeft: 8 }}>
+                    <span style={{ fontWeight: 700, color: '#f1f5f9' }}>
                       {Number(u.porcentaje).toFixed(1)}%
                     </span>
                   </div>
@@ -509,93 +511,88 @@ export default function Dashboard() {
               </div>
             </div>
           ) : (
-            <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 13 }}>
+            <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, padding: '40px 0' }}>
               No assigned tasks
             </div>
           )}
-        </Card>
+        </div>
 
-        <Card style={{ gridColumn: 'span 2' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
-            <div><Label>Code</Label><Title mb={0}>Contributions per Sprint</Title></div>
+        <div style={CARD}>
+          <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
+                        letterSpacing: '0.07em', color: '#94a3b8', marginBottom: 4 }}>
+            Contributions
           </div>
-          <GroupedBarChart datos={contribucionesPorSprint} campoValor="tareas" altura={160} />
-        </Card>
-
-        {/* ── Sección 8: Sprint Hours ── */}
-        <Card style={{ gridColumn: '1 / -1' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-            <div><Label>Statistics</Label><Title mb={0}>Sprint Hours Breakdown</Title></div>
-            {/* FIX 1: Botones sin duplicados usando Set */}
-            <div style={{ display: 'flex', gap: 6 }}>
-              {[
-                { key: 'past',    label: sprintsPorEstado.past?.sprint    ?? 'No previous sprint' },
-                { key: 'current', label: sprintsPorEstado.current?.sprint ?? 'No active sprint'    },
-                { key: 'next',    label: sprintsPorEstado.next?.sprint    ?? 'No upcoming sprint'  },
-              ].map(({ key, label }) => {
-                const existe    = sprintsPorEstado[key] != null;
-                const isSelected = sprintSeleccionado === sprintsPorEstado[key]?.sprint;
-                return (
-                  <button
-                    key={key}
-                    onClick={() => existe && setSprintSel(sprintsPorEstado[key].sprint)}
-                    disabled={!existe}
-                    style={{
-                      padding: '6px 12px', borderRadius: 6, fontSize: 11, fontWeight: 500,
-                      cursor: existe ? 'pointer' : 'not-allowed',
-                      opacity: existe ? 1 : 0.4,
-                      background: isSelected ? ACCENT : 'transparent',
-                      color: isSelected ? '#0f172a' : '#cbd5e1',
-                      border: isSelected ? `1px solid ${ACCENT}` : '1px solid #475569',
-                      fontFamily: 'var(--font-body)',
-                      transition: 'all 0.2s ease',
-                    }}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9', marginBottom: 16 }}>
+            Contributions per Sprint
           </div>
-          <div style={{ display: 'flex', gap: 16, marginBottom: 12 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#94a3b8' }}>
-              <span style={{ width: 20, height: 2, background: ACCENT_LIGHTER, display: 'inline-block', borderRadius: 1 }} /> Estimated
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#94a3b8' }}>
-              <span style={{ width: 20, height: 2, background: ACCENT, display: 'inline-block', borderRadius: 1 }} /> Actual
-            </span>
-          </div>
-          {resumenSprints.length > 0 ? (
-            <ResponsiveContainer width="100%" height={210}>
-              <BarChart
-                data={resumenSprints}
-                margin={{ top: 4, right: 10, bottom: 0, left: -20 }}
-                barGap={4}
-                barCategoryGap="35%"
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} vertical={false} />
-                <XAxis dataKey="sprint" tick={EJE_TICK} axisLine={false} tickLine={false} />
-                <YAxis tick={EJE_TICK} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ borderRadius: 8, border: `1px solid ${GRID_COLOR}`, fontSize: 12, background: '#0f172a', color: '#f1f5f9' }} />
-                <Bar dataKey="horasEstimadas" name="Estimated (h)" radius={[3, 3, 0, 0]}>
-                  {resumenSprints.map((s, i) => (
-                    <Cell key={i} fill={sprintSeleccionado === s.sprint ? ACCENT_LIGHTER : '#334155'} />
-                  ))}
-                </Bar>
-                <Bar dataKey="horasReales" name="Actual (h)" radius={[3, 3, 0, 0]}>
-                  {resumenSprints.map((s, i) => (
-                    <Cell key={i} fill={sprintSeleccionado === s.sprint ? ACCENT : '#475569'} />
-                  ))}
-                </Bar>
+          {dataCont.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={dataCont} margin={{ top: 10, right: 10, left: -15, bottom: 5 }}
+                        barGap={6} barCategoryGap="35%">
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="usuario" tick={EJE_TICK} axisLine={false} tickLine={false} />
+                <YAxis tick={EJE_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip contentStyle={TOOLTIP} />
+                <Legend wrapperStyle={{ fontSize: 11, color: '#8d8d8d', paddingTop: 8 }} />
+                {sprintsCont.map((sprint, i) => (
+                  <Bar key={sprint} dataKey={sprint} name={sprint}
+                       fill={COLORES_SPRINTS[i % COLORES_SPRINTS.length]} radius={[3, 3, 0, 0]} />
+                ))}
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div style={{ height: 210, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 13 }}>
-              No sprint hours data
+            <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, padding: '40px 0' }}>
+              No contribution data
             </div>
           )}
-        </Card>
+        </div>
+      </div>
 
+      {/* ── Resumen de Sprints ── */}
+      <div style={CARD}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9', marginBottom: 16 }}>
+          Sprint Summary
+        </div>
+        {resumenConTareas.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {resumenConTareas.map((sprint, i) => (
+              <div key={i} style={{
+                padding: '12px 14px', borderRadius: 10,
+                border: '1px solid #475569',
+                backgroundColor: sprint.estado === 'ACTIVO' ? `${ACENTO}22` : '#263548',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                              gap: 10, marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <BadgeEstado estado={sprint.estado} />
+                    <span style={{ fontWeight: 600, color: '#f1f5f9', fontSize: 14 }}>
+                      {sprint.sprint}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                    {sprint.completadas} / {sprint.totalTareas} completed
+                  </span>
+                </div>
+                <div style={{ height: 5, borderRadius: 999, backgroundColor: '#334155',
+                              overflow: 'hidden', marginBottom: 6 }}>
+                  <div style={{
+                    height: '100%', borderRadius: 999, transition: 'width 0.5s ease',
+                    width: `${sprint.porcentaje}%`,
+                    backgroundColor: sprint.estado === 'ACTIVO' ? ACENTO
+                      : sprint.estado === 'PASADO' ? '#94a3b8' : ACENTO_SOFT,
+                  }} />
+                </div>
+                <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                  Est: {sprint.horasEstimadas}h · Act: {sprint.horasReales}h
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, padding: '24px 0' }}>
+            No sprints with tasks
+          </div>
+        )}
       </div>
     </div>
   );

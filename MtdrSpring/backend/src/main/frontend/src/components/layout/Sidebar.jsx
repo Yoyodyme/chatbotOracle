@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import useAppStore from '../../store/index';
+import { getUsuarioLogueado, logout } from '../../utils/auth';
 
 // ── Iconos SVG inline ────────────────────────────────────────────────────────
 function IconDashboard() {
@@ -89,7 +90,7 @@ const ITEMS_NAV = [
   { to: '/board',   label: 'Board',     icon: <IconBoard /> },
   { to: '/backlog', label: 'Backlog',   icon: <IconBacklog /> },
   { to: '/sprints', label: 'Sprints',   icon: <IconSprints /> },
-  { to: '/team',    label: 'Equipo',    icon: <IconTeam /> },
+  { to: '/team',    label: 'Team',      icon: <IconTeam /> },
 ];
 
 const ANCHO_EXPANDIDO = 220;
@@ -98,7 +99,8 @@ const ALTO_TOPBAR = 48;
 
 export default function Sidebar() {
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
-  const toggleSidebar = useAppStore((s) => s.toggleSidebar);
+  const toggleSidebar    = useAppStore((s) => s.toggleSidebar);
+  const usuario          = getUsuarioLogueado();
 
   const ancho = sidebarCollapsed ? ANCHO_COLAPSADO : ANCHO_EXPANDIDO;
 
@@ -187,12 +189,45 @@ export default function Sidebar() {
         ))}
       </nav>
 
+      {/* Usuario logueado */}
+      {usuario && (
+        <div style={{
+          padding: sidebarCollapsed ? '10px 0' : '10px 14px',
+          borderTop: '1px solid var(--sidebar-border)',
+          display: 'flex', flexDirection: 'column', gap: 6,
+          overflow: 'hidden',
+        }}>
+          {!sidebarCollapsed && (
+            <div style={{
+              fontSize: 11, color: 'var(--sidebar-text)',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {usuario.nombreCompleto || usuario.nombreUsuario}
+            </div>
+          )}
+          <button
+            onClick={logout}
+            title="Cerrar sesión"
+            style={{
+              background: 'none', border: '1px solid var(--sidebar-border)',
+              color: 'var(--sidebar-text)', cursor: 'pointer',
+              borderRadius: 6, padding: sidebarCollapsed ? '5px 0' : '4px 8px',
+              fontSize: 11, width: '100%', textAlign: 'center',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = '#ffffff'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--sidebar-text)'; }}
+          >
+            {sidebarCollapsed ? '↩' : 'Sign out'}
+          </button>
+        </div>
+      )}
+
       {/* Botón colapsar */}
       <button
         style={estiloBotonColapsar}
         onClick={toggleSidebar}
-        title={sidebarCollapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
-        aria-label={sidebarCollapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
+        title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         onMouseEnter={(e) => { e.currentTarget.style.color = '#ffffff'; }}
         onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--sidebar-text)'; }}
       >

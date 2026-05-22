@@ -108,7 +108,7 @@ export default function KanbanCard({ tarea }) {
               justifyContent: 'center',
               flexShrink: 0,
             }}
-            title="Sin asignar"
+            title="Unassigned"
           />
         )}
       </div>

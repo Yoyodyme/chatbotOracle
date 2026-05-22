@@ -3,10 +3,25 @@ package com.springboot.MyTodoList.service;
 import com.springboot.MyTodoList.model.Usuario;
 import com.springboot.MyTodoList.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+
+/*
+ * ─────────────────────────────────────────────────────────────────────────────
+ * SCRIPT SQL — ejecutar en OCI Database Actions antes de usar el login:
+ *
+ *   ALTER TABLE USUARIOS ADD PASSWORD_HASH VARCHAR2(255);
+ *   UPDATE USUARIOS SET PASSWORD_HASH = '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy';
+ *   COMMIT;
+ *
+ *   El hash corresponde a la contraseña '1234' con BCrypt.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 
 @Service
 public class UsuarioService {
@@ -67,6 +82,30 @@ public class UsuarioService {
             return usuarioRepository.save(usuario);
         }
         return null;
+    }
+
+    public Map<String, Object> login(String nombreUsuario, String password) {
+        Usuario usuario = usuarioRepository.findByNombreUsuario(nombreUsuario);
+        if (usuario == null || usuario.getPasswordHash() == null) return null;
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        if (!encoder.matches(password, usuario.getPasswordHash())) return null;
+        return buildUserInfo(usuario);
+    }
+
+    public Map<String, Object> getUserInfo(Long idUsuario) {
+        Usuario usuario = obtenerUsuarioPorId(idUsuario);
+        if (usuario == null) return null;
+        return buildUserInfo(usuario);
+    }
+
+    private Map<String, Object> buildUserInfo(Usuario usuario) {
+        Map<String, Object> info = new LinkedHashMap<>();
+        info.put("idUsuario",      usuario.getIdUsuario());
+        info.put("nombreUsuario",  usuario.getNombreUsuario());
+        info.put("nombreCompleto", usuario.getNombreCompleto());
+        info.put("rol",    usuario.getRol() != null ? usuario.getRol().getNombre() : null);
+        info.put("idRol",  usuario.getRol() != null ? usuario.getRol().getIdRol()  : null);
+        return info;
     }
 
     public boolean eliminarUsuario(Long id) {

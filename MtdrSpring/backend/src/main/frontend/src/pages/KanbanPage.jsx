@@ -124,11 +124,11 @@ export default function KanbanPage() {
             onChange={(e) => setSprintSeleccionado(e.target.value)}
             style={estiloSelector}
           >
-            <option value="">Todos los sprints</option>
+            <option value="">All sprints</option>
             {sprints.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.nombre}
-                {s.activo ? ' (activo)' : ''}
+                {s.activo ? ' (active)' : ''}
               </option>
             ))}
           </select>

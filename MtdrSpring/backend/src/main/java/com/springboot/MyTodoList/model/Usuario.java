@@ -30,6 +30,9 @@ public class Usuario {
     @JoinColumn(name = "ID_ROL", foreignKey = @ForeignKey(name = "FK_USUARIO_ROL"))
     private Rol rol;
 
+    @Column(name = "PASSWORD_HASH")
+    private String passwordHash;
+
     @Column(name = "CREADO_EN", nullable = false, updatable = false)
     private LocalDateTime creadoEn;
 

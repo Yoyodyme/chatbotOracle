@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
 @RequestMapping("/api/dashboard")
@@ -75,5 +76,10 @@ public class DashboardController {
     @GetMapping("/contribuciones-por-sprint")
     public ResponseEntity<List<Map<String, Object>>> contribucionesPorSprint() {
         return ResponseEntity.ok(dashboardService.getContribucionesPorSprint());
+    }
+
+    @GetMapping("/kpi-personal")
+    public ResponseEntity<Map<String, Object>> kpiPersonal(@RequestParam Long idUsuario) {
+        return ResponseEntity.ok(dashboardService.getKpiPersonal(idUsuario));
     }
 }
