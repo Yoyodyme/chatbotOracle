@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   PieChart, Pie, Cell,
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   BarChart, Bar, ResponsiveContainer,
 } from 'recharts';
 import { apiFetch } from '../api/client';
@@ -347,46 +347,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* ── SECTION 6 — Sprint Hours Breakdown ── */}
-      <div style={CARD}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9' }}>
-            Sprint Hours Breakdown
-          </div>
-          <div style={{ display: 'flex', gap: 16, fontSize: 12, color: '#94a3b8' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 10, height: 10, borderRadius: '50%',
-                             backgroundColor: ACENTO_SOFT, display: 'inline-block' }} />
-              Estimated
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 10, height: 10, borderRadius: '50%',
-                             backgroundColor: ACENTO, display: 'inline-block' }} />
-              Actual
-            </span>
-          </div>
-        </div>
-        {resumenConTareas.length > 0 ? (
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={resumenConTareas} margin={{ top: 10, right: 10, left: -15, bottom: 5 }}
-                      barGap={6} barCategoryGap="36%">
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="sprint" tick={EJE_TICK} axisLine={false} tickLine={false} />
-              <YAxis tick={EJE_TICK} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={TOOLTIP} />
-              <Bar dataKey="horasEstimadas" name="Estimated (h)" radius={[3, 3, 0, 0]} fill={ACENTO_SOFT} />
-              <Bar dataKey="horasReales"    name="Actual (h)"    radius={[3, 3, 0, 0]} fill={ACENTO} />
-            </BarChart>
-          </ResponsiveContainer>
-        ) : (
-          <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, padding: '60px 0' }}>
-            No sprint hours data
-          </div>
-        )}
-      </div>
-
-      {/* ── SECTION 7 — Horas por Sprint + Velocidad del Equipo ── */}
+      {/* ── SECTION 6 — Horas por Sprint + Velocidad del Equipo ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         <div style={CARD}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -468,7 +429,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── SECTION 8 — Personal Work + Contributions ── */}
+      {/* ── SECTION 7 — Personal Work + Contributions ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         <div style={CARD}>
           <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
