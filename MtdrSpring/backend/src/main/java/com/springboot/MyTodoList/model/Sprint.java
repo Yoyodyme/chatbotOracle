@@ -29,8 +29,8 @@ public class Sprint {
     @Column(name = "FECHA_FIN")
     private LocalDate fechaFin;
 
-    @Column(name = "ACTIVO")
-    private Boolean activo;
+    @Column(name = "ESTADO", length = 20)
+    private String estado;
 
     @Column(name = "CREADO_EN", nullable = false, updatable = false)
     private LocalDateTime creadoEn;
@@ -38,6 +38,12 @@ public class Sprint {
     @PrePersist
     protected void onCreate() {
         creadoEn = LocalDateTime.now();
-        if (activo == null) activo = false;
+        if (estado == null) {
+            if (fechaInicio != null && fechaInicio.isAfter(LocalDate.now())) {
+                estado = "FUTURO";
+            } else {
+                estado = "PASADO";
+            }
+        }
     }
 }

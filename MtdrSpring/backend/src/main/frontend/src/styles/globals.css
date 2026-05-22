@@ -243,6 +243,17 @@ select {
   -webkit-appearance: none;
 }
 
+input[type="checkbox"],
+input[type="radio"] {
+  appearance: auto;
+  -webkit-appearance: auto;
+  width: auto;
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+}
+
 input::placeholder,
 textarea::placeholder {
   color: var(--text-muted);
