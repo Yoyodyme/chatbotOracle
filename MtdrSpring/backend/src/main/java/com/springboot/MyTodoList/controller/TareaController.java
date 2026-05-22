@@ -77,4 +77,10 @@ public class TareaController {
         List<Tarea> tareas = tareaService.obtenerTareasPorPrioridad(idPrioridad);
         return new ResponseEntity<>(tareas, HttpStatus.OK);
     }
+
+    @GetMapping("/sprint/{idSprint}")
+    public ResponseEntity<List<Tarea>> obtenerPorSprint(@PathVariable Long idSprint) {
+        List<Tarea> tareas = tareaService.obtenerTareasPorSprint(idSprint);
+        return new ResponseEntity<>(tareas, HttpStatus.OK);
+    }
 }

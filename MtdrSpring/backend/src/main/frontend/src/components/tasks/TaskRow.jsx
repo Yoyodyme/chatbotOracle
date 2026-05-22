@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { format, parseISO, isValid } from 'date-fns';
-import { es } from 'date-fns/locale';
 import Avatar from '../shared/Avatar';
 import { PriorityBadge, StatusBadge } from './TaskBadge';
 import '../../styles/animations.css';
@@ -10,7 +9,7 @@ function formatearFecha(fecha) {
   try {
     const parsed = typeof fecha === 'string' ? parseISO(fecha) : new Date(fecha);
     if (!isValid(parsed)) return null;
-    return format(parsed, 'd MMM yyyy', { locale: es });
+    return format(parsed, 'MMM d, yyyy');
   } catch {
     return null;
   }
@@ -121,7 +120,7 @@ export default function TaskRow({ tarea, onClick, onDelete }) {
     >
       {/* ID */}
       <td style={{ ...estiloCelda, paddingLeft: '16px' }}>
-        <span style={estiloID}>EQ51-{tarea?.idTarea}</span>
+        <span style={estiloID}>YD-{tarea?.idTarea}</span>
       </td>
 
       {/* Título */}
@@ -169,8 +168,8 @@ export default function TaskRow({ tarea, onClick, onDelete }) {
           onClick={manejarEliminar}
           onMouseEnter={() => setDeleteHovered(true)}
           onMouseLeave={() => setDeleteHovered(false)}
-          title="Eliminar tarea"
-          aria-label="Eliminar tarea"
+          title="Delete task"
+          aria-label="Delete task"
         >
           <IconoEliminar />
         </button>

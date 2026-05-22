@@ -326,7 +326,7 @@ export default function BacklogPage() {
     { key: 'estatus', label: 'Status', sortable: true },
     { key: 'prioridad', label: 'Priority', sortable: true },
     { key: 'usuarioAsignado', label: 'Assigned', sortable: false },
-    { key: 'fechaVencimiento', label: 'Due Date', sortable: true },
+    { key: 'fechaVencimiento', label: 'Due date', sortable: true },
     { key: 'acciones', label: 'Actions', sortable: false },
   ];
 
@@ -448,7 +448,7 @@ export default function BacklogPage() {
                   style={{ transition: 'background-color 100ms' }}
                 >
                   <td style={{ ...estiloTd }}>
-                    <span style={estiloIdCell}>EQ51-{tarea.idTarea}</span>
+                    <span style={estiloIdCell}>YD-{tarea.idTarea}</span>
                   </td>
                   <td style={estiloTd}>
                     <span style={estiloTituloCell} title={tarea.titulo}>

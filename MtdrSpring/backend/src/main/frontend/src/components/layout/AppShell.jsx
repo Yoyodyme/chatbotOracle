@@ -6,6 +6,7 @@ import Toast from '../shared/Toast';
 import TaskDetailModal from '../tasks/TaskDetailModal';
 import ChatbotPanel from '../chatbot/ChatbotPanel';
 import useAppStore from '../../store/index';
+import useUsuarios from '../../hooks/useUsuarios';
 import '../../styles/animations.css';
 import '../../styles/globals.css';
 
@@ -15,6 +16,7 @@ const ALTO_TOPBAR = 48;
 
 export default function AppShell({ tituloPagina }) {
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
+  useUsuarios(); // Loads the user list globally for all assignment selectors
 
   const anchoSidebar = sidebarCollapsed
     ? ANCHO_SIDEBAR_COLAPSADO
@@ -44,26 +46,26 @@ export default function AppShell({ tituloPagina }) {
 
   return (
     <div style={estiloShell}>
-      {/* Sidebar fijo izquierdo */}
+      {/* Fixed left sidebar */}
       <Sidebar />
 
-      {/* Topbar fijo superior (ocupa el ancho restante) */}
+      {/* Fixed top bar (occupies remaining width) */}
       <TopBar titulo={tituloPagina} />
 
-      {/* Área de contenido principal */}
+      {/* Main content area */}
       <main style={estiloMain}>
         <div style={estiloContenido}>
           <Outlet />
         </div>
       </main>
 
-      {/* Modal de detalle de tarea (controlado por store.selectedTask) */}
+      {/* Task detail modal (controlled by store.selectedTask) */}
       <TaskDetailModal />
 
-      {/* Sistema de notificaciones toast */}
+      {/* Toast notification system */}
       <Toast />
 
-      {/* Asistente de tareas */}
+      {/* Task assistant */}
       <ChatbotPanel />
     </div>
   );

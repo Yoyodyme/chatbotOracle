@@ -63,6 +63,9 @@ public class TareaService {
             if (tareaActualizada.getFechaVencimiento() != null) {
                 tarea.setFechaVencimiento(tareaActualizada.getFechaVencimiento());
             }
+            if (tareaActualizada.getHorasEstimadas() != null) {
+                tarea.setHorasEstimadas(tareaActualizada.getHorasEstimadas());
+            }
             if (tareaActualizada.getHorasReales() != null) {
                 tarea.setHorasReales(tareaActualizada.getHorasReales());
             }
@@ -87,7 +90,7 @@ public class TareaService {
     }
 
     public List<Tarea> obtenerTareasActivasPorUsuario(Long idUsuario) {
-        return tareaRepository.findByUsuarioAsignadoAndEstatusNombres(idUsuario, List.of("pendiente", "en progreso"));
+        return tareaRepository.findByUsuarioAsignadoAndEstatusNombres(idUsuario, List.of("Pending", "In Progress"));
     }
 
     public boolean eliminarTarea(Long id) {

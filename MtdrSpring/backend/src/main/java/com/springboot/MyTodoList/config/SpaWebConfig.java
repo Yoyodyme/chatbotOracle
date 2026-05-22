@@ -10,8 +10,8 @@ import org.springframework.web.servlet.resource.PathResourceResolver;
 import java.io.IOException;
 
 /**
- * Configuración SPA: devuelve index.html para cualquier ruta no reconocida,
- * permitiendo que React Router maneje la navegación del lado del cliente.
+ * SPA configuration: returns index.html for any unrecognized route,
+ * allowing React Router to handle client-side navigation.
  */
 @Configuration
 public class SpaWebConfig implements WebMvcConfigurer {
@@ -29,7 +29,7 @@ public class SpaWebConfig implements WebMvcConfigurer {
                         if (recurso.exists() && recurso.isReadable()) {
                             return recurso;
                         }
-                        // Fallback: devolver index.html para rutas del cliente
+                        // Fallback: return index.html for client-side routes
                         return new ClassPathResource("/static/index.html");
                     }
                 });

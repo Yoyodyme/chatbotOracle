@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import useAppStore from '../../store/index';
 import { getUsuarioLogueado, logout } from '../../utils/auth';
 
-// ── Iconos SVG inline ────────────────────────────────────────────────────────
+// ── Inline SVG icons ─────────────────────────────────────────────────────────
 function IconDashboard() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -75,7 +75,7 @@ function IconCollapse({ collapsed }) {
   );
 }
 
-// ── Icono de nube estilo Oracle ──────────────────────────────────────────────
+// ── Oracle-style cloud icon ───────────────────────────────────────────────────
 function IconCloud() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
@@ -84,7 +84,7 @@ function IconCloud() {
   );
 }
 
-// ── Datos de navegación ──────────────────────────────────────────────────────
+// ── Navigation data ───────────────────────────────────────────────────────────
 const ITEMS_NAV = [
   { to: '/',        label: 'Dashboard', icon: <IconDashboard />, exact: true },
   { to: '/board',   label: 'Board',     icon: <IconBoard /> },
@@ -172,10 +172,10 @@ export default function Sidebar() {
       {/* Logo */}
       <div style={estiloLogo}>
         <IconCloud />
-        <span style={estiloTextoLogo}>EQ51</span>
+        <span style={estiloTextoLogo}>Yoyodyme</span>
       </div>
 
-      {/* Navegación */}
+      {/* Navigation */}
       <nav style={estiloNav}>
         {ITEMS_NAV.map((item) => (
           <SidebarNavLink
@@ -189,40 +189,7 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Usuario logueado */}
-      {usuario && (
-        <div style={{
-          padding: sidebarCollapsed ? '10px 0' : '10px 14px',
-          borderTop: '1px solid var(--sidebar-border)',
-          display: 'flex', flexDirection: 'column', gap: 6,
-          overflow: 'hidden',
-        }}>
-          {!sidebarCollapsed && (
-            <div style={{
-              fontSize: 11, color: 'var(--sidebar-text)',
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>
-              {usuario.nombreCompleto || usuario.nombreUsuario}
-            </div>
-          )}
-          <button
-            onClick={logout}
-            title="Cerrar sesión"
-            style={{
-              background: 'none', border: '1px solid var(--sidebar-border)',
-              color: 'var(--sidebar-text)', cursor: 'pointer',
-              borderRadius: 6, padding: sidebarCollapsed ? '5px 0' : '4px 8px',
-              fontSize: 11, width: '100%', textAlign: 'center',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#ffffff'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = 'var(--sidebar-text)'; }}
-          >
-            {sidebarCollapsed ? '↩' : 'Sign out'}
-          </button>
-        </div>
-      )}
-
-      {/* Botón colapsar */}
+      {/* Collapse button */}
       <button
         style={estiloBotonColapsar}
         onClick={toggleSidebar}

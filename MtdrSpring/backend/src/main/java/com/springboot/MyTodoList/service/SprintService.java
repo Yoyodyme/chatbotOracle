@@ -18,7 +18,7 @@ public class SprintService {
     }
 
     public Optional<Sprint> obtenerSprintActivo() {
-        return sprintRepository.findFirstByActivoTrueOrderByFechaInicioDesc();
+        return sprintRepository.findFirstByEstadoOrderByFechaInicioDesc("ACTIVO");
     }
 
     public List<Sprint> obtenerTodosLosSprints() {
@@ -29,12 +29,20 @@ public class SprintService {
         return sprintRepository.findById(idSprint);
     }
 
+    public boolean eliminarSprint(Long idSprint) {
+        if (sprintRepository.existsById(idSprint)) {
+            sprintRepository.deleteById(idSprint);
+            return true;
+        }
+        return false;
+    }
+
     public Sprint actualizarSprint(Long idSprint, Sprint sprintActualizado) {
         return sprintRepository.findById(idSprint).map(sprint -> {
             if (sprintActualizado.getNombre() != null) sprint.setNombre(sprintActualizado.getNombre());
             if (sprintActualizado.getFechaInicio() != null) sprint.setFechaInicio(sprintActualizado.getFechaInicio());
             if (sprintActualizado.getFechaFin() != null) sprint.setFechaFin(sprintActualizado.getFechaFin());
-            if (sprintActualizado.getActivo() != null) sprint.setActivo(sprintActualizado.getActivo());
+            if (sprintActualizado.getEstado() != null) sprint.setEstado(sprintActualizado.getEstado());
             return sprintRepository.save(sprint);
         }).orElse(null);
     }

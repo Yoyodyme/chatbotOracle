@@ -106,7 +106,7 @@ public class DashboardService {
 
     public List<Map<String, Object>> getTimeComparison() {
         Long idDone = getIdEstatusDone();
-        Locale spanish = new Locale("es", "MX");
+        Locale spanish = Locale.ENGLISH;
 
         List<Tarea> cerradas = tareaRepository.findAll().stream()
                 .filter(t -> t.getEstatus() != null && idDone.equals(t.getEstatus().getIdEstatus()))
@@ -217,12 +217,7 @@ public class DashboardService {
     }
 
     public List<Map<String, Object>> getHoras(String periodo) {
-        // DETECCIÓN: si no es "day", "week" o "month", tratar como filtro de Sprint
-        if (!"day".equals(periodo) && !"week".equals(periodo) && !"month".equals(periodo)) {
-            return getHorasPorSprint(periodo);
-        }
-
-        Locale spanish = new Locale("es", "MX");
+        Locale spanish = Locale.ENGLISH;
         LocalDateTime ahora = LocalDateTime.now();
         List<Tarea> recientes;
 

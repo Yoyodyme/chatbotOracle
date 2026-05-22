@@ -7,6 +7,6 @@ import java.util.Optional;
 
 @Repository
 public interface SprintRepository extends JpaRepository<Sprint, Long> {
-    Optional<Sprint> findFirstByActivoTrueOrderByFechaInicioDesc();
+    Optional<Sprint> findFirstByEstadoOrderByFechaInicioDesc(String estado);
     java.util.List<Sprint> findAllByOrderByFechaInicioDesc();
 }

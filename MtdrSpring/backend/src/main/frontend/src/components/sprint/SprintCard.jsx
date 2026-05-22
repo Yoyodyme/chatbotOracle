@@ -17,7 +17,7 @@ function calcularPorcentaje(sprint) {
 function getBadgeEstatus(sprint) {
   if (sprint.activo) {
     return {
-      label: 'ACTIVO',
+      label: 'ACTIVE',
       color: 'var(--accent)',
       bg: 'var(--accent-soft)',
       border: 'rgba(6,111,204,0.25)',
@@ -201,7 +201,7 @@ export default function SprintCard({ sprint, onCompleteSprint }) {
           {onCompleteSprint && (
             <button
               style={estiloBtnCompletar}
-              onClick={() => onCompleteSprint(sprint.id)}
+              onClick={() => onCompleteSprint(sprint.idSprint)}
               onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8'; }}
               onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
             >
