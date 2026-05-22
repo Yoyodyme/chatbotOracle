@@ -13,45 +13,61 @@ public enum BotMessages {
 	BYE("Bye! Select /start to resume!"),
 
 	// newtask flow
-	NEWTASK_TITLE("Nueva tarea\n\nPaso 1/4 — Escribe el titulo de la tarea:"),
-	NEWTASK_DESC("Paso 2/4 — Escribe una breve descripcion (o escribe 'saltar' para omitir):"),
-	NEWTASK_HOURS("Paso 3/4 — Cuantas horas estimadas requiere esta tarea? (numero, max 4h)\nOracle recomienda tareas de maximo 4 horas. Si es mayor, subdividela."),
-	NEWTASK_HOURS_INVALID("Por favor escribe un numero valido de horas (ej: 2, 1.5)."),
-	NEWTASK_HOURS_TOO_LONG("Esta tarea supera las 4 horas recomendadas por Oracle.\n\nSe recomienda subdividirla. Deseas continuar de todas formas? Escribe 'si' para continuar o 'cancelar' para empezar de nuevo."),
-	NEWTASK_PRIORITY("Paso 4/4 — Selecciona la prioridad:"),
-	NEWTASK_CREATED("Tarea creada exitosamente.\n\nID: {id}\nTitulo: {titulo}\nHoras estimadas: {horas}h"),
-	NEWTASK_CANCELLED("Creacion de tarea cancelada."),
+	NEWTASK_TITLE("New task\n\nStep 1/4 — Enter the task title:"),
+	NEWTASK_DESC("Step 2/4 — Enter a brief description (or type 'skip' to omit):"),
+	NEWTASK_HOURS("Step 3/4 — How many estimated hours does this task require? (number, max 4h)\nOracle recommends tasks of at most 4 hours. If longer, break it down."),
+	NEWTASK_HOURS_INVALID("Please enter a valid number of hours (e.g. 2, 1.5)."),
+	NEWTASK_HOURS_TOO_LONG("This task exceeds the 4-hour limit recommended by Oracle.\n\nIt is recommended to break it down. Do you want to continue anyway? Type 'yes' to continue or 'cancel' to start over."),
+	NEWTASK_PRIORITY("Step 4/4 — Select the priority:"),
+	NEWTASK_CREATED("Task created successfully.\n\nID: {id}\nTitle: {titulo}\nEstimated hours: {horas}h"),
+	NEWTASK_CANCELLED("Task creation cancelled."),
 
 	// assignsprint flow
-	ASSIGNSPRINT_NO_SPRINT("No hay un sprint activo en este momento. Pide a tu manager que active un sprint."),
-	ASSIGNSPRINT_NO_TASKS("No tienes tareas pendientes para asignar al sprint."),
-	ASSIGNSPRINT_SELECT("Selecciona el ID de la tarea a asignar al sprint actual:\n\n{lista}"),
-	ASSIGNSPRINT_INVALID_ID("ID de tarea invalido. Escribe el numero del ID."),
-	ASSIGNSPRINT_NOT_FOUND("No se encontro esa tarea asignada a ti."),
-	ASSIGNSPRINT_DONE("Tarea {id} asignada al sprint y marcada como En Progreso."),
+	ASSIGNSPRINT_NO_SPRINT("There is no active sprint at the moment. Ask your manager to activate a sprint."),
+	ASSIGNSPRINT_NO_TASKS("You have no pending tasks to assign to the sprint."),
+	ASSIGNSPRINT_SELECT("Select the ID of the task to assign to the current sprint:\n\n{lista}"),
+	ASSIGNSPRINT_INVALID_ID("Invalid task ID. Enter the numeric ID."),
+	ASSIGNSPRINT_NOT_FOUND("That task assigned to you was not found."),
+	ASSIGNSPRINT_DONE("Task {id} assigned to the sprint and marked as In Progress."),
 
 	// donetask flow
-	DONETASK_NO_TASKS("No tienes tareas activas asignadas. Usa /newtask para crear una tarea."),
-	DONETASK_SELECT("Selecciona el ID de la tarea a completar:\n\n{lista}"),
-	DONETASK_HOURS("Cuantas horas reales tomo completar esta tarea? (numero):"),
-	DONETASK_HOURS_INVALID("Por favor escribe un numero valido de horas."),
-	DONETASK_DONE("Tarea {id} marcada como Completada.\nHoras reales: {horas}h"),
+	DONETASK_NO_TASKS("You have no active tasks assigned. Use /newtask to create a task."),
+	DONETASK_SELECT("Select the ID of the task to complete:\n\n{lista}"),
+	DONETASK_HOURS("How many actual hours did it take to complete this task? (number):"),
+	DONETASK_HOURS_INVALID("Please enter a valid number of hours."),
+	DONETASK_DONE("Task {id} marked as Completed.\nActual hours: {horas}h"),
 
 	// sprint table
-	SPRINTTABLE_NO_SPRINT("No hay un sprint activo."),
-	SPRINTTABLE_EMPTY("El sprint actual no tiene tareas asignadas."),
+	SPRINTTABLE_NO_SPRINT("There is no active sprint."),
+	SPRINTTABLE_EMPTY("The current sprint has no assigned tasks."),
 
 	// kpi
-	KPI_NO_SPRINT("No hay un sprint activo."),
-	KPI_EMPTY("El sprint actual no tiene tareas."),
+	KPI_NO_SPRINT("There is no active sprint."),
+	KPI_EMPTY("The current sprint has no tasks."),
 
 	// newsprint flow
-	NEWSPRINT_NOMBRE("Nuevo Sprint\n\nPaso 1/3 — Escribe el nombre del sprint:"),
-	NEWSPRINT_FECHA_INICIO("Paso 2/3 — Fecha de inicio (dd/MM/yyyy):"),
-	NEWSPRINT_FECHA_FIN("Paso 3/3 — Fecha de fin (dd/MM/yyyy):"),
-	NEWSPRINT_FECHA_INVALIDA("Formato de fecha invalido. Usa dd/MM/yyyy (ej: 25/04/2025):"),
-	NEWSPRINT_CREADO("Sprint '{nombre}' creado y activado."),
-	NEWSPRINT_CANCELLED("Creacion de sprint cancelada.");
+	NEWSPRINT_NOMBRE("New Sprint\n\nStep 1/3 — Enter the sprint name:"),
+	NEWSPRINT_FECHA_INICIO("Step 2/3 — Start date (dd/MM/yyyy):"),
+	NEWSPRINT_FECHA_FIN("Step 3/3 — End date (dd/MM/yyyy):"),
+	NEWSPRINT_FECHA_INVALIDA("Invalid date format. Use dd/MM/yyyy (e.g. 25/04/2025):"),
+	NEWSPRINT_CREADO("Sprint '{nombre}' created and activated."),
+	NEWSPRINT_CANCELLED("Sprint creation cancelled."),
+
+	// select assignee in newtask
+	SELECCIONAR_ASIGNADO("Select who to assign the task to:\n(Reply with the number)"),
+
+	// new task confirmation
+	TAREA_CONFIRMACION("Task summary:\nTitle: %s\nDescription: %s\nEstimated hours: %.1f\nPriority: %s\nAssigned to: %s\n\nIs this correct? Reply 'yes' to save, or 'edit [field]' to correct.\nExample: edit title, edit hours, edit priority, edit assigned"),
+
+	// modify task
+	MODIFICAR_CAMPO("Which field do you want to edit?\n1. Title\n2. Description\n3. Estimated hours\n4. Priority\n5. Assigned to\n6. Sprint\n7. Status\n\nReply with the number."),
+	CAMBIOS_GUARDADOS("Changes saved successfully."),
+
+	// sprint confirmation
+	SPRINT_CONFIRMACION("Sprint summary:\nName: %s\nStart: %s\nEnd: %s\n\nIs this correct? Reply 'yes' to save or 'no' to cancel."),
+
+	// select task to modify
+	SELECCIONAR_TAREA_MODIFICAR("Select the task you want to modify (enter the ID):");
 
 	private String message;
 

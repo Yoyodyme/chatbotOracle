@@ -4,23 +4,23 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 /**
- * Propiedades de configuración para el orquestador de agente IA.
- * Se leen desde el prefijo "agent.ai" en application.properties.
+ * Configuration properties for the AI agent orchestrator.
+ * Read from the "agent.ai" prefix in application.properties.
  */
 @Component
 @ConfigurationProperties(prefix = "agent.ai")
 public class AiProps {
 
-    /** Permite habilitar o deshabilitar el agente IA en tiempo de configuración. */
+    /** Enables or disables the AI agent at configuration time. */
     private boolean habilitado = true;
 
-    /** Clave de API del proveedor LLM (ej. DeepSeek). */
+    /** API key for the LLM provider (e.g. DeepSeek). */
     private String apiKey;
 
-    /** URL completa del endpoint de chat completions. */
+    /** Full URL of the chat completions endpoint. */
     private String apiUrl;
 
-    /** Nombre del modelo a usar en las peticiones. */
+    /** Name of the model to use in requests. */
     private String modelo = "deepseek-chat";
 
     public boolean isHabilitado()        { return habilitado; }

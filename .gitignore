@@ -1,3 +1,8 @@
+# Claude Code internal files
+.claude/worktrees/
+.claude/scheduled_tasks.lock
+.claude/settings.local.json
+
 # Compiled class file
 *.class
 
@@ -61,3 +66,5 @@ frontend/package-lock.json
 frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/yarn-error.log*
+*.yaml
+MtdrSpring/backend/src/main/frontend/dist/

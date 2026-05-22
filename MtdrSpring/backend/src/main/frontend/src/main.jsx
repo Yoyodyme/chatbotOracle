@@ -24,7 +24,7 @@ class ErrorBoundary extends React.Component {
     if (this.state.error) {
       return (
         <div style={{ color: '#ff6b6b', padding: '32px', fontFamily: 'monospace', background: '#0d0f14', minHeight: '100vh' }}>
-          <h1 style={{ color: '#ff4444', marginBottom: '16px' }}>Error de Render</h1>
+          <h1 style={{ color: '#ff4444', marginBottom: '16px' }}>Render Error</h1>
           <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: '13px' }}>
             {String(this.state.error)}
             {this.state.error?.stack && '\n\nStack:\n' + this.state.error.stack}

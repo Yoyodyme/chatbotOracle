@@ -12,7 +12,9 @@ public enum BotCommands {
 	DONE_TASK("/donetask"),
 	SPRINT_TABLE("/sprinttable"),
 	KPI("/kpi"),
-	NEW_SPRINT("/newsprint");
+	NEW_SPRINT("/newsprint"),
+	MODIFY_TASK("/modifytask"),
+	MODIFY_SPRINT("/modifysprint");
 
 	private String command;
 

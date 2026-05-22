@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { format, parseISO, isValid } from 'date-fns';
-import { enUS } from 'date-fns/locale';
 import useAppStore from '../../store/index';
 import { updateTarea as apiActualizarTarea, deleteTarea as apiEliminarTarea } from '../../api/tareas';
 import ConfirmDialog from '../shared/ConfirmDialog';
@@ -15,7 +14,7 @@ function formatearFechaHora(fecha) {
   try {
     const parsed = typeof fecha === 'string' ? parseISO(fecha) : new Date(fecha);
     if (!isValid(parsed)) return '';
-    return format(parsed, "d MMM yyyy 'at' HH:mm", { locale: enUS });
+    return format(parsed, "MMM d, yyyy 'at' HH:mm");
   } catch {
     return '';
   }
@@ -65,7 +64,7 @@ const ESTILO_LABEL = {
 
 function CampoEditable({ label, children }) {
   return (
-    <div style={{ marginBottom: '16px' }}>
+    <div>
       <label style={ESTILO_LABEL}>{label}</label>
       {children}
     </div>
@@ -207,7 +206,7 @@ export default function TaskDetailModal() {
     try {
       await apiEliminarTarea(selectedTask.idTarea);
       deleteTarea(selectedTask.idTarea);
-      addToast({ id: `del-${Date.now()}`, type: 'success', message: `Tarea EQ51-${selectedTask.idTarea} eliminada` });
+      addToast({ id: `del-${Date.now()}`, type: 'success', message: `Task YD-${selectedTask.idTarea} deleted` });
       setSelectedTask(null);
     } catch (err) {
       addToast({ id: `err-${Date.now()}`, type: 'error', message: 'Error deleting task' });
@@ -327,6 +326,10 @@ export default function TaskDetailModal() {
     padding: '20px 22px',
     overflowY: 'auto',
     borderRight: '1px solid var(--border)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem',
+    alignItems: 'stretch',
   };
 
   const estiloColumnaDer = {
@@ -455,12 +458,12 @@ export default function TaskDetailModal() {
         <div style={estiloCard} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
           {/* Header */}
           <div style={estiloHeader}>
-            <span style={estiloIDHeader}>EQ51-{selectedTask.idTarea}</span>
+            <span style={estiloIDHeader}>YD-{selectedTask.idTarea}</span>
             <span style={estiloTituloHeader}>{campos.titulo || selectedTask.titulo}</span>
             <button
               style={estiloBotonCerrar}
               onClick={cerrarModal}
-              aria-label="Cerrar"
+              aria-label="Close"
               onMouseEnter={(e) => {
                 e.currentTarget.style.color = 'var(--text-primary)';
                 e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
@@ -552,7 +555,7 @@ export default function TaskDetailModal() {
 
               {/* Fechas de auditoría */}
               {selectedTask.creadoEn && (
-                <div style={{ marginTop: '8px', fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                   Created: {formatearFechaHora(selectedTask.creadoEn)}
                 </div>
               )}
@@ -649,7 +652,7 @@ export default function TaskDetailModal() {
       <ConfirmDialog
         open={confirmarEliminar}
         title="Delete task"
-        message={`Are you sure you want to delete task EQ51-${selectedTask.idTarea}? This action cannot be undone.`}
+        message={`Are you sure you want to delete task YD-${selectedTask.idTarea}? This action cannot be undone.`}
         onConfirm={manejarEliminar}
         onCancel={() => setConfirmarEliminar(false)}
         confirmLabel="Delete"

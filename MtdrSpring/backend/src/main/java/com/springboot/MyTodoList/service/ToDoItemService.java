@@ -12,9 +12,9 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
- * Servicio heredado del bot de Telegram.
- * Delega en {@link ToDoItemRepository} (que ahora usa la entidad {@link Tarea})
- * y adapta los resultados al wrapper {@link ToDoItem} que espera {@code BotActions}.
+ * Legacy service for the Telegram bot.
+ * Delegates to {@link ToDoItemRepository} (which now uses the {@link Tarea} entity)
+ * and adapts the results to the {@link ToDoItem} wrapper expected by {@code BotActions}.
  */
 @Service
 public class ToDoItemService {
@@ -67,7 +67,7 @@ public class ToDoItemService {
             if (toDoItem.getDescription() != null) {
                 tarea.setDescripcion(toDoItem.getDescription());
             }
-            // setDone es no-op en ToDoItem; el estatus real se gestiona via TareaBotActions
+            // setDone is a no-op in ToDoItem; the actual status is managed via TareaBotActions
             Tarea guardada = repository.save(tarea);
             return envolver(guardada);
         }

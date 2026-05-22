@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,6 +20,11 @@ import java.util.stream.Collectors;
  * Orquestador principal del asistente conversacional.
  * Recibe el texto del usuario, delega el análisis de intención al LlmIntentParser
  * y despacha la lógica correspondiente a cada intención reconocida.
+ *
+ * Soporta historial de conversación multi-turno mediante el overload
+ * {@link #manejarMensaje(String, List)}, que pasa el contexto previo al parser.
+ * El overload sin historial {@link #manejarMensaje(String)} sigue siendo compatible
+ * con todos los llamadores existentes (Telegram bot, etc.).
  */
 @Service
 public class AgentOrchestrator {
@@ -41,14 +47,34 @@ public class AgentOrchestrator {
         this.usuarioService = usuarioService;
     }
 
+    // -------------------------------------------------------------------------
+    // Punto de entrada — sin historial (compatibilidad hacia atrás)
+    // -------------------------------------------------------------------------
+
     /**
-     * Punto de entrada principal del asistente.
-     * Analiza el mensaje, determina la intención y devuelve la respuesta adecuada.
+     * Punto de entrada compatible con llamadores existentes (bot de Telegram, etc.).
+     * Delega a {@link #manejarMensaje(String, List)} con historial vacío.
      *
      * @param textoMensaje Mensaje enviado por el usuario
      * @return Respuesta en texto plano en español
      */
     public String manejarMensaje(String textoMensaje) {
+        return manejarMensaje(textoMensaje, Collections.emptyList());
+    }
+
+    // -------------------------------------------------------------------------
+    // Punto de entrada principal — con historial multi-turno
+    // -------------------------------------------------------------------------
+
+    /**
+     * Analiza el mensaje, determina la intención y devuelve la respuesta adecuada.
+     * El historial de la conversación se pasa al LLM para permitir respuestas con contexto.
+     *
+     * @param textoMensaje Mensaje enviado por el usuario en el turno actual
+     * @param historial    Mensajes previos de la conversación (puede estar vacío)
+     * @return Respuesta en texto plano en español
+     */
+    public String manejarMensaje(String textoMensaje, List<Map<String, String>> historial) {
         if (textoMensaje == null || textoMensaje.isBlank()) {
             return "Por favor escribe un mensaje. Puedes pedirme que liste tareas, "
                     + "muestre el resumen del sprint o la carga del equipo.";
@@ -56,7 +82,7 @@ public class AgentOrchestrator {
 
         ParsedIntent intentParseado;
         try {
-            intentParseado = llmIntentParser.parse(textoMensaje);
+            intentParseado = llmIntentParser.parse(textoMensaje, historial);
         } catch (Exception ex) {
             logger.error("Error al analizar la intención del mensaje: {}", textoMensaje, ex);
             return "Ocurrió un error al procesar tu mensaje. Por favor intenta de nuevo.";
@@ -81,9 +107,17 @@ public class AgentOrchestrator {
                 return manejarResumenSprint();
             case CARGA_EQUIPO:
                 return manejarCargaEquipo();
+            case VER_TAREA:
+                return manejarVerTarea(seguro(intentParseado.getTitulo()));
+            case MODIFICAR_TAREA:
+                return "Para modificar una tarea, usa el comando Modificar Tarea en el menú del bot "
+                        + "o en el panel de tareas.";
+            case ASIGNAR_TAREA:
+                return "Para modificar una tarea, usa el comando Modificar Tarea en el menú del bot "
+                        + "o en el panel de tareas.";
             case DESCONOCIDO:
             default:
-                return llmIntentParser.generarRespuestaConversacional(textoMensaje);
+                return llmIntentParser.generarRespuestaConversacional(textoMensaje, historial);
         }
     }
 
@@ -99,7 +133,8 @@ public class AgentOrchestrator {
                 + "• Filtrar tareas por estatus (ej: \"tareas pendientes\")\n"
                 + "• Ver el resumen del sprint activo\n"
                 + "• Ver la carga de trabajo del equipo\n"
-                + "• Conversar sobre cualquier otro tema";
+                + "• Ver los detalles de una tarea (ej: \"detalle de la tarea Login\")\n"
+                + "• Conversar sobre cualquier otro tema del proyecto";
     }
 
     /** Lista todas las tareas (máximo MAX_TAREAS visibles, con indicador si hay más). */
@@ -280,6 +315,42 @@ public class AgentOrchestrator {
                           .append(" tarea(s)\n"));
 
         return sb.toString().trim();
+    }
+
+    /**
+     * Busca una tarea por coincidencia parcial del título y muestra sus detalles.
+     *
+     * @param tituloBuscado Título o parte del título extraído de la intención
+     */
+    private String manejarVerTarea(String tituloBuscado) {
+        if (tituloBuscado == null || tituloBuscado.isBlank()) {
+            return "¿De qué tarea quieres ver los detalles? Indícame el título o parte del nombre.";
+        }
+
+        List<Tarea> todas = tareaService.obtenerTodosLasTareas();
+
+        Optional<Tarea> encontrada = todas.stream()
+                .filter(t -> t.getTitulo() != null
+                        && normalizar(t.getTitulo()).contains(normalizar(tituloBuscado)))
+                .findFirst();
+
+        if (encontrada.isEmpty()) {
+            return "No encontré ninguna tarea con el título '" + tituloBuscado + "'. "
+                    + "Verifica que el nombre esté escrito correctamente.";
+        }
+
+        Tarea t = encontrada.get();
+        String estatus   = t.getEstatus() != null ? seguro(t.getEstatus().getNombre()) : "—";
+        String asignado  = t.getUsuarioAsignado() != null
+                ? seguro(t.getUsuarioAsignado().getNombreCompleto()) : "Sin asignar";
+        String hEst      = t.getHorasEstimadas() != null ? String.valueOf(t.getHorasEstimadas()) : "—";
+        String hReal     = t.getHorasReales()    != null ? String.valueOf(t.getHorasReales())    : "—";
+
+        return "Tarea: " + seguro(t.getTitulo()) + "\n"
+                + "Estatus: " + estatus + "\n"
+                + "Asignado a: " + asignado + "\n"
+                + "Horas estimadas: " + hEst + "\n"
+                + "Horas reales: " + hReal;
     }
 
     // -------------------------------------------------------------------------

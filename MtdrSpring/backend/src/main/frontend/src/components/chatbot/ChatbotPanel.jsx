@@ -3,9 +3,9 @@ import { enviarMensaje } from '../../api/chatbot';
 import './ChatbotPanel.css';
 
 const HINTS = [
-  { label: 'Pending tasks',    mensaje: 'tareas pendientes'   },
-  { label: 'Sprint status',    mensaje: 'estado del sprint'   },
-  { label: 'Completed tasks',  mensaje: 'tareas completadas'  },
+  { label: 'Pending tasks',    mensaje: 'pending tasks'    },
+  { label: 'Sprint status',    mensaje: 'sprint status'    },
+  { label: 'Completed tasks',  mensaje: 'completed tasks'  },
 ];
 
 
@@ -35,6 +35,14 @@ export default function ChatbotPanel() {
     const msg = texto.trim();
     if (!msg || cargando) return;
 
+    // Construir historial desde los mensajes actuales antes de añadir el nuevo turno.
+    // Se filtran mensajes de rol 'sistema', se toman los últimos 10 y se mapean al
+    // formato estándar {role, content} que espera el backend (OpenAI/DeepSeek API).
+    const historial = mensajes
+      .filter(m => m.rol !== 'sistema')
+      .slice(-10)
+      .map(m => ({ role: m.rol === 'usuario' ? 'user' : 'assistant', content: m.texto }));
+
     setHintsVisible(false);
     setMensajes(prev => [...prev, { rol: 'usuario', texto: msg }]);
     setEntrada('');
@@ -42,9 +50,9 @@ export default function ChatbotPanel() {
 
     let respuesta;
     try {
-      respuesta = await enviarMensaje(msg);
+      respuesta = await enviarMensaje(msg, historial);
     } catch (err) {
-      respuesta = 'Error connecting to assistant. Please verify the server is running.';
+      respuesta = 'Error connecting to the assistant. Please verify the server is online.';
     }
     setCargando(false);
 
@@ -96,7 +104,7 @@ export default function ChatbotPanel() {
               <div className="chatbot-avatar">AI</div>
               <div>
                 <p className="chatbot-nombre">Assistant</p>
-                <p className="chatbot-sub">EQ51 · Task Manager</p>
+                <p className="chatbot-sub">Yoyodyme · Task Manager</p>
               </div>
             </div>
           </div>
@@ -137,7 +145,7 @@ export default function ChatbotPanel() {
               className="chatbot-input"
               value={entrada}
               onChange={e => setEntrada(e.target.value)}
-              placeholder="Type your question…"
+              placeholder="Ask a question…"
               disabled={cargando}
               autoComplete="off"
             />

@@ -6,7 +6,8 @@ const fetchTimeComparison = () => apiFetch('/api/dashboard/time-comparison');
 const fetchTeamVelocity   = () => apiFetch('/api/dashboard/team-velocity');
 const fetchPersonalWork   = () => apiFetch('/api/dashboard/personal-work');
 const fetchStatusDist     = () => apiFetch('/api/dashboard/status-distribution');
-export const fetchWeeklyHours = (periodo = 'week') => apiFetch(`/api/dashboard/weekly-hours?periodo=${periodo}`);
+export const fetchWeeklyHours  = (periodo = 'week')    => apiFetch(`/api/dashboard/weekly-hours?periodo=${periodo}`);
+export const fetchSprintHours  = (sprint  = 'current') => apiFetch(`/api/dashboard/weekly-hours?periodo=${sprint}`);
 const fetchContributions  = () => apiFetch('/api/dashboard/contributions');
 
 export const fetchKpiPorSprint            = () => apiFetch('/api/dashboard/kpi-por-sprint');
@@ -15,27 +16,16 @@ export const fetchResumenSprints          = () => apiFetch('/api/dashboard/resum
 export const fetchContribucionesPorSprint = () => apiFetch('/api/dashboard/contribuciones-por-sprint');
 
 export async function fetchTodoDashboard() {
-  const [
-    stats, sprint, timeComparison, teamVelocity, personalWork,
-    statusDist, weeklyHours, contributions,
-    kpiPorSprint, horasPorSprint, resumenSprints, contribucionesPorSprint,
-  ] = await Promise.all([
-    fetchStats(),
-    fetchSprint(),
-    fetchTimeComparison(),
-    fetchTeamVelocity(),
-    fetchPersonalWork(),
-    fetchStatusDist(),
-    fetchWeeklyHours(),
-    fetchContributions(),
-    fetchKpiPorSprint(),
-    fetchHorasPorSprint(),
-    fetchResumenSprints(),
-    fetchContribucionesPorSprint(),
-  ]);
-  return {
-    stats, sprint, timeComparison, teamVelocity, personalWork,
-    statusDist, weeklyHours, contributions,
-    kpiPorSprint, horasPorSprint, resumenSprints, contribucionesPorSprint,
-  };
+  const [stats, sprint, timeComparison, teamVelocity, personalWork, statusDist, weeklyHours, contributions] =
+    await Promise.all([
+      fetchStats(),
+      fetchSprint(),
+      fetchTimeComparison(),
+      fetchTeamVelocity(),
+      fetchPersonalWork(),
+      fetchStatusDist(),
+      fetchSprintHours('current'),
+      fetchContributions(),
+    ]);
+  return { stats, sprint, timeComparison, teamVelocity, personalWork, statusDist, weeklyHours, contributions };
 }

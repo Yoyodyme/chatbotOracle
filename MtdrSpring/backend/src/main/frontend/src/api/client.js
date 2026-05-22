@@ -1,14 +1,14 @@
 /**
- * Base HTTP client para la API de Spring Boot.
- * Usa HTTP Basic auth con las credenciales de desarrollo.
- * Todas las peticiones son relativas a la raíz del servidor (BASE_URL = ''),
- * permitiendo que el proxy de Vite reenvíe /api y /todolist en desarrollo,
- * y que Spring Boot sirva directamente en producción.
+ * Base HTTP client for the Spring Boot API.
+ * Uses HTTP Basic auth with development credentials.
+ * All requests are relative to the server root (BASE_URL = ''),
+ * allowing Vite's proxy to forward /api and /todolist in development,
+ * and Spring Boot to serve directly in production.
  */
 
 const BASE_URL = '';
 
-// Credenciales de desarrollo — en producción se inyectarían desde env vars
+// Development credentials — in production these would be injected from env vars
 const BASIC_CREDENTIALS = btoa('admin:admin123');
 
 const AUTH_HEADER = `Basic ${BASIC_CREDENTIALS}`;
@@ -19,12 +19,12 @@ const DEFAULT_HEADERS = {
 };
 
 /**
- * Realiza una petición HTTP a la API.
+ * Performs an HTTP request to the API.
  *
- * @param {string} path - Ruta relativa, e.g. '/api/tareas'
- * @param {RequestInit} options - Opciones de fetch (method, body, etc.)
- * @returns {Promise<any|null>} Datos JSON de la respuesta, o null para 204
- * @throws {Error} Si la respuesta HTTP no es 2xx
+ * @param {string} path - Relative path, e.g. '/api/tareas'
+ * @param {RequestInit} options - Fetch options (method, body, etc.)
+ * @returns {Promise<any|null>} JSON response data, or null for 204
+ * @throws {Error} If the HTTP response is not 2xx
  */
 export async function apiFetch(path, options = {}) {
   const url = `${BASE_URL}${path}`;
@@ -37,7 +37,7 @@ export async function apiFetch(path, options = {}) {
     },
   };
 
-  // Serializar body a JSON si es un objeto
+  // Serialize body to JSON if it is an object
   if (config.body && typeof config.body === 'object') {
     config.body = JSON.stringify(config.body);
   }
@@ -45,7 +45,7 @@ export async function apiFetch(path, options = {}) {
   try {
     const response = await fetch(url, config);
 
-    // Sin contenido — respuesta válida para DELETE/PUT
+    // No content — valid response for DELETE/PUT
     if (response.status === 204) {
       return null;
     }
@@ -57,7 +57,7 @@ export async function apiFetch(path, options = {}) {
         const cuerpoError = await response.json();
         mensajeError = cuerpoError.message || cuerpoError.error || mensajeError;
       } catch {
-        // Ignorar si el cuerpo no es JSON válido
+        // Ignore if the body is not valid JSON
       }
 
       throw new Error(mensajeError);
@@ -66,7 +66,7 @@ export async function apiFetch(path, options = {}) {
     return await response.json();
   } catch (error) {
     if (error instanceof TypeError && error.message === 'Failed to fetch') {
-      throw new Error('No se pudo conectar al servidor. Verifica que el backend esté corriendo en localhost:8080.');
+      throw new Error('Could not connect to the server. Verify that the backend is running on localhost:8080.');
     }
     throw error;
   }
