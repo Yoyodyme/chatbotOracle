@@ -285,7 +285,7 @@ public class DashboardService {
         if ("current".equals(sprintName)) {
             // Buscar sprint activo (activo == true)
             sprint = sprintRepository.findAll().stream()
-                    .filter(s -> Boolean.TRUE.equals(s.getActivo()))
+                    .filter(s -> "current".equalsIgnoreCase(s.getEstado()))
                     .findFirst()
                     .orElse(null);
         } else {
@@ -336,7 +336,7 @@ public class DashboardService {
     }
 
     private String getEstadoSprint(Sprint s) {
-        if (Boolean.TRUE.equals(s.getActivo())) return "ACTIVO";
+        if ("current".equalsIgnoreCase(s.getEstado())) return "ACTIVE";
         if (s.getFechaFin() != null && s.getFechaFin().isBefore(java.time.LocalDate.now())) return "PASADO";
         return "FUTURO";
     }
