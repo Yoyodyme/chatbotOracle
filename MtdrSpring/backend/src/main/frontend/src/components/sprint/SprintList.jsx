@@ -3,7 +3,7 @@ import SprintCard from './SprintCard';
 
 export default function SprintList({ sprints = [], onCreateSprint, onCompleteSprint }) {
   const ordenados = [...sprints].sort((a, b) => {
-    // Activos primero, luego por fecha de inicio descendente
+    // Active first, then by start date descending
     if (a.activo && !b.activo) return -1;
     if (!a.activo && b.activo) return 1;
     return new Date(b.fechaInicio || 0) - new Date(a.fechaInicio || 0);

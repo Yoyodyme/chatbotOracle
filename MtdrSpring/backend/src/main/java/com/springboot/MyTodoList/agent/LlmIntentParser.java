@@ -16,13 +16,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Clasificador de intenciones que delega al LLM configurado (DeepSeek por defecto).
- * Si el agente está deshabilitado, la clave de API está en blanco, o ocurre cualquier
- * excepción, cae automáticamente al clasificador basado en reglas.
+ * Intent classifier that delegates to the configured LLM (DeepSeek by default).
+ * If the agent is disabled, the API key is blank, or any exception occurs,
+ * it falls back automatically to the rule-based classifier.
  *
- * Soporta historial de conversación multi-turno: cuando se proporciona un historial
- * no vacío, los mensajes previos se insertan entre el mensaje de sistema y el nuevo
- * mensaje del usuario, dando contexto al modelo.
+ * Supports multi-turn conversation history: when a non-empty history is provided,
+ * previous messages are inserted between the system message and the new user
+ * message, giving the model context.
  */
 @Component
 public class LlmIntentParser implements IntentParser {
@@ -30,22 +30,22 @@ public class LlmIntentParser implements IntentParser {
     private static final Logger log = LoggerFactory.getLogger(LlmIntentParser.class);
 
     private static final String PROMPT_SISTEMA_CLASIFICADOR =
-            "Eres un clasificador de intenciones para un asistente de gestion agile en espanol. "
-            + "IMPORTANTE: Responde UNICAMENTE con un objeto JSON plano. Sin markdown, sin bloques de codigo, "
-            + "sin explicaciones. Solo el JSON crudo. "
-            + "Intenciones permitidas: AYUDA, LISTAR_TAREAS, TAREAS_POR_ASIGNADO, TAREAS_POR_ESTATUS, "
+            "You are an intent classifier for an agile management assistant in English. "
+            + "IMPORTANT: Respond ONLY with a plain JSON object. No markdown, no code blocks, "
+            + "no explanations. Raw JSON only. "
+            + "Allowed intents: AYUDA, LISTAR_TAREAS, TAREAS_POR_ASIGNADO, TAREAS_POR_ESTATUS, "
             + "RESUMEN_SPRINT, CARGA_EQUIPO, VER_TAREA, MODIFICAR_TAREA, ASIGNAR_TAREA, DESCONOCIDO "
-            + "Formato exacto: {\"intent\":\"...\",\"asignado\":null,\"estatus\":null,\"titulo\":null,"
+            + "Exact format: {\"intent\":\"...\",\"asignado\":null,\"estatus\":null,\"titulo\":null,"
             + "\"clarificationNeeded\":false,\"clarificationQuestion\":null} "
-            + "Si falta informacion, pon clarificationNeeded en true y escribe la pregunta "
-            + "en clarificationQuestion en espanol.";
+            + "If information is missing, set clarificationNeeded to true and write the question "
+            + "in clarificationQuestion in English.";
 
     private static final String PROMPT_SISTEMA_CONVERSACIONAL =
-            "Eres un asistente para el proyecto Yoyodyme. Tienes acceso a informacion de tareas, "
-            + "sprints y usuarios. Puedes responder preguntas sobre Scrum, Kanban, metodologias agiles, "
-            + "gestion de proyectos de software y las tareas del proyecto. "
-            + "Responde siempre en espanol. Para cualquier otro tema responde: "
-            + "\"Solo puedo ayudarte con consultas del proyecto o metodologias agiles.\"";
+            "You are an assistant for the Yoyodyme project. You have access to information about tasks, "
+            + "sprints, and users. You can answer questions about Scrum, Kanban, agile methodologies, "
+            + "software project management, and the project's tasks. "
+            + "Always respond in English. For any other topic respond: "
+            + "\"I can only help you with project queries or agile methodologies.\"";
 
     private final AiProps aiProps;
     private final RuleBasedIntentParser parserRespaldo;
@@ -59,7 +59,7 @@ public class LlmIntentParser implements IntentParser {
         this.parserRespaldo = parserRespaldo;
         this.objectMapper   = objectMapper;
 
-        // Se construye una sola vez con los headers fijos de autenticación
+        // Built once with fixed authentication headers
         this.restClient = RestClient.builder()
                 .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + aiProps.getApiKey())
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
@@ -67,16 +67,16 @@ public class LlmIntentParser implements IntentParser {
     }
 
     // -------------------------------------------------------------------------
-    // Implementación de IntentParser (contrato de interfaz — sin historial)
+    // IntentParser implementation (interface contract — no history)
     // -------------------------------------------------------------------------
 
     /**
-     * Clasifica la intención del mensaje enviándolo al LLM con temperatura 0.
-     * Versión sin historial, compatible con llamadores existentes.
-     * Delega a {@link #parse(String, List)} con lista vacía.
+     * Classifies the intent of a message by sending it to the LLM at temperature 0.
+     * History-free version, compatible with existing callers.
+     * Delegates to {@link #parse(String, List)} with an empty list.
      *
-     * @param textoMensaje mensaje del usuario en español
-     * @return intención clasificada con sus parámetros
+     * @param textoMensaje user message
+     * @return classified intent with its parameters
      */
     @Override
     public ParsedIntent parse(String textoMensaje) {
@@ -84,17 +84,17 @@ public class LlmIntentParser implements IntentParser {
     }
 
     /**
-     * Clasifica la intención del mensaje enviándolo al LLM con temperatura 0.
-     * Incluye el historial previo de la conversación para mayor contexto.
-     * Cae al clasificador de reglas si el agente está deshabilitado o ante cualquier error.
+     * Classifies the intent of a message by sending it to the LLM at temperature 0.
+     * Includes the previous conversation history for additional context.
+     * Falls back to the rule-based classifier if the agent is disabled or any error occurs.
      *
-     * @param textoMensaje mensaje del usuario en español
-     * @param historial    mensajes previos de la conversación (puede estar vacío)
-     * @return intención clasificada con sus parámetros
+     * @param textoMensaje user message
+     * @param historial    previous conversation messages (may be empty)
+     * @return classified intent with its parameters
      */
     public ParsedIntent parse(String textoMensaje, List<Map<String, String>> historial) {
         if (!aiProps.isHabilitado() || esClaveVacia(aiProps.getApiKey())) {
-            log.debug("Agente IA deshabilitado o sin clave — usando clasificador de reglas");
+            log.debug("AI agent disabled or missing key — using rule-based classifier");
             return parserRespaldo.parse(textoMensaje);
         }
 
@@ -114,39 +114,39 @@ public class LlmIntentParser implements IntentParser {
             return objectMapper.readValue(json, ParsedIntent.class);
 
         } catch (Exception ex) {
-            log.warn("LlmIntentParser falló al clasificar intención — usando clasificador de reglas. "
-                    + "Causa: {}", ex.getMessage());
+            log.warn("LlmIntentParser failed to classify intent — using rule-based classifier. "
+                    + "Cause: {}", ex.getMessage());
             return parserRespaldo.parse(textoMensaje);
         }
     }
 
     // -------------------------------------------------------------------------
-    // Métodos públicos adicionales del agente
+    // Additional public agent methods
     // -------------------------------------------------------------------------
 
     /**
-     * Genera una respuesta conversacional libre usando el LLM con temperatura 0.7.
-     * Versión sin historial, compatible con llamadores existentes.
-     * Delega a {@link #generarRespuestaConversacional(String, List)} con lista vacía.
+     * Generates a free conversational response using the LLM at temperature 0.7.
+     * History-free version, compatible with existing callers.
+     * Delegates to {@link #generarRespuestaConversacional(String, List)} with an empty list.
      *
-     * @param texto mensaje o pregunta del usuario
-     * @return respuesta en español generada por el LLM, o mensaje de error si falla
+     * @param texto user message or question
+     * @return response generated by the LLM, or an error message if it fails
      */
     public String generarRespuestaConversacional(String texto) {
         return generarRespuestaConversacional(texto, Collections.emptyList());
     }
 
     /**
-     * Genera una respuesta conversacional libre usando el LLM con temperatura 0.7.
-     * Incluye el historial previo de la conversación para dar contexto al modelo.
+     * Generates a free conversational response using the LLM at temperature 0.7.
+     * Includes the previous conversation history to give the model context.
      *
-     * @param texto     mensaje o pregunta del usuario
-     * @param historial mensajes previos de la conversación (puede estar vacío)
-     * @return respuesta en español generada por el LLM, o mensaje de error si falla
+     * @param texto     user message or question
+     * @param historial previous conversation messages (may be empty)
+     * @return response generated by the LLM, or an error message if it fails
      */
     public String generarRespuestaConversacional(String texto, List<Map<String, String>> historial) {
         if (!aiProps.isHabilitado() || esClaveVacia(aiProps.getApiKey())) {
-            return "El asistente IA no está disponible en este momento.";
+            return "The AI assistant is not available at this time.";
         }
 
         try {
@@ -162,26 +162,26 @@ public class LlmIntentParser implements IntentParser {
             return extraerContenido(respuestaRaw);
 
         } catch (Exception ex) {
-            log.warn("LlmIntentParser falló al generar respuesta conversacional. Causa: {}",
+            log.warn("LlmIntentParser failed to generate conversational response. Cause: {}",
                     ex.getMessage());
-            return "Lo siento, no pude procesar tu consulta en este momento.";
+            return "Sorry, I could not process your request at this time.";
         }
     }
 
     // -------------------------------------------------------------------------
-    // Métodos de apoyo privados
+    // Private helper methods
     // -------------------------------------------------------------------------
 
     /**
-     * Construye el mapa que representa el cuerpo JSON de la solicitud al LLM.
-     * Si se proporciona un historial no vacío, los mensajes previos se insertan
-     * entre el mensaje de sistema y el nuevo mensaje del usuario.
+     * Builds the map representing the JSON request body for the LLM.
+     * If a non-empty history is provided, previous messages are inserted
+     * between the system message and the new user message.
      *
-     * @param promptSistema  instrucciones de sistema para el modelo
-     * @param mensajeUsuario texto del usuario en el turno actual
-     * @param temperatura    nivel de aleatoriedad (0 = determinista, 0.7 = creativo)
-     * @param historial      mensajes previos de la conversación (puede ser vacío o null)
-     * @return mapa listo para serializar a JSON
+     * @param promptSistema  system instructions for the model
+     * @param mensajeUsuario user text in the current turn
+     * @param temperatura    randomness level (0 = deterministic, 0.7 = creative)
+     * @param historial      previous conversation messages (may be empty or null)
+     * @return map ready to serialize to JSON
      */
     private Map<String, Object> construirCuerpoSolicitud(String promptSistema,
                                                           String mensajeUsuario,
@@ -189,15 +189,15 @@ public class LlmIntentParser implements IntentParser {
                                                           List<Map<String, String>> historial) {
         List<Map<String, String>> mensajes = new ArrayList<>();
 
-        // 1. Mensaje de sistema (siempre primero)
+        // 1. System message (always first)
         mensajes.add(Map.of("role", "system", "content", promptSistema));
 
-        // 2. Historial previo (si existe) para dar contexto multi-turno
+        // 2. Previous history (if present) to provide multi-turn context
         if (historial != null && !historial.isEmpty()) {
             mensajes.addAll(historial);
         }
 
-        // 3. Mensaje actual del usuario (siempre al final)
+        // 3. Current user message (always last)
         mensajes.add(Map.of("role", "user", "content", mensajeUsuario));
 
         return Map.of(
@@ -208,11 +208,11 @@ public class LlmIntentParser implements IntentParser {
     }
 
     /**
-     * Extrae el texto de {@code choices[0].message.content} de la respuesta JSON del LLM.
+     * Extracts the text from {@code choices[0].message.content} in the LLM JSON response.
      *
-     * @param respuestaJson respuesta completa en formato JSON string
-     * @return contenido del mensaje generado por el modelo
-     * @throws Exception si el JSON no tiene la estructura esperada
+     * @param respuestaJson full response in JSON string format
+     * @return content of the message generated by the model
+     * @throws Exception if the JSON does not have the expected structure
      */
     private String extraerContenido(String respuestaJson) throws Exception {
         JsonNode raiz = objectMapper.readTree(respuestaJson);
@@ -224,24 +224,24 @@ public class LlmIntentParser implements IntentParser {
     }
 
     /**
-     * Elimina bloques de código Markdown (``` ... ```) al inicio y final del texto
-     * para que el JSON pueda deserializarse correctamente.
+     * Removes Markdown code blocks (``` ... ```) from the beginning and end of text
+     * so the JSON can be deserialized correctly.
      *
-     * @param texto texto que puede contener delimitadores Markdown
-     * @return texto limpio sin delimitadores
+     * @param texto text that may contain Markdown delimiters
+     * @return clean text without delimiters
      */
     private String eliminarMarkdown(String texto) {
         if (texto == null) {
             return "";
         }
-        // Eliminar bloque de apertura con etiqueta opcional: ```json o ```
+        // Remove opening block with optional label: ```json or ```
         String limpio = texto.strip().replaceAll("^```[a-zA-Z]*\\s*", "");
-        // Eliminar bloque de cierre
+        // Remove closing block
         limpio = limpio.replaceAll("```\\s*$", "");
         return limpio.strip();
     }
 
-    /** Comprueba si la clave de API es nula o está en blanco. */
+    /** Checks whether the API key is null or blank. */
     private boolean esClaveVacia(String clave) {
         return clave == null || clave.isBlank();
     }

@@ -154,6 +154,11 @@ export default function TeamPage() {
     margin: '0',
   };
 
+  const EXCLUIDOS = ['luis martinez', 'ana garcia'];
+  const usuariosFiltrados = usuarios.filter(
+    (u) => !EXCLUIDOS.includes((u.nombreCompleto || '').toLowerCase())
+  );
+
   if (loading) {
     return (
       <div style={estiloPage}>
@@ -163,7 +168,7 @@ export default function TeamPage() {
     );
   }
 
-  if (usuarios.length === 0) {
+  if (usuariosFiltrados.length === 0) {
     return (
       <div style={estiloPage}>
         <h1 style={estiloTitulo}>Team</h1>
@@ -178,7 +183,7 @@ export default function TeamPage() {
 
   const usuariosConEquipo = new Set();
   const secciones = equipos.map((equipo) => {
-    const miembros = usuarios.filter((u) => {
+    const miembros = usuariosFiltrados.filter((u) => {
       const perteneceEquipo =
         u.equipo?.idEquipo === equipo.idEquipo ||
         u.idEquipo === equipo.idEquipo;
@@ -188,7 +193,7 @@ export default function TeamPage() {
     return { equipo, miembros };
   });
 
-  const sinEquipo = usuarios.filter((u) => !usuariosConEquipo.has(u.idUsuario));
+  const sinEquipo = usuariosFiltrados.filter((u) => !usuariosConEquipo.has(u.idUsuario));
   const mostrarSinEquipo = sinEquipo.length > 0;
 
   return (
@@ -234,10 +239,10 @@ export default function TeamPage() {
         <section>
           <h2 style={estiloSeccionHeader}>
             All members
-            <span style={estiloContadorEquipo}>{usuarios.length}</span>
+            <span style={estiloContadorEquipo}>{usuariosFiltrados.length}</span>
           </h2>
           <div style={estiloGrid}>
-            {usuarios.map((u) => (
+            {usuariosFiltrados.map((u) => (
               <TarjetaUsuario key={u.idUsuario} usuario={u} />
             ))}
           </div>

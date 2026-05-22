@@ -16,11 +16,11 @@ public class WebSecurityConfiguration {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .authorizeHttpRequests(auth -> auth
-                .anyRequest().permitAll() // Permitir todo sin autenticación
+                .anyRequest().permitAll() // Allow all requests without authentication
             )
-            .csrf(csrf -> csrf.disable()) // Desactivar CSRF si no usas formularios
-            .httpBasic(httpBasic -> httpBasic.disable()) // Desactivar autenticación básica
-            .formLogin(formLogin -> formLogin.disable()); // Desactivar login por formulario
+            .csrf(csrf -> csrf.disable()) // Disable CSRF (not needed without form submissions)
+            .httpBasic(httpBasic -> httpBasic.disable()) // Disable HTTP Basic authentication
+            .formLogin(formLogin -> formLogin.disable()); // Disable form-based login
 
         return http.build();
     }
