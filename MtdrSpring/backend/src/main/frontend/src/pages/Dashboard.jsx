@@ -4,7 +4,8 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   BarChart, Bar, ResponsiveContainer,
 } from 'recharts';
-import { fetchTodoDashboard, fetchSprintHours } from '../api/dashboard';
+import { fetchSprintHours } from '../api/dashboard';
+import { apiFetch } from '../api/client';
 
 const ACENTO        = '#066FCC';
 const ACENTO_SOFT   = '#c5d9f0';
@@ -94,6 +95,28 @@ function BadgeEstado({ estado }) {
   );
 }
 
+function Tarjeta({ children, style }) {
+  return <div style={{ ...CARD, ...style }}>{children}</div>;
+}
+
+function Etiqueta({ children }) {
+  return (
+    <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
+                  letterSpacing: '0.07em', color: '#94a3b8', marginBottom: 4 }}>
+      {children}
+    </div>
+  );
+}
+
+function Titulo({ children, mb }) {
+  return (
+    <div style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9',
+                  marginBottom: mb !== undefined ? mb : 16 }}>
+      {children}
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [datos, setDatos]           = useState(null);
   const [cargando, setCargando]     = useState(true);
@@ -144,6 +167,21 @@ export default function Dashboard() {
       setSprintHorasCargando(false);
     }
   }, [periodoSprint]);
+
+  const kpi        = datos?.kpiPorSprint               ?? [];
+  const horas      = datos?.horasPorSprint              ?? [];
+  const resumen    = datos?.resumenSprints               ?? [];
+  const statusDist = datos?.statusDist                  ?? [];
+  const personal   = datos?.personalWork                ?? [];
+  const weekly     = datos?.weeklyHours                 ?? [];
+  const { pivotado: dataKpi,   sprints: sprintsKpi  } = pivotarDatos(kpi,   'tasksCompletadas');
+  const { pivotado: dataHoras, sprints: sprintsHoras } = pivotarDatos(horas, 'horasReales');
+  const resumenConTareas = resumen.filter(r => Number(r.totalTareas) > 0);
+  const sprint   = resumen.find(r => r.estado === 'ACTIVO') ?? {};
+  const velocity = resumen.map(r => ({ dia: r.sprint, tareas: Number(r.completadas) || 0 }));
+  const maxVel   = Math.max(...velocity.map(v => v.tareas), 0);
+  const dataCont = datos?.contribucionesPorSprint ?? [];
+  const contrib  = dataCont;
 
   const totalCompletadas = kpi.reduce((s, d)    => s + (Number(d.tasksCompletadas) || 0), 0);
   const totalHorasReales = horas.reduce((s, d)  => s + (Number(d.horasReales)      || 0), 0);
@@ -246,7 +284,7 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-      </div>
+      </Tarjeta>
 
       {/* ── SECTION 4 — Tasks Completadas por Developer por Sprint ── */}
       <div style={CARD}>
@@ -395,7 +433,7 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-      </div>
+      </Tarjeta>
 
       {/* ── SECTION 8 — Personal Work + Contributions ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -491,7 +529,7 @@ export default function Dashboard() {
               No contributions this month
             </div>
           )}
-        </div>
+        </Tarjeta>
       </div>
 
         <Tarjeta>
