@@ -10,6 +10,11 @@ export const fetchWeeklyHours  = (periodo = 'week')    => apiFetch(`/api/dashboa
 export const fetchSprintHours  = (sprint  = 'current') => apiFetch(`/api/dashboard/weekly-hours?periodo=${sprint}`);
 const fetchContributions  = () => apiFetch('/api/dashboard/contributions');
 
+export const fetchKpiPorSprint            = () => apiFetch('/api/dashboard/kpi-por-sprint');
+export const fetchHorasPorSprint          = () => apiFetch('/api/dashboard/horas-por-sprint');
+export const fetchResumenSprints          = () => apiFetch('/api/dashboard/resumen-sprints');
+export const fetchContribucionesPorSprint = () => apiFetch('/api/dashboard/contribuciones-por-sprint');
+
 export async function fetchTodoDashboard() {
   const [stats, sprint, timeComparison, teamVelocity, personalWork, statusDist, weeklyHours, contributions] =
     await Promise.all([

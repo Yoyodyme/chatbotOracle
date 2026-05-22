@@ -236,7 +236,7 @@ export default function TaskDetailModal() {
         addToast({ type: 'error', message: 'Error posting comment' });
       }
     } catch {
-      addToast({ type: 'error', message: 'Error al publicar el comentario' });
+      addToast({ type: 'error', message: 'Error posting comment' });
     } finally {
       setEnviandoComentario(false);
     }

@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import useAppStore from '../../store/index';
+import { getUsuarioLogueado, logout } from '../../utils/auth';
 
 // ── Inline SVG icons ─────────────────────────────────────────────────────────
 function IconDashboard() {
@@ -98,7 +99,8 @@ const ALTO_TOPBAR = 48;
 
 export default function Sidebar() {
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
-  const toggleSidebar = useAppStore((s) => s.toggleSidebar);
+  const toggleSidebar    = useAppStore((s) => s.toggleSidebar);
+  const usuario          = getUsuarioLogueado();
 
   const ancho = sidebarCollapsed ? ANCHO_COLAPSADO : ANCHO_EXPANDIDO;
 

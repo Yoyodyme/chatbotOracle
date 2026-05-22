@@ -153,7 +153,7 @@ export default function ChatbotPanel() {
               type="submit"
               className="chatbot-enviar"
               disabled={!entrada.trim() || cargando}
-              aria-label="Enviar"
+              aria-label="Send"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="22" y1="2" x2="11" y2="13" />
