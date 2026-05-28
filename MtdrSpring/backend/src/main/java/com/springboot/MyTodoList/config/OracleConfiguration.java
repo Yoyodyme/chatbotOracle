@@ -5,14 +5,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 import javax.sql.DataSource;
 import java.io.File;
 
 @Configuration
-@Profile("!dev")
 public class OracleConfiguration {
     Logger logger = LoggerFactory.getLogger(OracleConfiguration.class);
 

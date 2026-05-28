@@ -79,7 +79,7 @@ function GaugeSprint({ pct, completadas, restantes, nombreSprint }) {
 function BadgeEstado({ estado }) {
   const cfg = {
     PASADO: { label: 'Past',   bg: 'var(--bg-base)',  color: '#94a3b8' },
-    ACTIVO: { label: 'Active', bg: '#d1fae5',         color: '#065f46'           },
+    ACTIVE: { label: 'Active', bg: '#d1fae5',         color: '#065f46'           },
     FUTURO: { label: 'Future', bg: ACENTO_SOFT,       color: ACENTO              },
   }[estado] ?? { label: estado, bg: 'var(--bg-base)', color: '#94a3b8' };
   return (
@@ -99,6 +99,9 @@ export default function Dashboard() {
   const [cargando, setCargando] = useState(true);
   const [error,    setError]    = useState(null);
   const [ultimaAct, setUltimaAct] = useState(null);
+  const [sprints,         setSprints]         = useState([]);
+  const [selectedSprintId, setSelectedSprintId] = useState(null);
+  const [dropdownOpen,    setDropdownOpen]    = useState(false);
 
   const cargarDashboard = useCallback(async () => {
     try {
@@ -129,6 +132,25 @@ export default function Dashboard() {
     return () => clearInterval(id);
   }, [cargarDashboard]);
 
+  // Fetch sprint list on mount and default to the ACTIVE sprint
+  useEffect(() => {
+    apiFetch('/api/sprints')
+      .then(list => {
+        setSprints(list || []);
+        const active = (list || []).find(s => s.estado === 'current' || s.estado === 'ACTIVE');
+        if (active) setSelectedSprintId(active.idSprint);
+      })
+      .catch(() => { /* non-fatal: dropdown simply stays empty */ });
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const handler = () => setDropdownOpen(false);
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [dropdownOpen]);
+
   const personal  = datos.personalWork            ?? [];
   const statusDist = datos.statusDist             ?? [];
   const resumen   = datos.resumenSprints          ?? [];
@@ -142,21 +164,39 @@ export default function Dashboard() {
   const totalReales      = resumen.reduce((s, r) => s + (Number(r.horasReales)     || 0), 0);
   const eficiencia       = totalEstimadas > 0 ? Math.round((totalReales / totalEstimadas) * 100) : 0;
 
-  const activo     = resumen.find(s => s.estado === 'ACTIVO');
-  const pctGauge   = Number(activo?.porcentaje ?? 0);
-  const complGauge = activo?.completadas ?? 0;
-  const restGauge  = (activo?.totalTareas ?? 0) - (activo?.completadas ?? 0);
+  const activo = resumen.find(s => s.estado === 'ACTIVE');
 
   const maxEstatus = Math.max(...statusDist.map(d => d.cantidad ?? 0), 1);
 
-  const ORDER = { ACTIVO: 0, FUTURO: 1, PASADO: 2 };
+  const ORDER = { ACTIVE: 0, FUTURO: 1, PASADO: 2 };
   const resumenConTareas = resumen
     .filter(s => (s.totalTareas ?? 0) > 0)
     .sort((a, b) => (ORDER[a.estado] ?? 3) - (ORDER[b.estado] ?? 3));
 
-  const { pivotado: dataKpi,   sprints: sprintsKpi   } = pivotarDatos(kpi,    'tasksCompletadas');
-  const { pivotado: dataHoras, sprints: sprintsHoras  } = pivotarDatos(horas,  'horasReales');
-  const { pivotado: dataCont,  sprints: sprintsCont   } = pivotarDatos(contrib, 'tareas');
+  // Sprint selector helpers
+  const selectedSprint     = sprints.find(s => s.idSprint === selectedSprintId) ?? null;
+  const selectedSprintName = selectedSprint?.nombre ?? null;
+
+  // Filtered datasets (applied when a specific sprint is chosen)
+  const kpiFiltered    = selectedSprintName ? kpi.filter(d    => d.sprint === selectedSprintName) : kpi;
+  const horasFiltered  = selectedSprintName ? horas.filter(d  => d.sprint === selectedSprintName) : horas;
+  const contribFiltered = selectedSprintName ? contrib.filter(d => d.sprint === selectedSprintName) : contrib;
+
+  const resumenConTareasFiltered = selectedSprintName
+    ? resumenConTareas.filter(s => s.sprint === selectedSprintName)
+    : resumenConTareas;
+
+  // Gauge data: use selected sprint if one is chosen, otherwise fall back to the ACTIVE sprint
+  const gaugeSource  = selectedSprintName
+    ? (resumen.find(s => s.sprint === selectedSprintName) ?? activo)
+    : activo;
+  const pctGaugeDisplay   = Number(gaugeSource?.porcentaje ?? 0);
+  const complGaugeDisplay = gaugeSource?.completadas ?? 0;
+  const restGaugeDisplay  = (gaugeSource?.totalTareas ?? 0) - (gaugeSource?.completadas ?? 0);
+
+  const { pivotado: dataKpi,   sprints: sprintsKpi   } = pivotarDatos(kpiFiltered,    'tasksCompletadas');
+  const { pivotado: dataHoras, sprints: sprintsHoras  } = pivotarDatos(horasFiltered,  'horasReales');
+  const { pivotado: dataCont,  sprints: sprintsCont   } = pivotarDatos(contribFiltered, 'tareas');
 
   if (cargando) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -196,20 +236,82 @@ export default function Dashboard() {
             </p>
           )}
         </div>
-        <button onClick={cargarDashboard} style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-          border: '1px solid #334155', background: '#1e293b',
-          color: '#f1f5f9', boxShadow: 'var(--shadow-sm)',
-        }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="23 4 23 10 17 10" />
-            <polyline points="1 20 1 14 7 14" />
-            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-          </svg>
-          Refresh
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Sprint selector dropdown */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={e => { e.stopPropagation(); setDropdownOpen(v => !v); }}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                border: '1px solid #334155', background: '#1e293b',
+                color: '#f1f5f9', boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              {selectedSprintName ?? 'All Sprints'}
+              {/* chevron-down icon */}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+
+            {dropdownOpen && (
+              <div
+                onClick={e => e.stopPropagation()}
+                style={{
+                  position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 999,
+                  background: '#1e293b', border: '1px solid #334155', borderRadius: 8,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                  minWidth: 160, maxHeight: 200, overflowY: 'auto',
+                }}
+              >
+                {/* All Sprints option */}
+                <button
+                  onClick={() => { setSelectedSprintId(null); setDropdownOpen(false); }}
+                  style={{
+                    display: 'block', width: '100%', textAlign: 'left',
+                    padding: '8px 14px', fontSize: 13, cursor: 'pointer',
+                    background: selectedSprintId === null ? '#334155' : 'transparent',
+                    color: '#f1f5f9', border: 'none', fontWeight: selectedSprintId === null ? 700 : 400,
+                  }}
+                >
+                  All Sprints
+                </button>
+                {sprints.map(sp => (
+                  <button
+                    key={sp.idSprint}
+                    onClick={() => { setSelectedSprintId(sp.idSprint); setDropdownOpen(false); }}
+                    style={{
+                      display: 'block', width: '100%', textAlign: 'left',
+                      padding: '8px 14px', fontSize: 13, cursor: 'pointer',
+                      background: selectedSprintId === sp.idSprint ? '#334155' : 'transparent',
+                      color: '#f1f5f9', border: 'none', fontWeight: selectedSprintId === sp.idSprint ? 700 : 400,
+                    }}
+                  >
+                    {sp.nombre}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Refresh button */}
+          <button onClick={cargarDashboard} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            border: '1px solid #334155', background: '#1e293b',
+            color: '#f1f5f9', boxShadow: 'var(--shadow-sm)',
+          }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="23 4 23 10 17 10" />
+              <polyline points="1 20 1 14 7 14" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            </svg>
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* ── SECTION 2 — 4 KPI Cards ── */}
@@ -217,7 +319,7 @@ export default function Dashboard() {
         {[
           { label: 'COMPLETED TASKS',    value: String(totalCompletadas)            },
           { label: 'TOTAL ACTUAL HOURS', value: `${totalHorasReales.toFixed(1)}h`  },
-          { label: 'ACTIVE SPRINT',      value: activo?.sprint ?? 'None'            },
+          { label: 'ACTIVE SPRINT',      value: selectedSprintName ?? activo?.sprint ?? 'None' },
           { label: 'EFFICIENCY',         value: `${eficiencia}%`                    },
         ].map(({ label, value }) => (
           <div key={label} style={CARD}>
@@ -244,10 +346,10 @@ export default function Dashboard() {
             Progress
           </div>
           <GaugeSprint
-            pct={pctGauge}
-            completadas={complGauge}
-            restantes={restGauge}
-            nombreSprint={activo?.sprint ?? null}
+            pct={pctGaugeDisplay}
+            completadas={complGaugeDisplay}
+            restantes={restGaugeDisplay}
+            nombreSprint={gaugeSource?.sprint ?? null}
           />
         </div>
 
@@ -374,9 +476,9 @@ export default function Dashboard() {
               </span>
             </div>
           </div>
-          {resumenConTareas.length > 0 ? (
+          {resumenConTareasFiltered.length > 0 ? (
             <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={resumenConTareas} margin={{ top: 10, right: 10, left: -15, bottom: 5 }} barSize={18} barCategoryGap="30%">
+              <BarChart data={resumenConTareasFiltered} margin={{ top: 10, right: 10, left: -15, bottom: 5 }} barSize={18} barCategoryGap="30%">
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="sprint" tick={EJE_TICK} axisLine={false} tickLine={false} />
                 <YAxis tick={EJE_TICK} axisLine={false} tickLine={false} />
@@ -411,9 +513,9 @@ export default function Dashboard() {
               Completed
             </span>
           </div>
-          {resumenConTareas.length > 0 ? (
+          {resumenConTareasFiltered.length > 0 ? (
             <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={resumenConTareas} margin={{ top: 10, right: 10, left: -15, bottom: 5 }} barSize={24}>
+              <BarChart data={resumenConTareasFiltered} margin={{ top: 10, right: 10, left: -15, bottom: 5 }} barSize={24}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="sprint" tick={EJE_TICK} axisLine={false} tickLine={false} />
                 <YAxis tick={EJE_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
@@ -520,7 +622,7 @@ export default function Dashboard() {
               <div key={i} style={{
                 padding: '12px 14px', borderRadius: 10,
                 border: '1px solid #475569',
-                backgroundColor: sprint.estado === 'ACTIVO' ? `${ACENTO}22` : '#263548',
+                backgroundColor: sprint.estado === 'ACTIVE' ? `${ACENTO}22` : '#263548',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                               gap: 10, marginBottom: 8 }}>
@@ -539,7 +641,7 @@ export default function Dashboard() {
                   <div style={{
                     height: '100%', borderRadius: 999, transition: 'width 0.5s ease',
                     width: `${sprint.porcentaje}%`,
-                    backgroundColor: sprint.estado === 'ACTIVO' ? ACENTO
+                    backgroundColor: sprint.estado === 'ACTIVE' ? ACENTO
                       : sprint.estado === 'PASADO' ? '#94a3b8' : ACENTO_SOFT,
                   }} />
                 </div>

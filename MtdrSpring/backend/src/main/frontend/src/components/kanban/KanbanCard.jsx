@@ -92,6 +92,33 @@ export default function KanbanCard({ tarea }) {
 
       <p style={estiloTitulo}>{tarea.titulo}</p>
 
+      {tarea.sprint && (
+        <span
+          style={{
+            fontFamily: "'IBM Plex Sans', sans-serif",
+            fontSize: '0.72rem',
+            color: 'var(--text-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '3px',
+            marginTop: '2px',
+          }}
+          title={`Sprint: ${tarea.sprint.nombre}`}
+        >
+          <svg
+            width="9"
+            height="9"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            aria-hidden="true"
+            style={{ flexShrink: 0 }}
+          >
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+          </svg>
+          {tarea.sprint.nombre}
+        </span>
+      )}
+
       <div style={estiloBottomRow}>
         <StatusBadge estatus={tarea.estatus} />
         {tarea.usuarioAsignado ? (

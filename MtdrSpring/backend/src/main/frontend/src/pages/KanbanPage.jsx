@@ -15,7 +15,7 @@ export default function KanbanPage() {
       .then((data) => {
         const lista = data ?? [];
         setSprints(lista);
-        const activo = lista.find((s) => s.activo);
+        const activo = lista.find((s) => s.estado === 'current');
         if (activo) setSprintSeleccionado(String(activo.idSprint));
       })
       .catch(() => {});
@@ -137,7 +137,7 @@ export default function KanbanPage() {
       {loading && estatuses.length === 0 ? (
         <SkeletonColumnas />
       ) : (
-        <KanbanBoard loading={loading && estatuses.length === 0} />
+        <KanbanBoard loading={loading && estatuses.length === 0} sprintId={sprintSeleccionado} />
       )}
     </div>
   );

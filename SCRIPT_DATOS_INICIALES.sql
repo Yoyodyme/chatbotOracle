@@ -10,6 +10,10 @@
 --   → Database Actions → SQL
 --   Paste this complete script → Run Script (F5)
 --   Enable first: View → DBMS Output (to see messages)
+--
+-- NOTE: All table references are explicitly qualified with EQUIPO51. so this
+-- script is safe to run as any database user (ADMIN, EQUIPO51, etc.).
+-- The app connects as EQUIPO51, so all tables live in the EQUIPO51 schema.
 -- ============================================================================
 
 SET SERVEROUTPUT ON;
@@ -54,27 +58,27 @@ BEGIN
   -- ============================================================================
   -- PRIOR CLEANUP
   -- ============================================================================
-  DELETE FROM LOGS_TAREA;
-  DELETE FROM EVIDENCIAS_TAREA;
-  DELETE FROM COMENTARIOS_TAREA;
-  DELETE FROM MIEMBROS_EQUIPO;
-  DELETE FROM TAREAS;
-  DELETE FROM USUARIOS;
-  DELETE FROM PRIORIDAD_TAREA;
-  DELETE FROM ESTATUS_TAREA;
-  DELETE FROM EQUIPOS;
-  DELETE FROM ROLES;
+  DELETE FROM EQUIPO51.LOGS_TAREA;
+  DELETE FROM EQUIPO51.EVIDENCIAS_TAREA;
+  DELETE FROM EQUIPO51.COMENTARIOS_TAREA;
+  DELETE FROM EQUIPO51.MIEMBROS_EQUIPO;
+  DELETE FROM EQUIPO51.TAREAS;
+  DELETE FROM EQUIPO51.USUARIOS;
+  DELETE FROM EQUIPO51.PRIORIDAD_TAREA;
+  DELETE FROM EQUIPO51.ESTATUS_TAREA;
+  DELETE FROM EQUIPO51.EQUIPOS;
+  DELETE FROM EQUIPO51.ROLES;
   DBMS_OUTPUT.PUT_LINE('Cleanup completed.');
 
 
   -- ============================================================================
   -- 1. ROLES
   -- ============================================================================
-  INSERT INTO ROLES (NOMBRE, DESCRIPCION)
+  INSERT INTO EQUIPO51.ROLES (NOMBRE, DESCRIPCION)
   VALUES ('Admin', 'Full system control')
   RETURNING ID_ROL INTO v_rol_admin;
 
-  INSERT INTO ROLES (NOMBRE, DESCRIPCION)
+  INSERT INTO EQUIPO51.ROLES (NOMBRE, DESCRIPCION)
   VALUES ('Developer', 'Management of own tasks and code review')
   RETURNING ID_ROL INTO v_rol_developer;
 
@@ -84,9 +88,9 @@ BEGIN
   -- ============================================================================
   -- 2. TASK STATUSES
   -- ============================================================================
-  INSERT INTO ESTATUS_TAREA (NOMBRE, ORDEN) VALUES ('Pending',     1) RETURNING ID_ESTATUS INTO v_est_pendiente;
-  INSERT INTO ESTATUS_TAREA (NOMBRE, ORDEN) VALUES ('In Progress', 2) RETURNING ID_ESTATUS INTO v_est_progreso;
-  INSERT INTO ESTATUS_TAREA (NOMBRE, ORDEN) VALUES ('Completed',   3) RETURNING ID_ESTATUS INTO v_est_completada;
+  INSERT INTO EQUIPO51.ESTATUS_TAREA (NOMBRE, ORDEN) VALUES ('Pending',     1) RETURNING ID_ESTATUS INTO v_est_pendiente;
+  INSERT INTO EQUIPO51.ESTATUS_TAREA (NOMBRE, ORDEN) VALUES ('In Progress', 2) RETURNING ID_ESTATUS INTO v_est_progreso;
+  INSERT INTO EQUIPO51.ESTATUS_TAREA (NOMBRE, ORDEN) VALUES ('Completed',   3) RETURNING ID_ESTATUS INTO v_est_completada;
 
   DBMS_OUTPUT.PUT_LINE('Statuses: Pending=' || v_est_pendiente || ', In Progress=' || v_est_progreso || ', Completed=' || v_est_completada);
 
@@ -94,9 +98,9 @@ BEGIN
   -- ============================================================================
   -- 3. PRIORITIES
   -- ============================================================================
-  INSERT INTO PRIORIDAD_TAREA (NOMBRE, ORDEN) VALUES ('Low',    1) RETURNING ID_PRIORIDAD INTO v_pri_baja;
-  INSERT INTO PRIORIDAD_TAREA (NOMBRE, ORDEN) VALUES ('Medium', 2) RETURNING ID_PRIORIDAD INTO v_pri_media;
-  INSERT INTO PRIORIDAD_TAREA (NOMBRE, ORDEN) VALUES ('High',   3) RETURNING ID_PRIORIDAD INTO v_pri_alta;
+  INSERT INTO EQUIPO51.PRIORIDAD_TAREA (NOMBRE, ORDEN) VALUES ('Low',    1) RETURNING ID_PRIORIDAD INTO v_pri_baja;
+  INSERT INTO EQUIPO51.PRIORIDAD_TAREA (NOMBRE, ORDEN) VALUES ('Medium', 2) RETURNING ID_PRIORIDAD INTO v_pri_media;
+  INSERT INTO EQUIPO51.PRIORIDAD_TAREA (NOMBRE, ORDEN) VALUES ('High',   3) RETURNING ID_PRIORIDAD INTO v_pri_alta;
 
   DBMS_OUTPUT.PUT_LINE('Priorities: Low=' || v_pri_baja || ', Medium=' || v_pri_media || ', High=' || v_pri_alta);
 
@@ -104,9 +108,9 @@ BEGIN
   -- ============================================================================
   -- 4. TEAMS
   -- ============================================================================
-  INSERT INTO EQUIPOS (NOMBRE) VALUES ('Team Alpha') RETURNING ID_EQUIPO INTO v_eq_alpha;
-  INSERT INTO EQUIPOS (NOMBRE) VALUES ('Team Beta')  RETURNING ID_EQUIPO INTO v_eq_beta;
-  INSERT INTO EQUIPOS (NOMBRE) VALUES ('Team Gamma') RETURNING ID_EQUIPO INTO v_eq_gamma;
+  INSERT INTO EQUIPO51.EQUIPOS (NOMBRE) VALUES ('Team Alpha') RETURNING ID_EQUIPO INTO v_eq_alpha;
+  INSERT INTO EQUIPO51.EQUIPOS (NOMBRE) VALUES ('Team Beta')  RETURNING ID_EQUIPO INTO v_eq_beta;
+  INSERT INTO EQUIPO51.EQUIPOS (NOMBRE) VALUES ('Team Gamma') RETURNING ID_EQUIPO INTO v_eq_gamma;
 
   DBMS_OUTPUT.PUT_LINE('Teams: Alpha=' || v_eq_alpha || ', Beta=' || v_eq_beta || ', Gamma=' || v_eq_gamma);
 
@@ -114,27 +118,27 @@ BEGIN
   -- ============================================================================
   -- 5. USERS
   -- ============================================================================
-  INSERT INTO USUARIOS (ID_INTEGRATION_USUARIO, NOMBRE_USUARIO, NOMBRE_COMPLETO, ID_ROL, CREADO_EN)
+  INSERT INTO EQUIPO51.USUARIOS (ID_INTEGRATION_USUARIO, NOMBRE_USUARIO, NOMBRE_COMPLETO, ID_ROL, CREADO_EN)
   VALUES ('TG_001', 'gabriel.admin', 'Gabriel Administrator', v_rol_admin, SYSDATE)
   RETURNING ID_USUARIO INTO v_usr_gabriel;
 
-  INSERT INTO USUARIOS (ID_INTEGRATION_USUARIO, NOMBRE_USUARIO, NOMBRE_COMPLETO, ID_ROL, CREADO_EN)
+  INSERT INTO EQUIPO51.USUARIOS (ID_INTEGRATION_USUARIO, NOMBRE_USUARIO, NOMBRE_COMPLETO, ID_ROL, CREADO_EN)
   VALUES ('TG_002', 'rutilo.dev', 'Rutilo Developer', v_rol_developer, SYSDATE)
   RETURNING ID_USUARIO INTO v_usr_rutilo;
 
-  INSERT INTO USUARIOS (ID_INTEGRATION_USUARIO, NOMBRE_USUARIO, NOMBRE_COMPLETO, ID_ROL, CREADO_EN)
+  INSERT INTO EQUIPO51.USUARIOS (ID_INTEGRATION_USUARIO, NOMBRE_USUARIO, NOMBRE_COMPLETO, ID_ROL, CREADO_EN)
   VALUES ('TG_003', 'grecia.dev', 'Grecia Developer', v_rol_developer, SYSDATE)
   RETURNING ID_USUARIO INTO v_usr_grecia;
 
-  INSERT INTO USUARIOS (ID_INTEGRATION_USUARIO, NOMBRE_USUARIO, NOMBRE_COMPLETO, ID_ROL, CREADO_EN)
+  INSERT INTO EQUIPO51.USUARIOS (ID_INTEGRATION_USUARIO, NOMBRE_USUARIO, NOMBRE_COMPLETO, ID_ROL, CREADO_EN)
   VALUES ('TG_004', 'eugenio.dev', 'Eugenio Developer', v_rol_developer, SYSDATE)
   RETURNING ID_USUARIO INTO v_usr_eugenio;
 
-  INSERT INTO USUARIOS (ID_INTEGRATION_USUARIO, NOMBRE_USUARIO, NOMBRE_COMPLETO, ID_ROL, CREADO_EN)
+  INSERT INTO EQUIPO51.USUARIOS (ID_INTEGRATION_USUARIO, NOMBRE_USUARIO, NOMBRE_COMPLETO, ID_ROL, CREADO_EN)
   VALUES ('TG_005', 'elian.dev', 'Elian Developer', v_rol_developer, SYSDATE)
   RETURNING ID_USUARIO INTO v_usr_elian;
 
-  INSERT INTO USUARIOS (ID_INTEGRATION_USUARIO, NOMBRE_USUARIO, NOMBRE_COMPLETO, ID_ROL, CREADO_EN)
+  INSERT INTO EQUIPO51.USUARIOS (ID_INTEGRATION_USUARIO, NOMBRE_USUARIO, NOMBRE_COMPLETO, ID_ROL, CREADO_EN)
   VALUES ('TG_006', 'alejandro.dev', 'Alejandro Developer', v_rol_developer, SYSDATE)
   RETURNING ID_USUARIO INTO v_usr_alejandro;
 
@@ -146,35 +150,35 @@ BEGIN
   -- ============================================================================
   -- 6. TASKS
   -- ============================================================================
-  INSERT INTO TAREAS (TITULO, DESCRIPCION, ID_ESTATUS, ID_PRIORIDAD,
+  INSERT INTO EQUIPO51.TAREAS (TITULO, DESCRIPCION, ID_ESTATUS, ID_PRIORIDAD,
                       ID_USUARIO_CREADOR, ID_USUARIO_ASIGNADO, FECHA_VENCIMIENTO, CREADO_EN, ACTUALIZADO_EN)
   VALUES ('Implement JWT login', 'Create login screen and authentication endpoint with JWT',
           v_est_pendiente, v_pri_alta, v_usr_gabriel, v_usr_rutilo,
           TO_DATE('2026-04-30','YYYY-MM-DD'), SYSDATE, SYSDATE)
   RETURNING ID_TAREA INTO v_tar_login;
 
-  INSERT INTO TAREAS (TITULO, DESCRIPCION, ID_ESTATUS, ID_PRIORIDAD,
+  INSERT INTO EQUIPO51.TAREAS (TITULO, DESCRIPCION, ID_ESTATUS, ID_PRIORIDAD,
                       ID_USUARIO_CREADOR, ID_USUARIO_ASIGNADO, FECHA_VENCIMIENTO, CREADO_EN, ACTUALIZADO_EN)
   VALUES ('Design database', 'Model entities and relationships in Oracle ADB',
           v_est_progreso, v_pri_media, v_usr_gabriel, v_usr_grecia,
           TO_DATE('2026-04-25','YYYY-MM-DD'), SYSDATE, SYSDATE)
   RETURNING ID_TAREA INTO v_tar_bd;
 
-  INSERT INTO TAREAS (TITULO, DESCRIPCION, ID_ESTATUS, ID_PRIORIDAD,
+  INSERT INTO EQUIPO51.TAREAS (TITULO, DESCRIPCION, ID_ESTATUS, ID_PRIORIDAD,
                       ID_USUARIO_CREADOR, ID_USUARIO_ASIGNADO, FECHA_VENCIMIENTO, CREADO_EN, ACTUALIZADO_EN)
   VALUES ('Configure CI/CD pipeline', 'Automated deployment pipeline on OCI',
           v_est_pendiente, v_pri_media, v_usr_rutilo, v_usr_eugenio,
           TO_DATE('2026-05-10','YYYY-MM-DD'), SYSDATE, SYSDATE)
   RETURNING ID_TAREA INTO v_tar_cicd;
 
-  INSERT INTO TAREAS (TITULO, DESCRIPCION, ID_ESTATUS, ID_PRIORIDAD,
+  INSERT INTO EQUIPO51.TAREAS (TITULO, DESCRIPCION, ID_ESTATUS, ID_PRIORIDAD,
                       ID_USUARIO_CREADOR, ID_USUARIO_ASIGNADO, FECHA_VENCIMIENTO, CREADO_EN, ACTUALIZADO_EN)
   VALUES ('Integrate Telegram bot', 'Connect the bot with the REST API endpoints',
           v_est_progreso, v_pri_alta, v_usr_gabriel, v_usr_elian,
           TO_DATE('2026-05-05','YYYY-MM-DD'), SYSDATE, SYSDATE)
   RETURNING ID_TAREA INTO v_tar_telegram;
 
-  INSERT INTO TAREAS (TITULO, DESCRIPCION, ID_ESTATUS, ID_PRIORIDAD,
+  INSERT INTO EQUIPO51.TAREAS (TITULO, DESCRIPCION, ID_ESTATUS, ID_PRIORIDAD,
                       ID_USUARIO_CREADOR, ID_USUARIO_ASIGNADO, FECHA_VENCIMIENTO, CREADO_EN, ACTUALIZADO_EN)
   VALUES ('Document API with Swagger', 'Create complete documentation for all endpoints',
           v_est_completada, v_pri_baja, v_usr_rutilo, v_usr_alejandro,
@@ -189,34 +193,34 @@ BEGIN
   -- ============================================================================
   -- 7. TEAM MEMBERS
   -- ============================================================================
-  INSERT INTO MIEMBROS_EQUIPO (ID_EQUIPO, ID_USUARIO, SE_UNIO_EN) VALUES (v_eq_alpha, v_usr_gabriel,   SYSDATE);
-  INSERT INTO MIEMBROS_EQUIPO (ID_EQUIPO, ID_USUARIO, SE_UNIO_EN) VALUES (v_eq_alpha, v_usr_rutilo,    SYSDATE);
-  INSERT INTO MIEMBROS_EQUIPO (ID_EQUIPO, ID_USUARIO, SE_UNIO_EN) VALUES (v_eq_alpha, v_usr_grecia,    SYSDATE);
-  INSERT INTO MIEMBROS_EQUIPO (ID_EQUIPO, ID_USUARIO, SE_UNIO_EN) VALUES (v_eq_beta,  v_usr_eugenio,   SYSDATE);
-  INSERT INTO MIEMBROS_EQUIPO (ID_EQUIPO, ID_USUARIO, SE_UNIO_EN) VALUES (v_eq_beta,  v_usr_elian,     SYSDATE);
-  INSERT INTO MIEMBROS_EQUIPO (ID_EQUIPO, ID_USUARIO, SE_UNIO_EN) VALUES (v_eq_gamma, v_usr_alejandro, SYSDATE);
+  INSERT INTO EQUIPO51.MIEMBROS_EQUIPO (ID_EQUIPO, ID_USUARIO, SE_UNIO_EN) VALUES (v_eq_alpha, v_usr_gabriel,   SYSDATE);
+  INSERT INTO EQUIPO51.MIEMBROS_EQUIPO (ID_EQUIPO, ID_USUARIO, SE_UNIO_EN) VALUES (v_eq_alpha, v_usr_rutilo,    SYSDATE);
+  INSERT INTO EQUIPO51.MIEMBROS_EQUIPO (ID_EQUIPO, ID_USUARIO, SE_UNIO_EN) VALUES (v_eq_alpha, v_usr_grecia,    SYSDATE);
+  INSERT INTO EQUIPO51.MIEMBROS_EQUIPO (ID_EQUIPO, ID_USUARIO, SE_UNIO_EN) VALUES (v_eq_beta,  v_usr_eugenio,   SYSDATE);
+  INSERT INTO EQUIPO51.MIEMBROS_EQUIPO (ID_EQUIPO, ID_USUARIO, SE_UNIO_EN) VALUES (v_eq_beta,  v_usr_elian,     SYSDATE);
+  INSERT INTO EQUIPO51.MIEMBROS_EQUIPO (ID_EQUIPO, ID_USUARIO, SE_UNIO_EN) VALUES (v_eq_gamma, v_usr_alejandro, SYSDATE);
   DBMS_OUTPUT.PUT_LINE('Team members inserted: 6');
 
 
   -- ============================================================================
   -- 8. TASK COMMENTS
   -- ============================================================================
-  INSERT INTO COMENTARIOS_TAREA (ID_TAREA, ID_USUARIO_AUTOR, CUERPO, CREADO_EN)
+  INSERT INTO EQUIPO51.COMENTARIOS_TAREA (ID_TAREA, ID_USUARIO_AUTOR, CUERPO, CREADO_EN)
   VALUES (v_tar_login, v_usr_rutilo, 'I started with the base JWT structure. Do we use RS256 or HS256?', SYSDATE);
 
-  INSERT INTO COMENTARIOS_TAREA (ID_TAREA, ID_USUARIO_AUTOR, CUERPO, CREADO_EN)
+  INSERT INTO EQUIPO51.COMENTARIOS_TAREA (ID_TAREA, ID_USUARIO_AUTOR, CUERPO, CREADO_EN)
   VALUES (v_tar_login, v_usr_gabriel, 'We use HS256 with a 7-day refresh token and 1-hour access token.', SYSDATE);
 
-  INSERT INTO COMENTARIOS_TAREA (ID_TAREA, ID_USUARIO_AUTOR, CUERPO, CREADO_EN)
+  INSERT INTO EQUIPO51.COMENTARIOS_TAREA (ID_TAREA, ID_USUARIO_AUTOR, CUERPO, CREADO_EN)
   VALUES (v_tar_bd, v_usr_grecia, 'The ER diagram is ready. We need to review the constraints.', SYSDATE);
 
-  INSERT INTO COMENTARIOS_TAREA (ID_TAREA, ID_USUARIO_AUTOR, CUERPO, CREADO_EN)
+  INSERT INTO EQUIPO51.COMENTARIOS_TAREA (ID_TAREA, ID_USUARIO_AUTOR, CUERPO, CREADO_EN)
   VALUES (v_tar_telegram, v_usr_elian, 'Bot connected. Still need to implement the /done and /list commands.', SYSDATE);
 
-  INSERT INTO COMENTARIOS_TAREA (ID_TAREA, ID_USUARIO_AUTOR, CUERPO, CREADO_EN)
+  INSERT INTO EQUIPO51.COMENTARIOS_TAREA (ID_TAREA, ID_USUARIO_AUTOR, CUERPO, CREADO_EN)
   VALUES (v_tar_cicd, v_usr_eugenio, 'Pipeline configured in GitHub Actions. Missing the deploy to OCI.', SYSDATE);
 
-  INSERT INTO COMENTARIOS_TAREA (ID_TAREA, ID_USUARIO_AUTOR, CUERPO, CREADO_EN)
+  INSERT INTO EQUIPO51.COMENTARIOS_TAREA (ID_TAREA, ID_USUARIO_AUTOR, CUERPO, CREADO_EN)
   VALUES (v_tar_swagger, v_usr_alejandro, 'Documentation completed and deployed at /swagger-ui.html.', SYSDATE);
 
   DBMS_OUTPUT.PUT_LINE('Comments inserted: 6');
@@ -225,27 +229,27 @@ BEGIN
   -- ============================================================================
   -- 9. TASK EVIDENCE
   -- ============================================================================
-  INSERT INTO EVIDENCIAS_TAREA (ID_TAREA, ID_USUARIO_SUBIO, URL_ARCHIVO, NOTA, CREADO_EN)
+  INSERT INTO EQUIPO51.EVIDENCIAS_TAREA (ID_TAREA, ID_USUARIO_SUBIO, URL_ARCHIVO, NOTA, CREADO_EN)
   VALUES (v_tar_login, v_usr_rutilo,
           'https://storage.oracle.com/evidencias/login-jwt-screenshot.png',
           'Screenshot of login working with valid token', SYSDATE);
 
-  INSERT INTO EVIDENCIAS_TAREA (ID_TAREA, ID_USUARIO_SUBIO, URL_ARCHIVO, NOTA, CREADO_EN)
+  INSERT INTO EQUIPO51.EVIDENCIAS_TAREA (ID_TAREA, ID_USUARIO_SUBIO, URL_ARCHIVO, NOTA, CREADO_EN)
   VALUES (v_tar_bd, v_usr_grecia,
           'https://storage.oracle.com/evidencias/diagrama_er_v2.png',
           'ER diagram version 2.0 reviewed', SYSDATE);
 
-  INSERT INTO EVIDENCIAS_TAREA (ID_TAREA, ID_USUARIO_SUBIO, URL_ARCHIVO, NOTA, CREADO_EN)
+  INSERT INTO EQUIPO51.EVIDENCIAS_TAREA (ID_TAREA, ID_USUARIO_SUBIO, URL_ARCHIVO, NOTA, CREADO_EN)
   VALUES (v_tar_cicd, v_usr_eugenio,
           'https://storage.oracle.com/evidencias/pipeline-success.png',
           'Green build in GitHub Actions', SYSDATE);
 
-  INSERT INTO EVIDENCIAS_TAREA (ID_TAREA, ID_USUARIO_SUBIO, URL_ARCHIVO, NOTA, CREADO_EN)
+  INSERT INTO EQUIPO51.EVIDENCIAS_TAREA (ID_TAREA, ID_USUARIO_SUBIO, URL_ARCHIVO, NOTA, CREADO_EN)
   VALUES (v_tar_telegram, v_usr_elian,
           'https://storage.oracle.com/evidencias/bot-telegram-demo.mp4',
           'Video of the bot responding to commands', SYSDATE);
 
-  INSERT INTO EVIDENCIAS_TAREA (ID_TAREA, ID_USUARIO_SUBIO, URL_ARCHIVO, NOTA, CREADO_EN)
+  INSERT INTO EQUIPO51.EVIDENCIAS_TAREA (ID_TAREA, ID_USUARIO_SUBIO, URL_ARCHIVO, NOTA, CREADO_EN)
   VALUES (v_tar_swagger, v_usr_alejandro,
           'https://storage.oracle.com/evidencias/swagger-docs.pdf',
           'PDF exported from the complete Swagger documentation', SYSDATE);
@@ -256,23 +260,23 @@ BEGIN
   -- ============================================================================
   -- 10. TASK CHANGE LOGS
   -- ============================================================================
-  INSERT INTO LOGS_TAREA (ID_TAREA, ID_USUARIO, ID_ESTATUS_ORIGEN, ID_ESTATUS_DESTINO, MENSAJE, CREADO_EN)
+  INSERT INTO EQUIPO51.LOGS_TAREA (ID_TAREA, ID_USUARIO, ID_ESTATUS_ORIGEN, ID_ESTATUS_DESTINO, MENSAJE, CREADO_EN)
   VALUES (v_tar_login, v_usr_gabriel, v_est_pendiente, v_est_progreso,
           'Task started by the team', SYSDATE);
 
-  INSERT INTO LOGS_TAREA (ID_TAREA, ID_USUARIO, ID_ESTATUS_ORIGEN, ID_ESTATUS_DESTINO, MENSAJE, CREADO_EN)
+  INSERT INTO EQUIPO51.LOGS_TAREA (ID_TAREA, ID_USUARIO, ID_ESTATUS_ORIGEN, ID_ESTATUS_DESTINO, MENSAJE, CREADO_EN)
   VALUES (v_tar_bd, v_usr_grecia, v_est_pendiente, v_est_progreso,
           'Start of database schema design', SYSDATE);
 
-  INSERT INTO LOGS_TAREA (ID_TAREA, ID_USUARIO, ID_ESTATUS_ORIGEN, ID_ESTATUS_DESTINO, MENSAJE, CREADO_EN)
+  INSERT INTO EQUIPO51.LOGS_TAREA (ID_TAREA, ID_USUARIO, ID_ESTATUS_ORIGEN, ID_ESTATUS_DESTINO, MENSAJE, CREADO_EN)
   VALUES (v_tar_swagger, v_usr_alejandro, v_est_progreso, v_est_completada,
           'Documentation finalized and approved', SYSDATE);
 
-  INSERT INTO LOGS_TAREA (ID_TAREA, ID_USUARIO, ID_ESTATUS_ORIGEN, ID_ESTATUS_DESTINO, MENSAJE, CREADO_EN)
+  INSERT INTO EQUIPO51.LOGS_TAREA (ID_TAREA, ID_USUARIO, ID_ESTATUS_ORIGEN, ID_ESTATUS_DESTINO, MENSAJE, CREADO_EN)
   VALUES (v_tar_cicd, v_usr_eugenio, v_est_pendiente, v_est_progreso,
           'Base pipeline configured, missing integration with OCI', SYSDATE);
 
-  INSERT INTO LOGS_TAREA (ID_TAREA, ID_USUARIO, ID_ESTATUS_ORIGEN, ID_ESTATUS_DESTINO, MENSAJE, CREADO_EN)
+  INSERT INTO EQUIPO51.LOGS_TAREA (ID_TAREA, ID_USUARIO, ID_ESTATUS_ORIGEN, ID_ESTATUS_DESTINO, MENSAJE, CREADO_EN)
   VALUES (v_tar_telegram, v_usr_elian, v_est_pendiente, v_est_progreso,
           'Bot registered and connected to endpoints', SYSDATE);
 
@@ -297,16 +301,16 @@ END;
 -- ============================================================================
 -- FINAL VERIFICATION (run after the PL/SQL block)
 -- ============================================================================
-SELECT 'ROLES'             AS TABLA, COUNT(*) AS TOTAL FROM ROLES             UNION ALL
-SELECT 'ESTATUS_TAREA',              COUNT(*)           FROM ESTATUS_TAREA    UNION ALL
-SELECT 'PRIORIDAD_TAREA',            COUNT(*)           FROM PRIORIDAD_TAREA  UNION ALL
-SELECT 'EQUIPOS',                    COUNT(*)           FROM EQUIPOS           UNION ALL
-SELECT 'USUARIOS',                   COUNT(*)           FROM USUARIOS          UNION ALL
-SELECT 'TAREAS',                     COUNT(*)           FROM TAREAS            UNION ALL
-SELECT 'MIEMBROS_EQUIPO',            COUNT(*)           FROM MIEMBROS_EQUIPO   UNION ALL
-SELECT 'COMENTARIOS_TAREA',          COUNT(*)           FROM COMENTARIOS_TAREA UNION ALL
-SELECT 'EVIDENCIAS_TAREA',           COUNT(*)           FROM EVIDENCIAS_TAREA  UNION ALL
-SELECT 'LOGS_TAREA',                 COUNT(*)           FROM LOGS_TAREA;
+SELECT 'ROLES'             AS TABLA, COUNT(*) AS TOTAL FROM EQUIPO51.ROLES             UNION ALL
+SELECT 'ESTATUS_TAREA',              COUNT(*)           FROM EQUIPO51.ESTATUS_TAREA    UNION ALL
+SELECT 'PRIORIDAD_TAREA',            COUNT(*)           FROM EQUIPO51.PRIORIDAD_TAREA  UNION ALL
+SELECT 'EQUIPOS',                    COUNT(*)           FROM EQUIPO51.EQUIPOS           UNION ALL
+SELECT 'USUARIOS',                   COUNT(*)           FROM EQUIPO51.USUARIOS          UNION ALL
+SELECT 'TAREAS',                     COUNT(*)           FROM EQUIPO51.TAREAS            UNION ALL
+SELECT 'MIEMBROS_EQUIPO',            COUNT(*)           FROM EQUIPO51.MIEMBROS_EQUIPO   UNION ALL
+SELECT 'COMENTARIOS_TAREA',          COUNT(*)           FROM EQUIPO51.COMENTARIOS_TAREA UNION ALL
+SELECT 'EVIDENCIAS_TAREA',           COUNT(*)           FROM EQUIPO51.EVIDENCIAS_TAREA  UNION ALL
+SELECT 'LOGS_TAREA',                 COUNT(*)           FROM EQUIPO51.LOGS_TAREA;
 
 -- EXPECTED RESULT:
 -- ROLES              2
@@ -324,9 +328,9 @@ SELECT 'LOGS_TAREA',                 COUNT(*)           FROM LOGS_TAREA;
 -- ============================================================================
 -- GENERATED IDs (run to see which IDs were stored in the database)
 -- ============================================================================
-SELECT 'gabriel.admin' AS USUARIO, ID_USUARIO FROM USUARIOS WHERE NOMBRE_USUARIO = 'gabriel.admin' UNION ALL
-SELECT 'rutilo.dev',               ID_USUARIO FROM USUARIOS WHERE NOMBRE_USUARIO = 'rutilo.dev'    UNION ALL
-SELECT 'grecia.dev',               ID_USUARIO FROM USUARIOS WHERE NOMBRE_USUARIO = 'grecia.dev'    UNION ALL
-SELECT 'eugenio.dev',              ID_USUARIO FROM USUARIOS WHERE NOMBRE_USUARIO = 'eugenio.dev'   UNION ALL
-SELECT 'elian.dev',                ID_USUARIO FROM USUARIOS WHERE NOMBRE_USUARIO = 'elian.dev'     UNION ALL
-SELECT 'alejandro.dev',            ID_USUARIO FROM USUARIOS WHERE NOMBRE_USUARIO = 'alejandro.dev';
+SELECT 'gabriel.admin' AS USUARIO, ID_USUARIO FROM EQUIPO51.USUARIOS WHERE NOMBRE_USUARIO = 'gabriel.admin' UNION ALL
+SELECT 'rutilo.dev',               ID_USUARIO FROM EQUIPO51.USUARIOS WHERE NOMBRE_USUARIO = 'rutilo.dev'    UNION ALL
+SELECT 'grecia.dev',               ID_USUARIO FROM EQUIPO51.USUARIOS WHERE NOMBRE_USUARIO = 'grecia.dev'    UNION ALL
+SELECT 'eugenio.dev',              ID_USUARIO FROM EQUIPO51.USUARIOS WHERE NOMBRE_USUARIO = 'eugenio.dev'   UNION ALL
+SELECT 'elian.dev',                ID_USUARIO FROM EQUIPO51.USUARIOS WHERE NOMBRE_USUARIO = 'elian.dev'     UNION ALL
+SELECT 'alejandro.dev',            ID_USUARIO FROM EQUIPO51.USUARIOS WHERE NOMBRE_USUARIO = 'alejandro.dev';

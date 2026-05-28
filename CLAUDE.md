@@ -20,18 +20,13 @@ Aplicación cloud-native de gestión de tareas construida sobre Oracle Cloud Inf
 - Node.js v23 / npm (instalado automáticamente por Maven si no está presente)
 - Oracle Wallet en `MtdrSpring/backend/wallet/` (para la base de datos en producción)
 
-### Ejecutar Localmente (Perfil Dev — Base de Datos H2 en Memoria)
-```bash
-cd MtdrSpring/backend
-./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
-```
-
-### Ejecutar Contra Oracle ADB (Producción)
-Asegurarse de que `wallet/` contenga los archivos del Oracle Wallet, luego:
+### Run Locally (Oracle ADB — only supported database)
+Ensure `wallet/` contains the Oracle Wallet files and that all required env vars are set in `.env`, then:
 ```bash
 cd MtdrSpring/backend
 ./mvnw spring-boot:run
 ```
+There is no H2 or in-memory database profile. The app always connects to Oracle ADB.
 
 ### Compilar (JAR completo con React incluido)
 ```bash
@@ -54,8 +49,7 @@ cd MtdrSpring/backend
 | Conexión Oracle ADB | `config/OracleConfiguration.java` | Lee el wallet desde el directorio `wallet/` |
 | Token del bot de Telegram | `application.properties` | `telegram.bot.token` |
 | Clave API DeepSeek | `application.properties` | `deepseek.api.key` |
-| Credenciales dev | `application.properties` | `admin` / `admin123` |
-| BD de desarrollo (H2) | `application-dev.properties` | Activar con `-Dspring.profiles.active=dev` |
+| Spring Security credentials | `application.properties` | Set via `SPRING_ADMIN_USER` / `SPRING_ADMIN_PASSWORD` env vars |
 
 ---
 
@@ -105,9 +99,6 @@ Matriz completa de endpoints: ver `MATRIZ_ENDPOINTS_REST.md`
 - Esquema gestionado automáticamente por Hibernate (`ddl-auto=update`)
 - Datos iniciales: ejecutar `SCRIPT_DATOS_INICIALES.sql` en OCI → Database Actions → SQL
 
-### Desarrollo: H2 en Memoria
-- Datos de prueba cargados desde `src/main/resources/data-test.sql`
-
 ---
 
 ## Infraestructura
@@ -132,8 +123,8 @@ Los archivos de referencia del setup anterior se conservan en la rama `main`.
 
 ## Convenciones del Equipo
 
-### Idioma
-Todo el código nuevo, comentarios, nombres de variables y mensajes debe escribirse en **español**, coherente con el modelo de dominio existente (Tarea, Usuario, Equipo, etc.).
+### Language
+All new code, comments, variable names, messages, documentation, and responses from Claude must be written in **English**. This is a strict project-wide rule. Domain model names (Tarea, Usuario, Equipo, etc.) may remain as-is for backwards compatibility, but all new additions must use English names.
 
 ### Estilo de Código
 Antes de escribir cualquier código en este proyecto, invocar siempre el skill `/coding-standards` como base para garantizar consistencia y calidad.

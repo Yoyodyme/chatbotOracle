@@ -20,6 +20,25 @@ const CONFIG_PRIORIDAD = {
     text: '#0043ce',
     dot: '#0043ce',
   },
+  // English keys (values stored in DB)
+  high: {
+    bg: 'rgba(218,30,40,0.10)',
+    border: 'rgba(218,30,40,0.25)',
+    text: '#da1e28',
+    dot: '#da1e28',
+  },
+  medium: {
+    bg: 'rgba(185,80,0,0.10)',
+    border: 'rgba(185,80,0,0.25)',
+    text: '#b95000',
+    dot: '#b95000',
+  },
+  low: {
+    bg: 'rgba(0,67,206,0.10)',
+    border: 'rgba(0,67,206,0.25)',
+    text: '#0043ce',
+    dot: '#0043ce',
+  },
 };
 
 // ── Mapa de colores por estatus ──────────────────────────────────────────────
@@ -33,6 +52,19 @@ const CONFIG_ESTATUS = {
     text: '#b95000',
   },
   completada: {
+    dot: '#2d7d46',
+    text: '#2d7d46',
+  },
+  // English keys (values stored in DB)
+  pending: {
+    dot: '#8d8d8d',
+    text: '#525252',
+  },
+  'in progress': {
+    dot: '#b95000',
+    text: '#b95000',
+  },
+  completed: {
     dot: '#2d7d46',
     text: '#2d7d46',
   },
