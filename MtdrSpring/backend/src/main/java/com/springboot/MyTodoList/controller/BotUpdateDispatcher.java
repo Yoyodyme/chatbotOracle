@@ -192,9 +192,11 @@ public class BotUpdateDispatcher {
                     tareaActions.startModifySprint(intent);
                     return;
                 case SPRINT_TABLE:
+                    tareaActions.setTextoMensaje("/sprinttable");
                     tareaActions.fnTablaSprint();
                     return;
                 case KPI_REPORT:
+                    tareaActions.setTextoMensaje("/kpi");
                     tareaActions.fnKpi();
                     return;
                 default:
@@ -203,12 +205,16 @@ public class BotUpdateDispatcher {
             }
         }
 
-        // Informational query or UNKNOWN: use full orchestrator response.
-        // manejarMensaje() is used here for backwards compatibility; Agent 1 will
-        // rename it to handleMessage() and keep manejarMensaje() as a @Deprecated delegate.
+        // Informational query or UNKNOWN: generate response from the already-parsed intent
+        // to avoid a second LLM round-trip. Falls back to full handleMessage() if the
+        // initial classifyIntent() call failed and intent is null.
         String response;
         try {
-            response = orquestador.manejarMensaje(effective, history);
+            if (intent != null) {
+                response = orquestador.generateResponse(intent, effective, history);
+            } else {
+                response = orquestador.manejarMensaje(effective, history);
+            }
         } catch (Exception ex) {
             logger.error("handleMessage failed", ex);
             response = "An error occurred. Please try again.";

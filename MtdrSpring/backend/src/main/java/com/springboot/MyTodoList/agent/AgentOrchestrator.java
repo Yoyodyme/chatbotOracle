@@ -126,6 +126,52 @@ public class AgentOrchestrator {
     }
 
     /**
+     * Generates a response from an already-classified intent without invoking the LLM again.
+     * Used by BotUpdateDispatcher to avoid a second LLM round-trip when the intent
+     * was already resolved via {@link #classifyIntent(String, List)}.
+     *
+     * @param parsedIntent intent resolved by the dispatcher
+     * @param text         original user message (used for conversational fallback)
+     * @param history      previous conversation messages
+     * @return plain-text response in English
+     */
+    public String generateResponse(ParsedIntent parsedIntent,
+                                   String text,
+                                   List<Map<String, String>> history) {
+        if (parsedIntent == null) {
+            return llmIntentParser.generarRespuestaConversacional(text, history);
+        }
+
+        if (parsedIntent.isClarificationNeeded()
+                && !safe(parsedIntent.getClarificationQuestion()).isBlank()) {
+            return parsedIntent.getClarificationQuestion();
+        }
+
+        switch (parsedIntent.getIntent()) {
+            case HELP:
+                return handleHelp();
+            case LIST_TASKS:
+                return handleListTasks();
+            case TASKS_BY_USER:
+                return handleTasksByUser(safe(parsedIntent.getAssignedTo()));
+            case TASKS_BY_STATUS:
+                return handleTasksByStatus(safe(parsedIntent.getFilterStatus()));
+            case SPRINT_SUMMARY:
+                return handleSprintSummary();
+            case TEAM_WORKLOAD:
+                return handleTeamWorkload();
+            case VIEW_TASK: {
+                String qt = parsedIntent.getQueryTitle();
+                String vt = (qt != null && !qt.isBlank()) ? qt : parsedIntent.getTitle();
+                return handleViewTask(safe(vt));
+            }
+            case UNKNOWN:
+            default:
+                return llmIntentParser.generarRespuestaConversacional(text, history);
+        }
+    }
+
+    /**
      * Classifies the intent of a message and extracts available slots.
      * Used by BotUpdateDispatcher to decide which wizard to start.
      *

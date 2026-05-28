@@ -67,6 +67,7 @@ public class TareaBotActions {
         this.estatusTareaService = estatusTareaService;
         this.prioridadTareaService = prioridadTareaService;
         this.conversationManager = conversationManager;
+        this.textoMensaje = "";
         this.exit = false;
     }
 
@@ -277,10 +278,9 @@ public class TareaBotActions {
                 String description = textoMensaje.equalsIgnoreCase("skip") ? null : textoMensaje.trim();
                 state.setDato("descripcion", description);
                 state.avanzarPaso();
-                // If hours are already pre-filled by intent, skip to step 4.
+                // If hours are already pre-filled by intent, cascade through pre-filled steps.
                 if (state.getDato("horasEstimadas") != null) {
-                    state.setPaso(4);
-                    sendPrioritySelection(state);
+                    advanceFromStep4(state);
                 } else {
                     BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWTASK_HOURS.getMessage(), telegramClient);
                 }
@@ -296,7 +296,7 @@ public class TareaBotActions {
 
             case 4: // waiting for priority selection
                 // If priority is already pre-filled by intent, skip to step 5.
-                if (state.getDato("prioridadSeleccionada") != null && textoMensaje.isEmpty()) {
+                if (state.getDato("prioridadSeleccionada") != null) {
                     state.setPaso(5);
                     sendAssigneeSelection(state);
                 } else {
@@ -306,7 +306,7 @@ public class TareaBotActions {
 
             case 5: // waiting for assignee selection
                 // If assignee is already pre-filled by intent, skip to step 6.
-                if (state.getDato("usuarioAsignado") != null && textoMensaje.isEmpty()) {
+                if (state.getDato("usuarioAsignado") != null) {
                     state.setPaso(6);
                     showNewTaskConfirmation(state);
                 } else {
@@ -340,8 +340,7 @@ public class TareaBotActions {
             return;
         }
 
-        state.setPaso(4);
-        sendPrioritySelection(state);
+        advanceFromStep4(state);
     }
 
     private void processLongHoursConfirmation(ConversationState state) {
@@ -353,6 +352,25 @@ public class TareaBotActions {
             BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWTASK_CANCELLED.getMessage(), telegramClient);
         } else {
             BotHelper.sendMessageToTelegram(chatId, "Reply 'yes' to confirm or 'cancel' to cancel.", telegramClient);
+        }
+    }
+
+    /**
+     * Advances the newtask wizard from step 4 (priority), cascading over any
+     * steps whose slots were already pre-filled by the parsed intent.
+     * Called after hours are confirmed so that the wizard never prompts for
+     * information the LLM already extracted.
+     */
+    private void advanceFromStep4(ConversationState state) {
+        if (state.getDato("prioridadSeleccionada") == null) {
+            state.setPaso(4);
+            sendPrioritySelection(state);
+        } else if (state.getDato("usuarioAsignado") == null) {
+            state.setPaso(5);
+            sendAssigneeSelection(state);
+        } else {
+            state.setPaso(6);
+            showNewTaskConfirmation(state);
         }
     }
 

@@ -18,7 +18,7 @@ public class SprintService {
     }
 
     public Optional<Sprint> obtenerSprintActivo() {
-        return sprintRepository.findFirstByEstadoOrderByFechaInicioDesc("ACTIVO");
+        return sprintRepository.findFirstByEstadoOrderByFechaInicioDesc("current");
     }
 
     public List<Sprint> obtenerTodosLosSprints() {
