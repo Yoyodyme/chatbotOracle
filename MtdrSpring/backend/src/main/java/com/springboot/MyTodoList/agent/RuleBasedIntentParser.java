@@ -5,129 +5,169 @@ import org.springframework.stereotype.Component;
 import java.text.Normalizer;
 
 /**
- * Rule-based intent classifier using English keywords.
+ * Rule-based intent classifier using English and Spanish keywords.
  * Normalizes text (lowercase + accent removal) before comparing.
  * Used as fallback when the LLM is unavailable or fails.
+ *
+ * Spanish keywords are kept for backwards compatibility with existing bot users.
  */
 @Component
 public class RuleBasedIntentParser implements IntentParser {
 
-    private static final String PREFIJO_TAREAS_DE       = "tasks of ";
-    private static final String PREFIJO_TAREAS_ASIGNADAS = "tasks assigned to ";
+    private static final String PREFIX_TASKS_OF        = "tasks of ";
+    private static final String PREFIX_TASKS_ASSIGNED  = "tasks assigned to ";
 
     @Override
-    public ParsedIntent parse(String textoMensaje) {
-        if (textoMensaje == null || textoMensaje.isBlank()) {
-            return intentDesconocido();
+    public ParsedIntent parse(String userMessage) {
+        if (userMessage == null || userMessage.isBlank()) {
+            return unknownIntent();
         }
 
-        String texto = normalizarTexto(textoMensaje);
+        String text = normalizeText(userMessage);
 
         // 1. Help
-        if (texto.contains("help") || texto.contains("ayuda")) {
-            ParsedIntent resultado = new ParsedIntent();
-            resultado.setIntent(IntentType.AYUDA);
-            return resultado;
+        if (text.contains("help") || text.contains("ayuda")) {
+            ParsedIntent result = new ParsedIntent();
+            result.setIntent(IntentType.HELP);
+            return result;
         }
 
         // 2. Sprint summary
-        if (texto.contains("current sprint")
-                || texto.contains("sprint summary")
-                || texto.contains("sprint status")
-                || texto.contains("sprint actual")
-                || texto.contains("resumen sprint")
-                || texto.contains("estado del sprint")) {
-            ParsedIntent resultado = new ParsedIntent();
-            resultado.setIntent(IntentType.RESUMEN_SPRINT);
-            return resultado;
+        if (text.contains("current sprint")
+                || text.contains("sprint summary")
+                || text.contains("sprint status")
+                || text.contains("sprint actual")
+                || text.contains("resumen sprint")
+                || text.contains("estado del sprint")) {
+            ParsedIntent result = new ParsedIntent();
+            result.setIntent(IntentType.SPRINT_SUMMARY);
+            return result;
         }
 
         // 3. Team workload
-        if (texto.contains("team workload")
-                || texto.contains("who has the most work")
-                || texto.contains("carga del equipo")
-                || texto.contains("quien tiene mas carga")) {
-            ParsedIntent resultado = new ParsedIntent();
-            resultado.setIntent(IntentType.CARGA_EQUIPO);
-            return resultado;
+        if (text.contains("team workload")
+                || text.contains("who has the most work")
+                || text.contains("carga del equipo")
+                || text.contains("quien tiene mas carga")) {
+            ParsedIntent result = new ParsedIntent();
+            result.setIntent(IntentType.TEAM_WORKLOAD);
+            return result;
         }
 
         // 4. Tasks by assignee — extract name after the preposition
-        if (texto.contains(PREFIJO_TAREAS_DE) || texto.contains(PREFIJO_TAREAS_ASIGNADAS)) {
-            String nombre = extraerNombreTrasPreposicion(texto);
-            ParsedIntent resultado = new ParsedIntent();
-            resultado.setIntent(IntentType.TAREAS_POR_ASIGNADO);
-            resultado.setAsignado(nombre);
-            return resultado;
+        if (text.contains(PREFIX_TASKS_OF) || text.contains(PREFIX_TASKS_ASSIGNED)) {
+            String name = extractNameAfterPreposition(text);
+            ParsedIntent result = new ParsedIntent();
+            result.setIntent(IntentType.TASKS_BY_USER);
+            result.setAssignedTo(name);
+            return result;
         }
 
         // 5. Tasks by status
-        if (texto.contains("pending") || texto.contains("pendiente")) {
-            ParsedIntent resultado = new ParsedIntent();
-            resultado.setIntent(IntentType.TAREAS_POR_ESTATUS);
-            resultado.setEstatus("pending");
-            return resultado;
+        if (text.contains("pending") || text.contains("pendiente")) {
+            ParsedIntent result = new ParsedIntent();
+            result.setIntent(IntentType.TASKS_BY_STATUS);
+            result.setFilterStatus("pending");
+            return result;
         }
-        if (texto.contains("in progress") || texto.contains("en progreso")) {
-            ParsedIntent resultado = new ParsedIntent();
-            resultado.setIntent(IntentType.TAREAS_POR_ESTATUS);
-            resultado.setEstatus("in progress");
-            return resultado;
+        if (text.contains("in progress") || text.contains("en progreso")) {
+            ParsedIntent result = new ParsedIntent();
+            result.setIntent(IntentType.TASKS_BY_STATUS);
+            result.setFilterStatus("in progress");
+            return result;
         }
-        if (texto.contains("completed") || texto.contains("completada") || texto.contains("completadas")) {
-            ParsedIntent resultado = new ParsedIntent();
-            resultado.setIntent(IntentType.TAREAS_POR_ESTATUS);
-            resultado.setEstatus("completed");
-            return resultado;
+        if (text.contains("completed") || text.contains("completada") || text.contains("completadas")) {
+            ParsedIntent result = new ParsedIntent();
+            result.setIntent(IntentType.TASKS_BY_STATUS);
+            result.setFilterStatus("completed");
+            return result;
         }
 
         // 6. List all tasks
-        if (texto.contains("list")
-                || texto.contains("all tasks")
-                || texto.contains("listar")
-                || texto.contains("lista")
-                || texto.contains("todas las tareas")) {
-            ParsedIntent resultado = new ParsedIntent();
-            resultado.setIntent(IntentType.LISTAR_TAREAS);
-            return resultado;
+        if (text.contains("list")
+                || text.contains("all tasks")
+                || text.contains("listar")
+                || text.contains("lista")
+                || text.contains("todas las tareas")) {
+            ParsedIntent result = new ParsedIntent();
+            result.setIntent(IntentType.LIST_TASKS);
+            return result;
         }
 
         // 7. View details of a specific task
-        if (texto.contains("detail")
-                || texto.contains("view task")
-                || texto.contains("show task")
-                || texto.contains("detalle")
-                || texto.contains("ver tarea")
-                || texto.contains("mostrar tarea")) {
-            ParsedIntent resultado = new ParsedIntent();
-            resultado.setIntent(IntentType.VER_TAREA);
-            return resultado;
+        if (text.contains("detail")
+                || text.contains("view task")
+                || text.contains("show task")
+                || text.contains("detalle")
+                || text.contains("ver tarea")
+                || text.contains("mostrar tarea")) {
+            ParsedIntent result = new ParsedIntent();
+            result.setIntent(IntentType.VIEW_TASK);
+            return result;
         }
 
         // 8. Modify or edit a task
-        if (texto.contains("modify")
-                || texto.contains("edit task")
-                || texto.contains("change task")
-                || texto.contains("modificar")
-                || texto.contains("editar tarea")
-                || texto.contains("cambiar tarea")) {
-            ParsedIntent resultado = new ParsedIntent();
-            resultado.setIntent(IntentType.MODIFICAR_TAREA);
-            return resultado;
+        if (text.contains("modify")
+                || text.contains("edit task")
+                || text.contains("change task")
+                || text.contains("modificar")
+                || text.contains("editar tarea")
+                || text.contains("cambiar tarea")) {
+            ParsedIntent result = new ParsedIntent();
+            result.setIntent(IntentType.MODIFY_TASK);
+            return result;
         }
 
-        // 9. Assign or reassign a task
-        if (texto.contains("assign")
-                || texto.contains("reassign")
-                || texto.contains("asignar")
-                || texto.contains("reasignar")) {
-            ParsedIntent resultado = new ParsedIntent();
-            resultado.setIntent(IntentType.ASIGNAR_TAREA);
-            return resultado;
+        // 9. Create a new task
+        if (text.contains("create task")
+                || text.contains("new task")
+                || text.contains("add task")
+                || text.contains("crear tarea")
+                || text.contains("nueva tarea")
+                || text.contains("agregar tarea")) {
+            ParsedIntent result = new ParsedIntent();
+            result.setIntent(IntentType.CREATE_TASK);
+            return result;
         }
 
-        // 10. No match
-        return intentDesconocido();
+        // 10. Assign / reassign a task to a sprint
+        if (text.contains("assign sprint")
+                || text.contains("add to sprint")
+                || text.contains("assign to sprint")
+                || text.contains("reassign")
+                || text.contains("asignar sprint")
+                || text.contains("agregar al sprint")
+                || text.contains("reasignar")) {
+            ParsedIntent result = new ParsedIntent();
+            result.setIntent(IntentType.ASSIGN_SPRINT);
+            return result;
+        }
+
+        // 11. Complete / mark a task done
+        if (text.contains("complete task")
+                || text.contains("mark done")
+                || text.contains("finish task")
+                || text.contains("done task")
+                || text.contains("completar tarea")
+                || text.contains("marcar completada")) {
+            ParsedIntent result = new ParsedIntent();
+            result.setIntent(IntentType.COMPLETE_TASK);
+            return result;
+        }
+
+        // 12. Create a new sprint
+        if (text.contains("create sprint")
+                || text.contains("new sprint")
+                || text.contains("add sprint")
+                || text.contains("crear sprint")
+                || text.contains("nuevo sprint")) {
+            ParsedIntent result = new ParsedIntent();
+            result.setIntent(IntentType.CREATE_SPRINT);
+            return result;
+        }
+
+        // 13. No match
+        return unknownIntent();
     }
 
     // -------------------------------------------------------------------------
@@ -138,12 +178,12 @@ public class RuleBasedIntentParser implements IntentParser {
      * Converts text to lowercase and removes diacritical marks (accents)
      * using the NFD canonical decomposition of the Unicode standard.
      *
-     * @param texto original text from the user
+     * @param text original text from the user
      * @return normalized text ready for comparison
      */
-    private String normalizarTexto(String texto) {
+    private String normalizeText(String text) {
         return Normalizer
-                .normalize(texto, Normalizer.Form.NFD)
+                .normalize(text, Normalizer.Form.NFD)
                 .replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
                 .toLowerCase();
     }
@@ -152,25 +192,25 @@ public class RuleBasedIntentParser implements IntentParser {
      * Extracts the team member name that appears after "tasks of " or
      * "tasks assigned to " in the already normalized text.
      *
-     * @param textoNormalizado lowercase text without accents
+     * @param normalizedText lowercase text without accents
      * @return extracted name, or null if not found
      */
-    private String extraerNombreTrasPreposicion(String textoNormalizado) {
-        int inicio = textoNormalizado.indexOf(PREFIJO_TAREAS_ASIGNADAS);
-        if (inicio >= 0) {
-            return textoNormalizado.substring(inicio + PREFIJO_TAREAS_ASIGNADAS.length()).trim();
+    private String extractNameAfterPreposition(String normalizedText) {
+        int start = normalizedText.indexOf(PREFIX_TASKS_ASSIGNED);
+        if (start >= 0) {
+            return normalizedText.substring(start + PREFIX_TASKS_ASSIGNED.length()).trim();
         }
-        inicio = textoNormalizado.indexOf(PREFIJO_TAREAS_DE);
-        if (inicio >= 0) {
-            return textoNormalizado.substring(inicio + PREFIJO_TAREAS_DE.length()).trim();
+        start = normalizedText.indexOf(PREFIX_TASKS_OF);
+        if (start >= 0) {
+            return normalizedText.substring(start + PREFIX_TASKS_OF.length()).trim();
         }
         return null;
     }
 
-    /** Creates a ParsedIntent with DESCONOCIDO intent and all other fields empty. */
-    private ParsedIntent intentDesconocido() {
-        ParsedIntent resultado = new ParsedIntent();
-        resultado.setIntent(IntentType.DESCONOCIDO);
-        return resultado;
+    /** Creates a ParsedIntent with UNKNOWN intent and all other fields empty. */
+    private ParsedIntent unknownIntent() {
+        ParsedIntent result = new ParsedIntent();
+        result.setIntent(IntentType.UNKNOWN);
+        return result;
     }
 }

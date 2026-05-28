@@ -1,5 +1,6 @@
 package com.springboot.MyTodoList.util;
 
+import com.springboot.MyTodoList.agent.ParsedIntent;
 import com.springboot.MyTodoList.model.EstatusTarea;
 import com.springboot.MyTodoList.model.PrioridadTarea;
 import com.springboot.MyTodoList.model.Sprint;
@@ -22,7 +23,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Handles all new Telegram bot commands related to the Tarea (task) domain:
+ * Handles all Telegram bot commands related to the Tarea (task) domain:
  * /newtask, /assignsprint, /donetask, /sprinttable, /kpi, /newsprint,
  * /modifytask, /modifysprint
  *
@@ -32,9 +33,9 @@ import java.util.Optional;
 public class TareaBotActions {
 
     private static final Logger logger = LoggerFactory.getLogger(TareaBotActions.class);
-    private static final double MAX_HORAS_RECOMENDADAS = 4.0;
-    private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yy");
-    private static final DateTimeFormatter FORMATO_FECHA_COMPLETO = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final double MAX_RECOMMENDED_HOURS = 4.0;
+    private static final DateTimeFormatter DATE_FORMAT_SHORT = DateTimeFormatter.ofPattern("dd/MM/yy");
+    private static final DateTimeFormatter DATE_FORMAT_FULL = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final TelegramClient telegramClient;
     private final TareaService tareaService;
@@ -77,73 +78,244 @@ public class TareaBotActions {
     public void setTelegramUsername(String telegramUsername) { this.telegramUsername = telegramUsername; }
     public boolean isExit() { return exit; }
 
-    // ── /newtask ─────────────────────────────────────────────────────────────
+    // ── /newtask — slot-aware entry point ────────────────────────────────────
 
-    public void fnNuevatarea() {
+    /**
+     * Starts the newtask wizard, pre-populating slots from the parsed intent if available.
+     * When intent is null, behaves like a plain /newtask command.
+     */
+    public void startNewtask(ParsedIntent intent) {
         if (exit) return;
-
-        boolean esComandoInicio = textoMensaje.equals(BotCommands.NEW_TASK.getCommand());
-        boolean tieneConversacionNewtask = conversationManager.tieneConversacionActiva(chatId)
-                && "newtask".equals(conversationManager.obtenerEstado(chatId).getComando());
-
-        logger.info("[fnNuevatarea] chatId={} esComandoInicio={} tieneConversacionNewtask={}",
-                chatId, esComandoInicio, tieneConversacionNewtask);
-
-        if (!esComandoInicio && !tieneConversacionNewtask) return;
-
-        if (esComandoInicio) {
-            ConversationState estado = new ConversationState("newtask");
-            conversationManager.iniciarConversacion(chatId, estado);
-            BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWTASK_TITLE.getMessage(), telegramClient);
+        if (conversationManager.tieneConversacionActiva(chatId)) {
+            BotHelper.sendMessageToTelegram(chatId,
+                    "You already have an operation in progress. Type 'cancel' to finish it first.",
+                    telegramClient);
             exit = true;
             return;
         }
 
-        // Conversation already active — handle current step
-        ConversationState estado = conversationManager.obtenerEstado(chatId);
-        procesarPasoNewtask(estado);
+        ConversationState state = new ConversationState("newtask");
+        int startStep = 0;
+
+        if (intent != null) {
+            // Pre-fill title — if provided, skip step 0 (title prompt).
+            String title = intent.getTitle();
+            if (title != null && !title.isBlank()) {
+                state.setDato("titulo", title.trim());
+                startStep = 1;
+            }
+
+            // Pre-fill estimated hours.
+            Double hours = intent.getEstimatedHours();
+            if (hours != null) {
+                state.setDato("horasEstimadas", hours);
+            }
+
+            // Try to resolve assignee by fuzzy name match.
+            String assigneeName = intent.getAssigneeName();
+            if (assigneeName != null && !assigneeName.isBlank()) {
+                List<Usuario> users = usuarioService.obtenerTodosLosUsuarios();
+                users.stream()
+                        .filter(u -> u.getNombreCompleto() != null
+                                && u.getNombreCompleto().toLowerCase()
+                                        .contains(assigneeName.toLowerCase()))
+                        .findFirst()
+                        .ifPresent(u -> state.setDato("usuarioAsignado", u));
+            }
+
+            // Try to resolve priority by fuzzy name match.
+            String priorityName = intent.getPriority();
+            if (priorityName != null && !priorityName.isBlank()) {
+                List<PrioridadTarea> priorities = prioridadTareaService.obtenerTodasLasPrioridades();
+                priorities.stream()
+                        .filter(p -> p.getNombre() != null
+                                && p.getNombre().toLowerCase()
+                                        .contains(priorityName.toLowerCase()))
+                        .findFirst()
+                        .ifPresent(p -> state.setDato("prioridadSeleccionada", p));
+            }
+        }
+
+        state.setPaso(startStep);
+        conversationManager.iniciarConversacion(chatId, state);
+
+        if (startStep == 0) {
+            BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWTASK_TITLE.getMessage(), telegramClient);
+        } else {
+            BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWTASK_DESC.getMessage(), telegramClient);
+        }
         exit = true;
     }
 
-    private void procesarPasoNewtask(ConversationState estado) {
-        if (textoMensaje.equalsIgnoreCase("cancelar")) {
+    /**
+     * Starts the assign-sprint wizard. Delegates slot pre-filling to the flow starter.
+     * When intent is null, behaves like a plain /assignsprint command.
+     */
+    public void startAssignSprint(ParsedIntent intent) {
+        if (exit) return;
+        if (conversationManager.tieneConversacionActiva(chatId)) {
+            BotHelper.sendMessageToTelegram(chatId,
+                    "You already have an operation in progress. Type 'cancel' to finish it first.",
+                    telegramClient);
+            exit = true;
+            return;
+        }
+        startAssignSprintFlow();
+        exit = true;
+    }
+
+    /**
+     * Starts the complete-task wizard.
+     * When intent is null, behaves like a plain /donetask command.
+     */
+    public void startCompleteTask(ParsedIntent intent) {
+        if (exit) return;
+        if (conversationManager.tieneConversacionActiva(chatId)) {
+            BotHelper.sendMessageToTelegram(chatId,
+                    "You already have an operation in progress. Type 'cancel' to finish it first.",
+                    telegramClient);
+            exit = true;
+            return;
+        }
+        startCompleteTaskFlow();
+        exit = true;
+    }
+
+    /**
+     * Starts the new-sprint wizard.
+     * When intent is null, behaves like a plain /newsprint command.
+     */
+    public void startNewSprint(ParsedIntent intent) {
+        if (exit) return;
+        if (conversationManager.tieneConversacionActiva(chatId)) {
+            BotHelper.sendMessageToTelegram(chatId,
+                    "You already have an operation in progress. Type 'cancel' to finish it first.",
+                    telegramClient);
+            exit = true;
+            return;
+        }
+        ConversationState state = new ConversationState("newsprint");
+        conversationManager.iniciarConversacion(chatId, state);
+        BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWSPRINT_NOMBRE.getMessage(), telegramClient);
+        exit = true;
+    }
+
+    /**
+     * Starts the modify-task wizard.
+     * When intent is null, behaves like a plain /modifytask command.
+     */
+    public void startModifyTask(ParsedIntent intent) {
+        if (exit) return;
+        if (conversationManager.tieneConversacionActiva(chatId)) {
+            BotHelper.sendMessageToTelegram(chatId,
+                    "You already have an operation in progress. Type 'cancel' to finish it first.",
+                    telegramClient);
+            exit = true;
+            return;
+        }
+        startModifyTaskFlow();
+        exit = true;
+    }
+
+    /**
+     * Starts the modify-sprint wizard.
+     * When intent is null, behaves like a plain /modifysprint command.
+     */
+    public void startModifySprint(ParsedIntent intent) {
+        if (exit) return;
+        if (conversationManager.tieneConversacionActiva(chatId)) {
+            BotHelper.sendMessageToTelegram(chatId,
+                    "You already have an operation in progress. Type 'cancel' to finish it first.",
+                    telegramClient);
+            exit = true;
+            return;
+        }
+        startModifySprintFlow();
+        exit = true;
+    }
+
+    // ── /newtask — legacy entry point (delegates to startNewtask) ────────────
+
+    public void fnNuevatarea() {
+        if (exit) return;
+
+        boolean isStartCommand = textoMensaje.equals(BotCommands.NEW_TASK.getCommand());
+        boolean hasActiveConversation = conversationManager.tieneConversacionActiva(chatId)
+                && "newtask".equals(conversationManager.obtenerEstado(chatId).getComando());
+
+        logger.info("[fnNuevatarea] chatId={} isStartCommand={} hasActiveConversation={}",
+                chatId, isStartCommand, hasActiveConversation);
+
+        if (!isStartCommand && !hasActiveConversation) return;
+
+        if (isStartCommand) {
+            startNewtask(null);
+            return;
+        }
+
+        // Wizard already active — handle the current step.
+        ConversationState state = conversationManager.obtenerEstado(chatId);
+        processNewtaskStep(state);
+        exit = true;
+    }
+
+    private void processNewtaskStep(ConversationState state) {
+        if (textoMensaje.equalsIgnoreCase("cancel")) {
             conversationManager.terminarConversacion(chatId);
             BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWTASK_CANCELLED.getMessage(), telegramClient);
             return;
         }
 
-        switch (estado.getPaso()) {
+        switch (state.getPaso()) {
             case 0: // waiting for title
-                estado.setDato("titulo", textoMensaje.trim());
-                estado.avanzarPaso();
+                state.setDato("titulo", textoMensaje.trim());
+                state.avanzarPaso();
                 BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWTASK_DESC.getMessage(), telegramClient);
                 break;
 
             case 1: // waiting for description
-                String descripcion = textoMensaje.equalsIgnoreCase("saltar") ? null : textoMensaje.trim();
-                estado.setDato("descripcion", descripcion);
-                estado.avanzarPaso();
-                BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWTASK_HOURS.getMessage(), telegramClient);
+                String description = textoMensaje.equalsIgnoreCase("skip") ? null : textoMensaje.trim();
+                state.setDato("descripcion", description);
+                state.avanzarPaso();
+                // If hours are already pre-filled by intent, skip to step 4.
+                if (state.getDato("horasEstimadas") != null) {
+                    state.setPaso(4);
+                    sendPrioritySelection(state);
+                } else {
+                    BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWTASK_HOURS.getMessage(), telegramClient);
+                }
                 break;
 
             case 2: // waiting for estimated hours
-                procesarHorasEstimadas(estado);
+                processEstimatedHours(state);
                 break;
 
-            case 3: // waiting for confirmation of long hours (yes/cancel)
-                procesarConfirmacionHorasLargas(estado);
+            case 3: // waiting for confirmation of long hours (yes / cancel)
+                processLongHoursConfirmation(state);
                 break;
 
             case 4: // waiting for priority selection
-                procesarPrioridadNewtask(estado);
+                // If priority is already pre-filled by intent, skip to step 5.
+                if (state.getDato("prioridadSeleccionada") != null && textoMensaje.isEmpty()) {
+                    state.setPaso(5);
+                    sendAssigneeSelection(state);
+                } else {
+                    processPrioritySelection(state);
+                }
                 break;
 
             case 5: // waiting for assignee selection
-                procesarAsignadoNewtask(estado);
+                // If assignee is already pre-filled by intent, skip to step 6.
+                if (state.getDato("usuarioAsignado") != null && textoMensaje.isEmpty()) {
+                    state.setPaso(6);
+                    showNewTaskConfirmation(state);
+                } else {
+                    processAssigneeSelection(state);
+                }
                 break;
 
             case 6: // waiting for final confirmation
-                procesarConfirmacionTarea(estado);
+                processTaskConfirmation(state);
                 break;
 
             default:
@@ -151,32 +323,32 @@ public class TareaBotActions {
         }
     }
 
-    private void procesarHorasEstimadas(ConversationState estado) {
-        double horas;
+    private void processEstimatedHours(ConversationState state) {
+        double hours;
         try {
-            horas = Double.parseDouble(textoMensaje.trim().replace(",", "."));
+            hours = Double.parseDouble(textoMensaje.trim().replace(",", "."));
         } catch (NumberFormatException e) {
             BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWTASK_HOURS_INVALID.getMessage(), telegramClient);
             return;
         }
 
-        estado.setDato("horasEstimadas", horas);
+        state.setDato("horasEstimadas", hours);
 
-        if (horas > MAX_HORAS_RECOMENDADAS) {
-            estado.setPaso(3); // saltar a confirmacion de horas largas
+        if (hours > MAX_RECOMMENDED_HOURS) {
+            state.setPaso(3); // jump to long-hours confirmation
             BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWTASK_HOURS_TOO_LONG.getMessage(), telegramClient);
             return;
         }
 
-        estado.setPaso(4);
-        enviarSeleccionPrioridad(estado);
+        state.setPaso(4);
+        sendPrioritySelection(state);
     }
 
-    private void procesarConfirmacionHorasLargas(ConversationState estado) {
-        if (textoMensaje.equalsIgnoreCase("yes") || textoMensaje.equalsIgnoreCase("si") || textoMensaje.equalsIgnoreCase("sí")) {
-            estado.setPaso(4);
-            enviarSeleccionPrioridad(estado);
-        } else if (textoMensaje.equalsIgnoreCase("cancel") || textoMensaje.equalsIgnoreCase("cancelar")) {
+    private void processLongHoursConfirmation(ConversationState state) {
+        if (textoMensaje.equalsIgnoreCase("yes")) {
+            state.setPaso(4);
+            sendPrioritySelection(state);
+        } else if (textoMensaje.equalsIgnoreCase("cancel")) {
             conversationManager.terminarConversacion(chatId);
             BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWTASK_CANCELLED.getMessage(), telegramClient);
         } else {
@@ -184,126 +356,121 @@ public class TareaBotActions {
         }
     }
 
-    private void enviarSeleccionPrioridad(ConversationState estado) {
-        List<PrioridadTarea> prioridades = prioridadTareaService.obtenerTodasLasPrioridades();
-        estado.setDato("listaPrioridades", prioridades);
+    private void sendPrioritySelection(ConversationState state) {
+        List<PrioridadTarea> priorities = prioridadTareaService.obtenerTodasLasPrioridades();
+        state.setDato("listaPrioridades", priorities);
         StringBuilder sb = new StringBuilder(BotMessages.NEWTASK_PRIORITY.getMessage()).append("\n\n");
-        for (int i = 0; i < prioridades.size(); i++) {
-            sb.append(i + 1).append(". ").append(prioridades.get(i).getNombre()).append("\n");
+        for (int i = 0; i < priorities.size(); i++) {
+            sb.append(i + 1).append(". ").append(priorities.get(i).getNombre()).append("\n");
         }
         sb.append("\nEnter the priority number:");
         BotHelper.sendMessageToTelegram(chatId, sb.toString(), telegramClient);
     }
 
     @SuppressWarnings("unchecked")
-    private void procesarPrioridadNewtask(ConversationState estado) {
-        int indice;
+    private void processPrioritySelection(ConversationState state) {
+        int index;
         try {
-            indice = Integer.parseInt(textoMensaje.trim());
+            index = Integer.parseInt(textoMensaje.trim());
         } catch (NumberFormatException e) {
             BotHelper.sendMessageToTelegram(chatId, "Invalid priority number. Please try again:", telegramClient);
             return;
         }
 
-        List<PrioridadTarea> prioridades = (List<PrioridadTarea>) estado.getDato("listaPrioridades");
-        if (prioridades == null || indice < 1 || indice > prioridades.size()) {
-            BotHelper.sendMessageToTelegram(chatId, "Invalid number. Choose between 1 and " + (prioridades != null ? prioridades.size() : "?") + ":", telegramClient);
+        List<PrioridadTarea> priorities = (List<PrioridadTarea>) state.getDato("listaPrioridades");
+        if (priorities == null || index < 1 || index > priorities.size()) {
+            BotHelper.sendMessageToTelegram(chatId,
+                    "Invalid number. Choose between 1 and " + (priorities != null ? priorities.size() : "?") + ":",
+                    telegramClient);
             return;
         }
 
-        PrioridadTarea prioridadSeleccionada = prioridades.get(indice - 1);
-        estado.setDato("prioridadSeleccionada", prioridadSeleccionada);
-        estado.setPaso(5);
-        enviarSeleccionAsignado(estado);
+        state.setDato("prioridadSeleccionada", priorities.get(index - 1));
+        state.setPaso(5);
+        sendAssigneeSelection(state);
     }
 
-    private void enviarSeleccionAsignado(ConversationState estado) {
-        List<Usuario> usuarios = usuarioService.obtenerTodosLosUsuarios();
-        estado.setDato("listaUsuarios", usuarios);
+    private void sendAssigneeSelection(ConversationState state) {
+        List<Usuario> users = usuarioService.obtenerTodosLosUsuarios();
+        state.setDato("listaUsuarios", users);
         StringBuilder sb = new StringBuilder(BotMessages.SELECCIONAR_ASIGNADO.getMessage()).append("\n\n");
-        for (int i = 0; i < usuarios.size(); i++) {
-            sb.append(i + 1).append(". ").append(usuarios.get(i).getNombreCompleto()).append("\n");
+        for (int i = 0; i < users.size(); i++) {
+            sb.append(i + 1).append(". ").append(users.get(i).getNombreCompleto()).append("\n");
         }
         BotHelper.sendMessageToTelegram(chatId, sb.toString(), telegramClient);
     }
 
     @SuppressWarnings("unchecked")
-    private void procesarAsignadoNewtask(ConversationState estado) {
-        int indice;
+    private void processAssigneeSelection(ConversationState state) {
+        int index;
         try {
-            indice = Integer.parseInt(textoMensaje.trim());
+            index = Integer.parseInt(textoMensaje.trim());
         } catch (NumberFormatException e) {
             BotHelper.sendMessageToTelegram(chatId, "Invalid number. Enter the user number:", telegramClient);
             return;
         }
 
-        List<Usuario> usuarios = (List<Usuario>) estado.getDato("listaUsuarios");
-        if (usuarios == null || indice < 1 || indice > usuarios.size()) {
-            BotHelper.sendMessageToTelegram(chatId, "Invalid number. Choose between 1 and " + (usuarios != null ? usuarios.size() : "?") + ":", telegramClient);
+        List<Usuario> users = (List<Usuario>) state.getDato("listaUsuarios");
+        if (users == null || index < 1 || index > users.size()) {
+            BotHelper.sendMessageToTelegram(chatId,
+                    "Invalid number. Choose between 1 and " + (users != null ? users.size() : "?") + ":",
+                    telegramClient);
             return;
         }
 
-        Usuario usuarioAsignado = usuarios.get(indice - 1);
-        estado.setDato("usuarioAsignado", usuarioAsignado);
-        estado.setPaso(6);
-
-        // Show summary for confirmation
-        mostrarConfirmacionNuevaTarea(estado);
+        state.setDato("usuarioAsignado", users.get(index - 1));
+        state.setPaso(6);
+        showNewTaskConfirmation(state);
     }
 
-    private void mostrarConfirmacionNuevaTarea(ConversationState estado) {
-        String titulo = (String) estado.getDato("titulo");
-        String descripcion = (String) estado.getDato("descripcion");
-        Double horas = (Double) estado.getDato("horasEstimadas");
-        PrioridadTarea prioridad = (PrioridadTarea) estado.getDato("prioridadSeleccionada");
-        Usuario asignado = (Usuario) estado.getDato("usuarioAsignado");
+    private void showNewTaskConfirmation(ConversationState state) {
+        String title       = (String)        state.getDato("titulo");
+        String description = (String)        state.getDato("descripcion");
+        Double hours       = (Double)        state.getDato("horasEstimadas");
+        PrioridadTarea priority = (PrioridadTarea) state.getDato("prioridadSeleccionada");
+        Usuario assignee   = (Usuario)       state.getDato("usuarioAsignado");
 
-        String mensajeConfirmacion = String.format(
+        String confirmationMsg = String.format(
                 BotMessages.TAREA_CONFIRMACION.getMessage(),
-                titulo != null ? titulo : "(no title)",
-                descripcion != null ? descripcion : "(no description)",
-                horas != null ? horas : 0.0,
-                prioridad != null ? prioridad.getNombre() : "(no priority)",
-                asignado != null ? asignado.getNombreCompleto() : "(no assignee)"
+                title       != null ? title       : "(no title)",
+                description != null ? description : "(no description)",
+                hours       != null ? hours       : 0.0,
+                priority    != null ? priority.getNombre()         : "(no priority)",
+                assignee    != null ? assignee.getNombreCompleto() : "(no assignee)"
         );
-        BotHelper.sendMessageToTelegram(chatId, mensajeConfirmacion, telegramClient);
+        BotHelper.sendMessageToTelegram(chatId, confirmationMsg, telegramClient);
     }
 
-    private void procesarConfirmacionTarea(ConversationState estado) {
-        String texto = textoMensaje.trim().toLowerCase();
+    private void processTaskConfirmation(ConversationState state) {
+        String text = textoMensaje.trim().toLowerCase();
 
-        if (texto.equals("yes") || texto.equals("si") || texto.equals("sí")) {
-            crearTareaDesdeEstado(estado);
+        if (text.equals("yes")) {
+            createTaskFromState(state);
             return;
         }
 
-        if (texto.startsWith("edit ") || texto.startsWith("editar ")) {
-            String campo = texto.startsWith("edit ") ? texto.substring(5).trim() : texto.substring(7).trim();
-            switch (campo) {
+        if (text.startsWith("edit ")) {
+            String field = text.substring(5).trim();
+            switch (field) {
                 case "title":
-                case "titulo":
-                    estado.setPaso(0);
+                    state.setPaso(0);
                     BotHelper.sendMessageToTelegram(chatId, "Enter the new title:", telegramClient);
                     break;
                 case "description":
-                case "descripcion":
-                    estado.setPaso(1);
+                    state.setPaso(1);
                     BotHelper.sendMessageToTelegram(chatId, "Enter the new description (or 'skip'):", telegramClient);
                     break;
                 case "hours":
-                case "horas":
-                    estado.setPaso(2);
+                    state.setPaso(2);
                     BotHelper.sendMessageToTelegram(chatId, "Enter the estimated hours:", telegramClient);
                     break;
                 case "priority":
-                case "prioridad":
-                    estado.setPaso(4);
-                    enviarSeleccionPrioridad(estado);
+                    state.setPaso(4);
+                    sendPrioritySelection(state);
                     break;
                 case "assigned":
-                case "asignado":
-                    estado.setPaso(5);
-                    enviarSeleccionAsignado(estado);
+                    state.setPaso(5);
+                    sendAssigneeSelection(state);
                     break;
                 default:
                     BotHelper.sendMessageToTelegram(chatId,
@@ -313,55 +480,56 @@ public class TareaBotActions {
             return;
         }
 
-        if (texto.equals("cancel") || texto.equals("cancelar")) {
+        if (text.equals("cancel")) {
             conversationManager.terminarConversacion(chatId);
             BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWTASK_CANCELLED.getMessage(), telegramClient);
             return;
         }
 
-        // Unrecognized response — show summary again
+        // Unrecognized response — show summary again.
         BotHelper.sendMessageToTelegram(chatId,
                 "Reply 'yes' to save, 'edit [field]' to correct, or 'cancel' to cancel.",
                 telegramClient);
-        mostrarConfirmacionNuevaTarea(estado);
+        showNewTaskConfirmation(state);
     }
 
     @SuppressWarnings("unchecked")
-    private void crearTareaDesdeEstado(ConversationState estado) {
-        Usuario usuarioCreador = obtenerOAutoRegistrarUsuario();
-        Usuario usuarioAsignado = (Usuario) estado.getDato("usuarioAsignado");
-        PrioridadTarea prioridad = (PrioridadTarea) estado.getDato("prioridadSeleccionada");
+    private void createTaskFromState(ConversationState state) {
+        Usuario creator  = getOrRegisterUser();
+        Usuario assignee = (Usuario)       state.getDato("usuarioAsignado");
+        PrioridadTarea priority = (PrioridadTarea) state.getDato("prioridadSeleccionada");
 
-        Tarea nuevaTarea = new Tarea();
-        nuevaTarea.setTitulo((String) estado.getDato("titulo"));
-        nuevaTarea.setDescripcion((String) estado.getDato("descripcion"));
-        nuevaTarea.setHorasEstimadas((Double) estado.getDato("horasEstimadas"));
-        nuevaTarea.setUsuarioCreador(usuarioCreador);
-        nuevaTarea.setUsuarioAsignado(usuarioAsignado != null ? usuarioAsignado : usuarioCreador);
-        nuevaTarea.setPrioridad(prioridad);
+        Tarea newTask = new Tarea();
+        newTask.setTitulo((String) state.getDato("titulo"));
+        newTask.setDescripcion((String) state.getDato("descripcion"));
+        newTask.setHorasEstimadas((Double) state.getDato("horasEstimadas"));
+        newTask.setUsuarioCreador(creator);
+        newTask.setUsuarioAsignado(assignee != null ? assignee : creator);
+        newTask.setPrioridad(priority);
 
-        EstatusTarea estatusPendiente = estatusTareaService.obtenerEstatusPorNombre("Pendiente");
-        if (estatusPendiente != null) {
-            nuevaTarea.setEstatus(estatusPendiente);
+        // Status lookup uses English names to match the database.
+        EstatusTarea pendingStatus = estatusTareaService.obtenerEstatusPorNombre("Pending");
+        if (pendingStatus != null) {
+            newTask.setEstatus(pendingStatus);
         } else {
-            List<EstatusTarea> todosLosEstatus = estatusTareaService.obtenerTodosLosEstatus();
-            if (!todosLosEstatus.isEmpty()) {
-                nuevaTarea.setEstatus(todosLosEstatus.get(0));
-                logger.warn("Status 'Pendiente' not found; using '{}' as fallback",
-                        todosLosEstatus.get(0).getNombre());
+            List<EstatusTarea> allStatuses = estatusTareaService.obtenerTodosLosEstatus();
+            if (!allStatuses.isEmpty()) {
+                newTask.setEstatus(allStatuses.get(0));
+                logger.warn("Status 'Pending' not found; using '{}' as fallback",
+                        allStatuses.get(0).getNombre());
             } else {
-                logger.warn("No status found in the database; the task will be saved without a status");
+                logger.warn("No status found in the database; task will be saved without a status");
             }
         }
 
-        Tarea tareaCreada = tareaService.crearTarea(nuevaTarea);
+        Tarea created = tareaService.crearTarea(newTask);
         conversationManager.terminarConversacion(chatId);
 
-        String mensaje = BotMessages.NEWTASK_CREATED.getMessage()
-                .replace("{id}", String.valueOf(tareaCreada.getIdTarea()))
-                .replace("{titulo}", tareaCreada.getTitulo())
-                .replace("{horas}", String.valueOf(tareaCreada.getHorasEstimadas()));
-        BotHelper.sendMessageToTelegram(chatId, mensaje, telegramClient);
+        String message = BotMessages.NEWTASK_CREATED.getMessage()
+                .replace("{id}", String.valueOf(created.getIdTarea()))
+                .replace("{titulo}", created.getTitulo())
+                .replace("{horas}", String.valueOf(created.getHorasEstimadas()));
+        BotHelper.sendMessageToTelegram(chatId, message, telegramClient);
     }
 
     // ── /assignsprint ─────────────────────────────────────────────────────────
@@ -369,90 +537,92 @@ public class TareaBotActions {
     public void fnAsignarSprint() {
         if (exit) return;
 
-        boolean esComandoInicio = textoMensaje.equals(BotCommands.ASSIGN_SPRINT.getCommand());
-        boolean tieneConversacionActiva = conversationManager.tieneConversacionActiva(chatId)
+        boolean isStartCommand = textoMensaje.equals(BotCommands.ASSIGN_SPRINT.getCommand());
+        boolean hasActiveConversation = conversationManager.tieneConversacionActiva(chatId)
                 && "assignsprint".equals(conversationManager.obtenerEstado(chatId).getComando());
 
-        if (!esComandoInicio && !tieneConversacionActiva) return;
+        if (!isStartCommand && !hasActiveConversation) return;
 
-        if (esComandoInicio) {
-            iniciarFlujoAsignarSprint();
-            exit = true;
+        if (isStartCommand) {
+            startAssignSprint(null);
             return;
         }
 
-        ConversationState estado = conversationManager.obtenerEstado(chatId);
-        procesarPasoAsignarSprint(estado);
+        ConversationState state = conversationManager.obtenerEstado(chatId);
+        processAssignSprintStep(state);
         exit = true;
     }
 
-    private void iniciarFlujoAsignarSprint() {
+    private void startAssignSprintFlow() {
         Optional<Sprint> sprintOpt = sprintService.obtenerSprintActivo();
         if (sprintOpt.isEmpty()) {
             BotHelper.sendMessageToTelegram(chatId, BotMessages.ASSIGNSPRINT_NO_SPRINT.getMessage(), telegramClient);
             return;
         }
 
-        Usuario usuarioSprint = obtenerOAutoRegistrarUsuario();
+        Usuario user = getOrRegisterUser();
 
-        List<Tarea> tareasPendientes = tareaService.obtenerTareasPorEstatusYUsuario("Pendiente", usuarioSprint.getIdUsuario());
-        if (tareasPendientes.isEmpty()) {
+        // Status lookup uses English names to match the database.
+        List<Tarea> pendingTasks = tareaService.obtenerTareasPorEstatusYUsuario("Pending", user.getIdUsuario());
+        if (pendingTasks.isEmpty()) {
             BotHelper.sendMessageToTelegram(chatId, BotMessages.ASSIGNSPRINT_NO_TASKS.getMessage(), telegramClient);
             return;
         }
 
-        ConversationState estado = new ConversationState("assignsprint");
-        estado.setDato("idSprint", sprintOpt.get().getIdSprint());
-        estado.setDato("idUsuario", usuarioSprint.getIdUsuario());
-        conversationManager.iniciarConversacion(chatId, estado);
+        ConversationState state = new ConversationState("assignsprint");
+        state.setDato("idSprint", sprintOpt.get().getIdSprint());
+        state.setDato("idUsuario", user.getIdUsuario());
+        conversationManager.iniciarConversacion(chatId, state);
 
-        String listaTareas = construirListaTareas(tareasPendientes);
-        String mensaje = BotMessages.ASSIGNSPRINT_SELECT.getMessage().replace("{lista}", listaTareas);
-        BotHelper.sendMessageToTelegram(chatId, mensaje, telegramClient);
+        String taskList = buildTaskList(pendingTasks);
+        String message = BotMessages.ASSIGNSPRINT_SELECT.getMessage().replace("{lista}", taskList);
+        BotHelper.sendMessageToTelegram(chatId, message, telegramClient);
     }
 
-    private void procesarPasoAsignarSprint(ConversationState estado) {
-        if (textoMensaje.equalsIgnoreCase("cancel") || textoMensaje.equalsIgnoreCase("cancelar")) {
+    private void processAssignSprintStep(ConversationState state) {
+        if (textoMensaje.equalsIgnoreCase("cancel")) {
             conversationManager.terminarConversacion(chatId);
             BotHelper.sendMessageToTelegram(chatId, "Operation cancelled.", telegramClient);
             return;
         }
 
-        Long idTarea;
+        Long taskId;
         try {
-            idTarea = Long.parseLong(textoMensaje.trim());
+            taskId = Long.parseLong(textoMensaje.trim());
         } catch (NumberFormatException e) {
             BotHelper.sendMessageToTelegram(chatId, BotMessages.ASSIGNSPRINT_INVALID_ID.getMessage(), telegramClient);
             return;
         }
 
-        Tarea tarea = tareaService.obtenerTareaPorId(idTarea);
-        Long idUsuario = (Long) estado.getDato("idUsuario");
-        Long idSprint = (Long) estado.getDato("idSprint");
+        Tarea task = tareaService.obtenerTareaPorId(taskId);
+        Long userId   = (Long) state.getDato("idUsuario");
+        Long sprintId = (Long) state.getDato("idSprint");
 
-        if (tarea == null || tarea.getUsuarioAsignado() == null
-                || !tarea.getUsuarioAsignado().getIdUsuario().equals(idUsuario)) {
+        if (task == null || task.getUsuarioAsignado() == null
+                || !task.getUsuarioAsignado().getIdUsuario().equals(userId)) {
             conversationManager.terminarConversacion(chatId);
             BotHelper.sendMessageToTelegram(chatId, BotMessages.ASSIGNSPRINT_NOT_FOUND.getMessage(), telegramClient);
             return;
         }
 
-        EstatusTarea estatusEnProgreso = estatusTareaService.obtenerEstatusPorNombre("En Progreso");
-        if (estatusEnProgreso == null) {
+        // Status lookup uses English names to match the database.
+        EstatusTarea inProgressStatus = estatusTareaService.obtenerEstatusPorNombre("In Progress");
+        if (inProgressStatus == null) {
             conversationManager.terminarConversacion(chatId);
-            BotHelper.sendMessageToTelegram(chatId, "Configuration error: status 'En Progreso' not found.", telegramClient);
+            BotHelper.sendMessageToTelegram(chatId,
+                    "Configuration error: status 'In Progress' not found.", telegramClient);
             return;
         }
-        tarea.setEstatus(estatusEnProgreso);
-        Sprint sprint = sprintService.obtenerSprintPorId(idSprint)
-                .orElseThrow(() -> new RuntimeException("Sprint not found: " + idSprint));
-        tarea.setSprint(sprint);
-        tareaService.actualizarTarea(idTarea, tarea);
+        task.setEstatus(inProgressStatus);
+        Sprint sprint = sprintService.obtenerSprintPorId(sprintId)
+                .orElseThrow(() -> new RuntimeException("Sprint not found: " + sprintId));
+        task.setSprint(sprint);
+        tareaService.actualizarTarea(taskId, task);
         conversationManager.terminarConversacion(chatId);
 
-        String mensaje = BotMessages.ASSIGNSPRINT_DONE.getMessage()
-                .replace("{id}", String.valueOf(idTarea));
-        BotHelper.sendMessageToTelegram(chatId, mensaje, telegramClient);
+        String message = BotMessages.ASSIGNSPRINT_DONE.getMessage()
+                .replace("{id}", String.valueOf(taskId));
+        BotHelper.sendMessageToTelegram(chatId, message, telegramClient);
     }
 
     // ── /donetask ─────────────────────────────────────────────────────────────
@@ -460,129 +630,129 @@ public class TareaBotActions {
     public void fnCompletarTarea() {
         if (exit) return;
 
-        boolean esComandoInicio = textoMensaje.equals(BotCommands.DONE_TASK.getCommand());
-        boolean tieneConversacionActiva = conversationManager.tieneConversacionActiva(chatId)
+        boolean isStartCommand = textoMensaje.equals(BotCommands.DONE_TASK.getCommand());
+        boolean hasActiveConversation = conversationManager.tieneConversacionActiva(chatId)
                 && "donetask".equals(conversationManager.obtenerEstado(chatId).getComando());
 
-        if (!esComandoInicio && !tieneConversacionActiva) return;
+        if (!isStartCommand && !hasActiveConversation) return;
 
-        if (esComandoInicio) {
-            iniciarFlujoCompletarTarea();
-            exit = true;
+        if (isStartCommand) {
+            startCompleteTask(null);
             return;
         }
 
-        ConversationState estado = conversationManager.obtenerEstado(chatId);
-        procesarPasoCompletarTarea(estado);
+        ConversationState state = conversationManager.obtenerEstado(chatId);
+        processCompleteTaskStep(state);
         exit = true;
     }
 
-    private void iniciarFlujoCompletarTarea() {
-        Usuario usuarioDone = obtenerOAutoRegistrarUsuario();
+    private void startCompleteTaskFlow() {
+        Usuario user = getOrRegisterUser();
 
-        logger.info("[donetask] Buscando tareas activas — telegramUserId={}, idUsuario={}",
-                telegramUserId, usuarioDone.getIdUsuario());
+        logger.info("[donetask] Searching active tasks — telegramUserId={}, userId={}",
+                telegramUserId, user.getIdUsuario());
 
-        List<Tarea> tareasActivas = tareaService.obtenerTareasActivasPorUsuario(usuarioDone.getIdUsuario());
+        List<Tarea> activeTasks = tareaService.obtenerTareasActivasPorUsuario(user.getIdUsuario());
 
-        logger.info("[donetask] Tareas activas encontradas: {}", tareasActivas.size());
+        logger.info("[donetask] Active tasks found: {}", activeTasks.size());
 
-        if (tareasActivas.isEmpty()) {
+        if (activeTasks.isEmpty()) {
             BotHelper.sendMessageToTelegram(chatId, BotMessages.DONETASK_NO_TASKS.getMessage(), telegramClient);
             return;
         }
 
-        ConversationState estado = new ConversationState("donetask");
-        estado.setDato("idUsuario", usuarioDone.getIdUsuario());
-        conversationManager.iniciarConversacion(chatId, estado);
+        ConversationState state = new ConversationState("donetask");
+        state.setDato("idUsuario", user.getIdUsuario());
+        conversationManager.iniciarConversacion(chatId, state);
 
-        String listaTareas = construirListaTareas(tareasActivas);
-        String mensaje = BotMessages.DONETASK_SELECT.getMessage().replace("{lista}", listaTareas);
-        BotHelper.sendMessageToTelegram(chatId, mensaje, telegramClient);
+        String taskList = buildTaskList(activeTasks);
+        String message = BotMessages.DONETASK_SELECT.getMessage().replace("{lista}", taskList);
+        BotHelper.sendMessageToTelegram(chatId, message, telegramClient);
     }
 
-    private void procesarPasoCompletarTarea(ConversationState estado) {
-        if (textoMensaje.equalsIgnoreCase("cancel") || textoMensaje.equalsIgnoreCase("cancelar")) {
+    private void processCompleteTaskStep(ConversationState state) {
+        if (textoMensaje.equalsIgnoreCase("cancel")) {
             conversationManager.terminarConversacion(chatId);
             BotHelper.sendMessageToTelegram(chatId, "Operation cancelled.", telegramClient);
             return;
         }
 
-        if (estado.getPaso() == 0) {
-            // waiting for task ID
-            Long idTarea;
+        if (state.getPaso() == 0) {
+            // Waiting for task ID.
+            Long taskId;
             try {
-                idTarea = Long.parseLong(textoMensaje.trim());
+                taskId = Long.parseLong(textoMensaje.trim());
             } catch (NumberFormatException e) {
                 BotHelper.sendMessageToTelegram(chatId, "Invalid ID. Enter the task number:", telegramClient);
                 return;
             }
 
-            Tarea tarea = tareaService.obtenerTareaPorId(idTarea);
-            Long idUsuario = (Long) estado.getDato("idUsuario");
+            Tarea task   = tareaService.obtenerTareaPorId(taskId);
+            Long userId  = (Long) state.getDato("idUsuario");
 
-            logger.info("[donetask] paso 0 — idTarea recibido={}, idUsuario esperado={}, idUsuario en tarea={}",
-                    idTarea,
-                    idUsuario,
-                    (tarea != null && tarea.getUsuarioAsignado() != null)
-                            ? tarea.getUsuarioAsignado().getIdUsuario()
-                            : "null");
+            logger.info("[donetask] step 0 — taskId={}, expectedUserId={}, taskUserId={}",
+                    taskId, userId,
+                    (task != null && task.getUsuarioAsignado() != null)
+                            ? task.getUsuarioAsignado().getIdUsuario() : "null");
 
-            if (tarea == null || tarea.getUsuarioAsignado() == null
-                    || !tarea.getUsuarioAsignado().getIdUsuario().equals(idUsuario)) {
+            if (task == null || task.getUsuarioAsignado() == null
+                    || !task.getUsuarioAsignado().getIdUsuario().equals(userId)) {
                 conversationManager.terminarConversacion(chatId);
                 BotHelper.sendMessageToTelegram(chatId, BotMessages.ASSIGNSPRINT_NOT_FOUND.getMessage(), telegramClient);
                 return;
             }
 
-            String estatusActual = tarea.getEstatus() != null ? tarea.getEstatus().getNombre() : "";
-            if (!estatusActual.equals("Pendiente") && !estatusActual.equals("En Progreso")) {
+            String currentStatus = task.getEstatus() != null ? task.getEstatus().getNombre() : "";
+            // Status comparison uses English names to match the database.
+            if (!currentStatus.equals("Pending") && !currentStatus.equals("In Progress")) {
                 conversationManager.terminarConversacion(chatId);
                 BotHelper.sendMessageToTelegram(chatId,
-                        "That task is no longer active (status: " + estatusActual + "). Operation cancelled.",
+                        "That task is no longer active (status: " + currentStatus + "). Operation cancelled.",
                         telegramClient);
                 return;
             }
 
-            estado.setDato("idTarea", idTarea);
-            estado.avanzarPaso();
+            state.setDato("idTarea", taskId);
+            state.avanzarPaso();
             BotHelper.sendMessageToTelegram(chatId, BotMessages.DONETASK_HOURS.getMessage(), telegramClient);
             return;
         }
 
-        if (estado.getPaso() == 1) {
-            // waiting for actual hours
-            double horasReales;
+        if (state.getPaso() == 1) {
+            // Waiting for actual hours.
+            double actualHours;
             try {
-                horasReales = Double.parseDouble(textoMensaje.trim().replace(",", "."));
+                actualHours = Double.parseDouble(textoMensaje.trim().replace(",", "."));
             } catch (NumberFormatException e) {
                 BotHelper.sendMessageToTelegram(chatId, BotMessages.DONETASK_HOURS_INVALID.getMessage(), telegramClient);
                 return;
             }
 
-            Long idTarea = (Long) estado.getDato("idTarea");
-            Tarea tarea = tareaService.obtenerTareaPorId(idTarea);
-            if (tarea == null) {
+            Long taskId = (Long) state.getDato("idTarea");
+            Tarea task  = tareaService.obtenerTareaPorId(taskId);
+            if (task == null) {
                 conversationManager.terminarConversacion(chatId);
                 BotHelper.sendMessageToTelegram(chatId, "Task not found. Operation cancelled.", telegramClient);
                 return;
             }
 
-            EstatusTarea estatusCompletada = estatusTareaService.obtenerEstatusPorNombre("Completada");
-            if (estatusCompletada == null) {
+            // Status lookup uses English names to match the database.
+            EstatusTarea completedStatus = estatusTareaService.obtenerEstatusPorNombre("Completed");
+            if (completedStatus == null) {
                 conversationManager.terminarConversacion(chatId);
-                BotHelper.sendMessageToTelegram(chatId, "Configuration error: status 'Completada' not found.", telegramClient);
+                BotHelper.sendMessageToTelegram(chatId,
+                        "Configuration error: status 'Completed' not found.", telegramClient);
                 return;
             }
-            tarea.setEstatus(estatusCompletada);
-            tarea.setHorasReales(horasReales);
-            tareaService.actualizarTarea(idTarea, tarea);
+            task.setEstatus(completedStatus);
+            task.setHorasReales(actualHours);
+            tareaService.actualizarTarea(taskId, task);
             conversationManager.terminarConversacion(chatId);
 
-            String mensaje = BotMessages.DONETASK_DONE.getMessage()
-                    .replace("{id}", String.valueOf(idTarea))
-                    .replace("{horas}", String.valueOf(horasReales));
-            BotHelper.sendMessageToTelegram(chatId, mensaje, telegramClient);
+            String message = BotMessages.DONETASK_DONE.getMessage()
+                    .replace("{id}", String.valueOf(taskId))
+                    .replace("{horas}", String.valueOf(actualHours));
+            BotHelper.sendMessageToTelegram(chatId, message, telegramClient);
         }
     }
 
@@ -600,16 +770,16 @@ public class TareaBotActions {
         }
 
         Sprint sprint = sprintOpt.get();
-        List<Tarea> tareas = tareaService.obtenerTareasPorSprint(sprint.getIdSprint());
+        List<Tarea> tasks = tareaService.obtenerTareasPorSprint(sprint.getIdSprint());
 
-        if (tareas.isEmpty()) {
+        if (tasks.isEmpty()) {
             BotHelper.sendMessageToTelegram(chatId, BotMessages.SPRINTTABLE_EMPTY.getMessage(), telegramClient);
             exit = true;
             return;
         }
 
-        String tabla = construirTablaSprint(sprint, tareas);
-        BotHelper.sendMessageToTelegram(chatId, tabla, telegramClient);
+        String table = buildSprintTable(sprint, tasks);
+        BotHelper.sendMessageToTelegram(chatId, table, telegramClient);
         exit = true;
     }
 
@@ -627,16 +797,16 @@ public class TareaBotActions {
         }
 
         Sprint sprint = sprintOpt.get();
-        List<Tarea> tareas = tareaService.obtenerTareasPorSprint(sprint.getIdSprint());
+        List<Tarea> tasks = tareaService.obtenerTareasPorSprint(sprint.getIdSprint());
 
-        if (tareas.isEmpty()) {
+        if (tasks.isEmpty()) {
             BotHelper.sendMessageToTelegram(chatId, BotMessages.KPI_EMPTY.getMessage(), telegramClient);
             exit = true;
             return;
         }
 
-        String reporte = construirReporteKpi(sprint, tareas);
-        BotHelper.sendMessageToTelegram(chatId, reporte, telegramClient);
+        String report = buildKpiReport(sprint, tasks);
+        BotHelper.sendMessageToTelegram(chatId, report, telegramClient);
         exit = true;
     }
 
@@ -645,51 +815,41 @@ public class TareaBotActions {
     public void fnNuevoSprint() {
         if (exit) return;
 
-        boolean esComandoInicio = textoMensaje.equals(BotCommands.NEW_SPRINT.getCommand());
-        boolean tieneConversacionActiva = conversationManager.tieneConversacionActiva(chatId)
+        boolean isStartCommand = textoMensaje.equals(BotCommands.NEW_SPRINT.getCommand());
+        boolean hasActiveConversation = conversationManager.tieneConversacionActiva(chatId)
                 && "newsprint".equals(conversationManager.obtenerEstado(chatId).getComando());
 
-        if (!esComandoInicio && !tieneConversacionActiva) return;
+        if (!isStartCommand && !hasActiveConversation) return;
 
-        if (esComandoInicio) {
-            if (conversationManager.tieneConversacionActiva(chatId)) {
-                BotHelper.sendMessageToTelegram(chatId,
-                        "You already have an operation in progress. Type 'cancel' to finish it first.",
-                        telegramClient);
-                exit = true;
-                return;
-            }
-            ConversationState estado = new ConversationState("newsprint");
-            conversationManager.iniciarConversacion(chatId, estado);
-            BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWSPRINT_NOMBRE.getMessage(), telegramClient);
-            exit = true;
+        if (isStartCommand) {
+            startNewSprint(null);
             return;
         }
 
-        ConversationState estado = conversationManager.obtenerEstado(chatId);
-        procesarPasoNuevoSprint(estado);
+        ConversationState state = conversationManager.obtenerEstado(chatId);
+        processNewSprintStep(state);
         exit = true;
     }
 
-    private void procesarPasoNuevoSprint(ConversationState estado) {
-        if (textoMensaje.equalsIgnoreCase("cancelar")) {
+    private void processNewSprintStep(ConversationState state) {
+        if (textoMensaje.equalsIgnoreCase("cancel")) {
             conversationManager.terminarConversacion(chatId);
             BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWSPRINT_CANCELLED.getMessage(), telegramClient);
             return;
         }
 
-        switch (estado.getPaso()) {
+        switch (state.getPaso()) {
             case 0: // waiting for sprint name
-                estado.setDato("nombreSprint", textoMensaje.trim());
-                estado.avanzarPaso();
+                state.setDato("nombreSprint", textoMensaje.trim());
+                state.avanzarPaso();
                 BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWSPRINT_FECHA_INICIO.getMessage(), telegramClient);
                 break;
 
             case 1: // waiting for start date
                 try {
-                    LocalDate fechaInicio = LocalDate.parse(textoMensaje.trim(), FORMATO_FECHA_COMPLETO);
-                    estado.setDato("fechaInicio", fechaInicio);
-                    estado.avanzarPaso();
+                    LocalDate startDate = LocalDate.parse(textoMensaje.trim(), DATE_FORMAT_FULL);
+                    state.setDato("fechaInicio", startDate);
+                    state.avanzarPaso();
                     BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWSPRINT_FECHA_FIN.getMessage(), telegramClient);
                 } catch (Exception e) {
                     BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWSPRINT_FECHA_INVALIDA.getMessage(), telegramClient);
@@ -698,34 +858,33 @@ public class TareaBotActions {
 
             case 2: // waiting for end date
                 try {
-                    LocalDate fechaFin = LocalDate.parse(textoMensaje.trim(), FORMATO_FECHA_COMPLETO);
-                    LocalDate fechaInicio = (LocalDate) estado.getDato("fechaInicio");
+                    LocalDate endDate   = LocalDate.parse(textoMensaje.trim(), DATE_FORMAT_FULL);
+                    LocalDate startDate = (LocalDate) state.getDato("fechaInicio");
 
-                    if (!fechaFin.isAfter(fechaInicio)) {
+                    if (!endDate.isAfter(startDate)) {
                         BotHelper.sendMessageToTelegram(chatId,
                                 "The end date must be after the start date. Please try again (dd/MM/yyyy):",
                                 telegramClient);
                         break;
                     }
 
-                    estado.setDato("fechaFin", fechaFin);
-                    estado.avanzarPaso();
+                    state.setDato("fechaFin", endDate);
+                    state.avanzarPaso();
 
-                    // Show summary for confirmation before creating
-                    String resumen = String.format(
+                    String summary = String.format(
                             BotMessages.SPRINT_CONFIRMACION.getMessage(),
-                            estado.getDato("nombreSprint"),
-                            fechaInicio.format(FORMATO_FECHA_COMPLETO),
-                            fechaFin.format(FORMATO_FECHA_COMPLETO)
+                            state.getDato("nombreSprint"),
+                            startDate.format(DATE_FORMAT_FULL),
+                            endDate.format(DATE_FORMAT_FULL)
                     );
-                    BotHelper.sendMessageToTelegram(chatId, resumen, telegramClient);
+                    BotHelper.sendMessageToTelegram(chatId, summary, telegramClient);
                 } catch (Exception e) {
                     BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWSPRINT_FECHA_INVALIDA.getMessage(), telegramClient);
                 }
                 break;
 
             case 3: // waiting for sprint creation confirmation
-                procesarConfirmacionNuevoSprint(estado);
+                processNewSprintConfirmation(state);
                 break;
 
             default:
@@ -733,37 +892,40 @@ public class TareaBotActions {
         }
     }
 
-    private void procesarConfirmacionNuevoSprint(ConversationState estado) {
-        String texto = textoMensaje.trim().toLowerCase();
-        if (texto.equals("yes") || texto.equals("si") || texto.equals("sí")) {
-            // Deactivate previous active sprint if one exists
-            Optional<Sprint> sprintPrevioOpt = sprintService.obtenerSprintActivo();
-            if (sprintPrevioOpt.isPresent()) {
-                Sprint sprintPrevio = sprintPrevioOpt.get();
-                sprintPrevio.setEstado("PASADO");
-                Sprint resultado = sprintService.actualizarSprint(sprintPrevio.getIdSprint(), sprintPrevio);
-                if (resultado == null) {
-                    logger.warn("Could not deactivate the previous sprint with ID {}", sprintPrevio.getIdSprint());
+    private void processNewSprintConfirmation(ConversationState state) {
+        String text = textoMensaje.trim().toLowerCase();
+        if (text.equals("yes")) {
+            // Deactivate the previous active sprint if one exists.
+            Optional<Sprint> previousSprintOpt = sprintService.obtenerSprintActivo();
+            if (previousSprintOpt.isPresent()) {
+                Sprint previousSprint = previousSprintOpt.get();
+                // Sprint estado uses English values to match the database.
+                previousSprint.setEstado("past");
+                Sprint result = sprintService.actualizarSprint(previousSprint.getIdSprint(), previousSprint);
+                if (result == null) {
+                    logger.warn("Could not deactivate the previous sprint with ID {}",
+                            previousSprint.getIdSprint());
                 }
             }
 
-            // Create the new sprint
-            Sprint nuevoSprint = new Sprint();
-            nuevoSprint.setNombre((String) estado.getDato("nombreSprint"));
-            nuevoSprint.setFechaInicio((LocalDate) estado.getDato("fechaInicio"));
-            nuevoSprint.setFechaFin((LocalDate) estado.getDato("fechaFin"));
-            nuevoSprint.setEstado("ACTIVO");
-            sprintService.crearSprint(nuevoSprint);
+            Sprint newSprint = new Sprint();
+            newSprint.setNombre((String) state.getDato("nombreSprint"));
+            newSprint.setFechaInicio((LocalDate) state.getDato("fechaInicio"));
+            newSprint.setFechaFin((LocalDate) state.getDato("fechaFin"));
+            // Sprint estado uses English values to match the database.
+            newSprint.setEstado("current");
+            sprintService.crearSprint(newSprint);
             conversationManager.terminarConversacion(chatId);
 
-            String mensaje = BotMessages.NEWSPRINT_CREADO.getMessage()
-                    .replace("{nombre}", nuevoSprint.getNombre());
-            BotHelper.sendMessageToTelegram(chatId, mensaje, telegramClient);
-        } else if (texto.equals("no") || texto.equals("cancel") || texto.equals("cancelar")) {
+            String message = BotMessages.NEWSPRINT_CREADO.getMessage()
+                    .replace("{nombre}", newSprint.getNombre());
+            BotHelper.sendMessageToTelegram(chatId, message, telegramClient);
+        } else if (text.equals("no") || text.equals("cancel")) {
             conversationManager.terminarConversacion(chatId);
             BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWSPRINT_CANCELLED.getMessage(), telegramClient);
         } else {
-            BotHelper.sendMessageToTelegram(chatId, "Reply 'yes' to create the sprint or 'no' to cancel.", telegramClient);
+            BotHelper.sendMessageToTelegram(chatId,
+                    "Reply 'yes' to create the sprint or 'no' to cancel.", telegramClient);
         }
     }
 
@@ -772,116 +934,113 @@ public class TareaBotActions {
     public void fnModificarTarea() {
         if (exit) return;
 
-        boolean esComandoInicio = textoMensaje.equals(BotCommands.MODIFY_TASK.getCommand());
-        boolean tieneConversacionActiva = conversationManager.tieneConversacionActiva(chatId)
+        boolean isStartCommand = textoMensaje.equals(BotCommands.MODIFY_TASK.getCommand());
+        boolean hasActiveConversation = conversationManager.tieneConversacionActiva(chatId)
                 && "modifytask".equals(conversationManager.obtenerEstado(chatId).getComando());
 
-        if (!esComandoInicio && !tieneConversacionActiva) return;
+        if (!isStartCommand && !hasActiveConversation) return;
 
-        if (esComandoInicio) {
-            iniciarFlujoModificarTarea();
-            exit = true;
+        if (isStartCommand) {
+            startModifyTask(null);
             return;
         }
 
-        ConversationState estado = conversationManager.obtenerEstado(chatId);
-        procesarPasoModificarTarea(estado);
+        ConversationState state = conversationManager.obtenerEstado(chatId);
+        processModifyTaskStep(state);
         exit = true;
     }
 
-    private void iniciarFlujoModificarTarea() {
-        Usuario usuario = obtenerOAutoRegistrarUsuario();
-        List<Tarea> todasLasTareas = tareaService.obtenerTareasPorUsuarioAsignado(usuario.getIdUsuario());
+    private void startModifyTaskFlow() {
+        Usuario user = getOrRegisterUser();
+        List<Tarea> allTasks = tareaService.obtenerTareasPorUsuarioAsignado(user.getIdUsuario());
 
-        if (todasLasTareas.isEmpty()) {
+        if (allTasks.isEmpty()) {
             BotHelper.sendMessageToTelegram(chatId, "You have no assigned tasks to modify.", telegramClient);
             return;
         }
 
-        ConversationState estado = new ConversationState("modifytask");
-        estado.setDato("idUsuario", usuario.getIdUsuario());
-        conversationManager.iniciarConversacion(chatId, estado);
+        ConversationState state = new ConversationState("modifytask");
+        state.setDato("idUsuario", user.getIdUsuario());
+        conversationManager.iniciarConversacion(chatId, state);
 
         StringBuilder sb = new StringBuilder("Your tasks:\n\n");
-        sb.append(construirListaTareasDetallada(todasLasTareas));
+        sb.append(buildDetailedTaskList(allTasks));
         sb.append("\n").append(BotMessages.SELECCIONAR_TAREA_MODIFICAR.getMessage());
         BotHelper.sendMessageToTelegram(chatId, sb.toString(), telegramClient);
     }
 
-    private void procesarPasoModificarTarea(ConversationState estado) {
-        if (textoMensaje.equalsIgnoreCase("cancel") || textoMensaje.equalsIgnoreCase("cancelar")) {
+    private void processModifyTaskStep(ConversationState state) {
+        if (textoMensaje.equalsIgnoreCase("cancel")) {
             conversationManager.terminarConversacion(chatId);
             BotHelper.sendMessageToTelegram(chatId, "Operation cancelled.", telegramClient);
             return;
         }
 
-        switch (estado.getPaso()) {
+        switch (state.getPaso()) {
             case 0: // waiting for task ID
-                procesarSeleccionTareaModificar(estado);
+                processTaskSelectionForModify(state);
                 break;
-
             case 1: // waiting for field number to edit
-                procesarSeleccionCampo(estado);
+                processFieldSelection(state);
                 break;
-
             case 2: // waiting for new field value
-                procesarNuevoValorCampo(estado);
+                processNewFieldValue(state);
                 break;
-
             case 3: // waiting for final confirmation
-                procesarConfirmacionModificarTarea(estado);
+                processModifyTaskConfirmation(state);
                 break;
-
             default:
                 conversationManager.terminarConversacion(chatId);
         }
     }
 
-    private void procesarSeleccionTareaModificar(ConversationState estado) {
-        Long idTarea;
+    private void processTaskSelectionForModify(ConversationState state) {
+        Long taskId;
         try {
-            idTarea = Long.parseLong(textoMensaje.trim());
+            taskId = Long.parseLong(textoMensaje.trim());
         } catch (NumberFormatException e) {
             BotHelper.sendMessageToTelegram(chatId, "Invalid ID. Enter the task ID number:", telegramClient);
             return;
         }
 
-        Tarea tarea = tareaService.obtenerTareaPorId(idTarea);
-        Long idUsuario = (Long) estado.getDato("idUsuario");
+        Tarea task   = tareaService.obtenerTareaPorId(taskId);
+        Long userId  = (Long) state.getDato("idUsuario");
 
-        if (tarea == null || tarea.getUsuarioAsignado() == null
-                || !tarea.getUsuarioAsignado().getIdUsuario().equals(idUsuario)) {
-            BotHelper.sendMessageToTelegram(chatId, "That task assigned to you was not found. Try a different ID:", telegramClient);
+        if (task == null || task.getUsuarioAsignado() == null
+                || !task.getUsuarioAsignado().getIdUsuario().equals(userId)) {
+            BotHelper.sendMessageToTelegram(chatId,
+                    "That task assigned to you was not found. Try a different ID:", telegramClient);
             return;
         }
 
-        estado.setDato("idTarea", idTarea);
-        estado.setDato("tareaActual", tarea);
-        estado.avanzarPaso();
+        state.setDato("idTarea", taskId);
+        state.setDato("tareaActual", task);
+        state.avanzarPaso();
 
-        String detalle = mostrarDetalleTarea(tarea);
-        BotHelper.sendMessageToTelegram(chatId, detalle, telegramClient);
+        BotHelper.sendMessageToTelegram(chatId, showTaskDetail(task), telegramClient);
         BotHelper.sendMessageToTelegram(chatId, BotMessages.MODIFICAR_CAMPO.getMessage(), telegramClient);
     }
 
-    private void procesarSeleccionCampo(ConversationState estado) {
-        int campo;
+    private void processFieldSelection(ConversationState state) {
+        int field;
         try {
-            campo = Integer.parseInt(textoMensaje.trim());
+            field = Integer.parseInt(textoMensaje.trim());
         } catch (NumberFormatException e) {
-            BotHelper.sendMessageToTelegram(chatId, "Invalid number. " + BotMessages.MODIFICAR_CAMPO.getMessage(), telegramClient);
+            BotHelper.sendMessageToTelegram(chatId,
+                    "Invalid number. " + BotMessages.MODIFICAR_CAMPO.getMessage(), telegramClient);
             return;
         }
 
-        if (campo < 1 || campo > 7) {
-            BotHelper.sendMessageToTelegram(chatId, "Choose a number from 1 to 7:\n" + BotMessages.MODIFICAR_CAMPO.getMessage(), telegramClient);
+        if (field < 1 || field > 7) {
+            BotHelper.sendMessageToTelegram(chatId,
+                    "Choose a number from 1 to 7:\n" + BotMessages.MODIFICAR_CAMPO.getMessage(), telegramClient);
             return;
         }
 
-        estado.setDato("campoSeleccionado", campo);
-        estado.avanzarPaso();
+        state.setDato("campoSeleccionado", field);
+        state.avanzarPaso();
 
-        switch (campo) {
+        switch (field) {
             case 1:
                 BotHelper.sendMessageToTelegram(chatId, "Enter the new title:", telegramClient);
                 break;
@@ -892,45 +1051,45 @@ public class TareaBotActions {
                 BotHelper.sendMessageToTelegram(chatId, "Enter the new estimated hours (number):", telegramClient);
                 break;
             case 4:
-                List<PrioridadTarea> prioridades = prioridadTareaService.obtenerTodasLasPrioridades();
-                estado.setDato("listaPrioridades", prioridades);
+                List<PrioridadTarea> priorities = prioridadTareaService.obtenerTodasLasPrioridades();
+                state.setDato("listaPrioridades", priorities);
                 StringBuilder sbP = new StringBuilder("Select the new priority:\n\n");
-                for (int i = 0; i < prioridades.size(); i++) {
-                    sbP.append(i + 1).append(". ").append(prioridades.get(i).getNombre()).append("\n");
+                for (int i = 0; i < priorities.size(); i++) {
+                    sbP.append(i + 1).append(". ").append(priorities.get(i).getNombre()).append("\n");
                 }
                 BotHelper.sendMessageToTelegram(chatId, sbP.toString(), telegramClient);
                 break;
             case 5:
-                List<Usuario> usuarios = usuarioService.obtenerTodosLosUsuarios();
-                estado.setDato("listaUsuarios", usuarios);
+                List<Usuario> users = usuarioService.obtenerTodosLosUsuarios();
+                state.setDato("listaUsuarios", users);
                 StringBuilder sbU = new StringBuilder("Select the new assignee:\n\n");
-                for (int i = 0; i < usuarios.size(); i++) {
-                    sbU.append(i + 1).append(". ").append(usuarios.get(i).getNombreCompleto()).append("\n");
+                for (int i = 0; i < users.size(); i++) {
+                    sbU.append(i + 1).append(". ").append(users.get(i).getNombreCompleto()).append("\n");
                 }
                 BotHelper.sendMessageToTelegram(chatId, sbU.toString(), telegramClient);
                 break;
             case 6:
                 List<Sprint> sprints = sprintService.obtenerTodosLosSprints();
-                estado.setDato("listaSprints", sprints);
+                state.setDato("listaSprints", sprints);
                 StringBuilder sbS = new StringBuilder("Select the new sprint:\n\n");
                 for (int i = 0; i < sprints.size(); i++) {
                     Sprint s = sprints.get(i);
                     sbS.append(i + 1).append(". ").append(s.getNombre());
                     if (s.getFechaInicio() != null && s.getFechaFin() != null) {
-                        sbS.append(" (").append(s.getFechaInicio().format(FORMATO_FECHA))
-                           .append(" - ").append(s.getFechaFin().format(FORMATO_FECHA)).append(")");
+                        sbS.append(" (").append(s.getFechaInicio().format(DATE_FORMAT_SHORT))
+                           .append(" - ").append(s.getFechaFin().format(DATE_FORMAT_SHORT)).append(")");
                     }
-                    if ("ACTIVO".equals(s.getEstado())) sbS.append(" [Activo]");
+                    if ("current".equals(s.getEstado())) sbS.append(" [Active]");
                     sbS.append("\n");
                 }
                 BotHelper.sendMessageToTelegram(chatId, sbS.toString(), telegramClient);
                 break;
             case 7:
-                List<EstatusTarea> estatus = estatusTareaService.obtenerTodosLosEstatus();
-                estado.setDato("listaEstatus", estatus);
+                List<EstatusTarea> statuses = estatusTareaService.obtenerTodosLosEstatus();
+                state.setDato("listaEstatus", statuses);
                 StringBuilder sbE = new StringBuilder("Select the new status:\n\n");
-                for (int i = 0; i < estatus.size(); i++) {
-                    sbE.append(i + 1).append(". ").append(estatus.get(i).getNombre()).append("\n");
+                for (int i = 0; i < statuses.size(); i++) {
+                    sbE.append(i + 1).append(". ").append(statuses.get(i).getNombre()).append("\n");
                 }
                 BotHelper.sendMessageToTelegram(chatId, sbE.toString(), telegramClient);
                 break;
@@ -940,28 +1099,28 @@ public class TareaBotActions {
     }
 
     @SuppressWarnings("unchecked")
-    private void procesarNuevoValorCampo(ConversationState estado) {
-        int campo = (int) estado.getDato("campoSeleccionado");
-        Tarea tareaActual = (Tarea) estado.getDato("tareaActual");
+    private void processNewFieldValue(ConversationState state) {
+        int field = (int) state.getDato("campoSeleccionado");
+        Tarea currentTask = (Tarea) state.getDato("tareaActual");
 
-        switch (campo) {
+        switch (field) {
             case 1: // title
-                String nuevoTitulo = textoMensaje.trim();
-                if (nuevoTitulo.isEmpty()) {
+                String newTitle = textoMensaje.trim();
+                if (newTitle.isEmpty()) {
                     BotHelper.sendMessageToTelegram(chatId, "The title cannot be empty. Please try again:", telegramClient);
                     return;
                 }
-                estado.setDato("nuevoTitulo", nuevoTitulo);
+                state.setDato("nuevoTitulo", newTitle);
                 break;
 
             case 2: // description
-                estado.setDato("nuevaDescripcion", textoMensaje.trim());
+                state.setDato("nuevaDescripcion", textoMensaje.trim());
                 break;
 
             case 3: // estimated hours
                 try {
-                    double nuevasHoras = Double.parseDouble(textoMensaje.trim().replace(",", "."));
-                    estado.setDato("nuevasHoras", nuevasHoras);
+                    double newHours = Double.parseDouble(textoMensaje.trim().replace(",", "."));
+                    state.setDato("nuevasHoras", newHours);
                 } catch (NumberFormatException e) {
                     BotHelper.sendMessageToTelegram(chatId, "Invalid number. Enter the estimated hours:", telegramClient);
                     return;
@@ -970,13 +1129,13 @@ public class TareaBotActions {
 
             case 4: // priority
                 try {
-                    int indicePrioridad = Integer.parseInt(textoMensaje.trim());
-                    List<PrioridadTarea> prioridades = (List<PrioridadTarea>) estado.getDato("listaPrioridades");
-                    if (prioridades == null || indicePrioridad < 1 || indicePrioridad > prioridades.size()) {
+                    int priorityIndex = Integer.parseInt(textoMensaje.trim());
+                    List<PrioridadTarea> priorities = (List<PrioridadTarea>) state.getDato("listaPrioridades");
+                    if (priorities == null || priorityIndex < 1 || priorityIndex > priorities.size()) {
                         BotHelper.sendMessageToTelegram(chatId, "Invalid number. Choose from the list:", telegramClient);
                         return;
                     }
-                    estado.setDato("nuevaPrioridad", prioridades.get(indicePrioridad - 1));
+                    state.setDato("nuevaPrioridad", priorities.get(priorityIndex - 1));
                 } catch (NumberFormatException e) {
                     BotHelper.sendMessageToTelegram(chatId, "Invalid number. Choose from the list:", telegramClient);
                     return;
@@ -985,13 +1144,13 @@ public class TareaBotActions {
 
             case 5: // assignee
                 try {
-                    int indiceUsuario = Integer.parseInt(textoMensaje.trim());
-                    List<Usuario> usuarios = (List<Usuario>) estado.getDato("listaUsuarios");
-                    if (usuarios == null || indiceUsuario < 1 || indiceUsuario > usuarios.size()) {
+                    int userIndex = Integer.parseInt(textoMensaje.trim());
+                    List<Usuario> users = (List<Usuario>) state.getDato("listaUsuarios");
+                    if (users == null || userIndex < 1 || userIndex > users.size()) {
                         BotHelper.sendMessageToTelegram(chatId, "Invalid number. Choose from the list:", telegramClient);
                         return;
                     }
-                    estado.setDato("nuevoAsignado", usuarios.get(indiceUsuario - 1));
+                    state.setDato("nuevoAsignado", users.get(userIndex - 1));
                 } catch (NumberFormatException e) {
                     BotHelper.sendMessageToTelegram(chatId, "Invalid number. Choose from the list:", telegramClient);
                     return;
@@ -1000,13 +1159,13 @@ public class TareaBotActions {
 
             case 6: // sprint
                 try {
-                    int indiceSprint = Integer.parseInt(textoMensaje.trim());
-                    List<Sprint> sprints = (List<Sprint>) estado.getDato("listaSprints");
-                    if (sprints == null || indiceSprint < 1 || indiceSprint > sprints.size()) {
+                    int sprintIndex = Integer.parseInt(textoMensaje.trim());
+                    List<Sprint> sprints = (List<Sprint>) state.getDato("listaSprints");
+                    if (sprints == null || sprintIndex < 1 || sprintIndex > sprints.size()) {
                         BotHelper.sendMessageToTelegram(chatId, "Invalid number. Choose from the list:", telegramClient);
                         return;
                     }
-                    estado.setDato("nuevoSprint", sprints.get(indiceSprint - 1));
+                    state.setDato("nuevoSprint", sprints.get(sprintIndex - 1));
                 } catch (NumberFormatException e) {
                     BotHelper.sendMessageToTelegram(chatId, "Invalid number. Choose from the list:", telegramClient);
                     return;
@@ -1015,13 +1174,13 @@ public class TareaBotActions {
 
             case 7: // status
                 try {
-                    int indiceEstatus = Integer.parseInt(textoMensaje.trim());
-                    List<EstatusTarea> listaEstatus = (List<EstatusTarea>) estado.getDato("listaEstatus");
-                    if (listaEstatus == null || indiceEstatus < 1 || indiceEstatus > listaEstatus.size()) {
+                    int statusIndex = Integer.parseInt(textoMensaje.trim());
+                    List<EstatusTarea> statuses = (List<EstatusTarea>) state.getDato("listaEstatus");
+                    if (statuses == null || statusIndex < 1 || statusIndex > statuses.size()) {
                         BotHelper.sendMessageToTelegram(chatId, "Invalid number. Choose from the list:", telegramClient);
                         return;
                     }
-                    estado.setDato("nuevoEstatus", listaEstatus.get(indiceEstatus - 1));
+                    state.setDato("nuevoEstatus", statuses.get(statusIndex - 1));
                 } catch (NumberFormatException e) {
                     BotHelper.sendMessageToTelegram(chatId, "Invalid number. Choose from the list:", telegramClient);
                     return;
@@ -1033,69 +1192,54 @@ public class TareaBotActions {
                 return;
         }
 
-        estado.avanzarPaso();
-        // Show change summary and ask for confirmation
-        String resumen = construirResumenCambio(campo, estado, tareaActual);
-        BotHelper.sendMessageToTelegram(chatId, resumen + "\n\nDo you confirm the changes? (yes / no)", telegramClient);
+        state.avanzarPaso();
+        String summary = buildChangeSummary(field, state, currentTask);
+        BotHelper.sendMessageToTelegram(chatId, summary + "\n\nDo you confirm the changes? (yes / no)", telegramClient);
     }
 
     @SuppressWarnings("unchecked")
-    private void procesarConfirmacionModificarTarea(ConversationState estado) {
-        String texto = textoMensaje.trim().toLowerCase();
+    private void processModifyTaskConfirmation(ConversationState state) {
+        String text = textoMensaje.trim().toLowerCase();
 
-        if (texto.equals("yes") || texto.equals("si") || texto.equals("sí")) {
-            Long idTarea = (Long) estado.getDato("idTarea");
-            int campo = (int) estado.getDato("campoSeleccionado");
+        if (text.equals("yes")) {
+            Long taskId = (Long) state.getDato("idTarea");
+            int field   = (int)  state.getDato("campoSeleccionado");
 
-            // Build Tarea object with only the modified field
-            Tarea tareaActualizada = new Tarea();
+            Tarea updatedTask = new Tarea();
 
-            switch (campo) {
-                case 1:
-                    tareaActualizada.setTitulo((String) estado.getDato("nuevoTitulo"));
-                    break;
-                case 2:
-                    tareaActualizada.setDescripcion((String) estado.getDato("nuevaDescripcion"));
-                    break;
-                case 3:
-                    tareaActualizada.setHorasEstimadas((Double) estado.getDato("nuevasHoras"));
-                    break;
-                case 4:
-                    tareaActualizada.setPrioridad((PrioridadTarea) estado.getDato("nuevaPrioridad"));
-                    break;
-                case 5:
-                    tareaActualizada.setUsuarioAsignado((Usuario) estado.getDato("nuevoAsignado"));
-                    break;
-                case 6:
-                    tareaActualizada.setSprint((Sprint) estado.getDato("nuevoSprint"));
-                    break;
-                case 7:
-                    tareaActualizada.setEstatus((EstatusTarea) estado.getDato("nuevoEstatus"));
-                    break;
+            switch (field) {
+                case 1: updatedTask.setTitulo((String) state.getDato("nuevoTitulo")); break;
+                case 2: updatedTask.setDescripcion((String) state.getDato("nuevaDescripcion")); break;
+                case 3: updatedTask.setHorasEstimadas((Double) state.getDato("nuevasHoras")); break;
+                case 4: updatedTask.setPrioridad((PrioridadTarea) state.getDato("nuevaPrioridad")); break;
+                case 5: updatedTask.setUsuarioAsignado((Usuario) state.getDato("nuevoAsignado")); break;
+                case 6: updatedTask.setSprint((Sprint) state.getDato("nuevoSprint")); break;
+                case 7: updatedTask.setEstatus((EstatusTarea) state.getDato("nuevoEstatus")); break;
                 default:
                     conversationManager.terminarConversacion(chatId);
                     return;
             }
 
-            Tarea resultado = tareaService.actualizarTarea(idTarea, tareaActualizada);
+            Tarea result = tareaService.actualizarTarea(taskId, updatedTask);
             conversationManager.terminarConversacion(chatId);
 
-            if (resultado != null) {
+            if (result != null) {
                 BotHelper.sendMessageToTelegram(chatId, BotMessages.CAMBIOS_GUARDADOS.getMessage(), telegramClient);
             } else {
                 BotHelper.sendMessageToTelegram(chatId, "Error saving changes. Please try again.", telegramClient);
             }
-        } else if (texto.equals("no")) {
-            // Return to field selection
-            estado.setPaso(1);
-            Tarea tareaActual = (Tarea) estado.getDato("tareaActual");
-            BotHelper.sendMessageToTelegram(chatId, mostrarDetalleTarea(tareaActual), telegramClient);
+        } else if (text.equals("no")) {
+            // Return to field selection.
+            state.setPaso(1);
+            Tarea currentTask = (Tarea) state.getDato("tareaActual");
+            BotHelper.sendMessageToTelegram(chatId, showTaskDetail(currentTask), telegramClient);
             BotHelper.sendMessageToTelegram(chatId, BotMessages.MODIFICAR_CAMPO.getMessage(), telegramClient);
-        } else if (texto.equals("cancel") || texto.equals("cancelar")) {
+        } else if (text.equals("cancel")) {
             conversationManager.terminarConversacion(chatId);
             BotHelper.sendMessageToTelegram(chatId, "Operation cancelled.", telegramClient);
         } else {
-            BotHelper.sendMessageToTelegram(chatId, "Reply 'yes' to confirm, 'no' to choose another field, or 'cancel'.", telegramClient);
+            BotHelper.sendMessageToTelegram(chatId,
+                    "Reply 'yes' to confirm, 'no' to choose another field, or 'cancel'.", telegramClient);
         }
     }
 
@@ -1104,24 +1248,23 @@ public class TareaBotActions {
     public void fnModificarSprint() {
         if (exit) return;
 
-        boolean esComandoInicio = textoMensaje.equals(BotCommands.MODIFY_SPRINT.getCommand());
-        boolean tieneConversacionActiva = conversationManager.tieneConversacionActiva(chatId)
+        boolean isStartCommand = textoMensaje.equals(BotCommands.MODIFY_SPRINT.getCommand());
+        boolean hasActiveConversation = conversationManager.tieneConversacionActiva(chatId)
                 && "modifysprint".equals(conversationManager.obtenerEstado(chatId).getComando());
 
-        if (!esComandoInicio && !tieneConversacionActiva) return;
+        if (!isStartCommand && !hasActiveConversation) return;
 
-        if (esComandoInicio) {
-            iniciarFlujoModificarSprint();
-            exit = true;
+        if (isStartCommand) {
+            startModifySprint(null);
             return;
         }
 
-        ConversationState estado = conversationManager.obtenerEstado(chatId);
-        procesarPasoModificarSprint(estado);
+        ConversationState state = conversationManager.obtenerEstado(chatId);
+        processModifySprintStep(state);
         exit = true;
     }
 
-    private void iniciarFlujoModificarSprint() {
+    private void startModifySprintFlow() {
         List<Sprint> sprints = sprintService.obtenerTodosLosSprints();
 
         if (sprints.isEmpty()) {
@@ -1129,15 +1272,15 @@ public class TareaBotActions {
             return;
         }
 
-        ConversationState estado = new ConversationState("modifysprint");
-        conversationManager.iniciarConversacion(chatId, estado);
+        ConversationState state = new ConversationState("modifysprint");
+        conversationManager.iniciarConversacion(chatId, state);
 
         StringBuilder sb = new StringBuilder("Available sprints:\n\n");
         for (Sprint s : sprints) {
             sb.append("ID ").append(s.getIdSprint()).append(" — ").append(s.getNombre());
             if (s.getFechaInicio() != null && s.getFechaFin() != null) {
-                sb.append(" (").append(s.getFechaInicio().format(FORMATO_FECHA_COMPLETO))
-                  .append(" -> ").append(s.getFechaFin().format(FORMATO_FECHA_COMPLETO)).append(")");
+                sb.append(" (").append(s.getFechaInicio().format(DATE_FORMAT_FULL))
+                  .append(" -> ").append(s.getFechaFin().format(DATE_FORMAT_FULL)).append(")");
             }
             sb.append(s.getEstado() != null ? " [" + s.getEstado() + "]" : "");
             sb.append("\n");
@@ -1146,86 +1289,83 @@ public class TareaBotActions {
         BotHelper.sendMessageToTelegram(chatId, sb.toString(), telegramClient);
     }
 
-    private void procesarPasoModificarSprint(ConversationState estado) {
-        if (textoMensaje.equalsIgnoreCase("cancel") || textoMensaje.equalsIgnoreCase("cancelar")) {
+    private void processModifySprintStep(ConversationState state) {
+        if (textoMensaje.equalsIgnoreCase("cancel")) {
             conversationManager.terminarConversacion(chatId);
             BotHelper.sendMessageToTelegram(chatId, "Operation cancelled.", telegramClient);
             return;
         }
 
-        switch (estado.getPaso()) {
+        switch (state.getPaso()) {
             case 0: // waiting for sprint ID
-                procesarSeleccionSprintModificar(estado);
+                processSprintSelectionForModify(state);
                 break;
-
             case 1: // waiting for field number to edit
-                procesarSeleccionCampoSprint(estado);
+                processSprintFieldSelection(state);
                 break;
-
             case 2: // waiting for new value
-                procesarNuevoValorSprint(estado);
+                processNewSprintValue(state);
                 break;
-
             case 3: // waiting for confirmation
-                procesarConfirmacionModificarSprint(estado);
+                processModifySprintConfirmation(state);
                 break;
-
             default:
                 conversationManager.terminarConversacion(chatId);
         }
     }
 
-    private void procesarSeleccionSprintModificar(ConversationState estado) {
-        Long idSprint;
+    private void processSprintSelectionForModify(ConversationState state) {
+        Long sprintId;
         try {
-            idSprint = Long.parseLong(textoMensaje.trim());
+            sprintId = Long.parseLong(textoMensaje.trim());
         } catch (NumberFormatException e) {
             BotHelper.sendMessageToTelegram(chatId, "Invalid ID. Enter the sprint ID number:", telegramClient);
             return;
         }
 
-        Optional<Sprint> sprintOpt = sprintService.obtenerSprintPorId(idSprint);
+        Optional<Sprint> sprintOpt = sprintService.obtenerSprintPorId(sprintId);
         if (sprintOpt.isEmpty()) {
             BotHelper.sendMessageToTelegram(chatId, "Sprint not found. Enter a valid ID:", telegramClient);
             return;
         }
 
         Sprint sprint = sprintOpt.get();
-        estado.setDato("idSprint", idSprint);
-        estado.setDato("sprintActual", sprint);
-        estado.avanzarPaso();
+        state.setDato("idSprint", sprintId);
+        state.setDato("sprintActual", sprint);
+        state.avanzarPaso();
 
-        StringBuilder detalle = new StringBuilder("Selected sprint:\n");
-        detalle.append("Name: ").append(sprint.getNombre()).append("\n");
+        StringBuilder detail = new StringBuilder("Selected sprint:\n");
+        detail.append("Name: ").append(sprint.getNombre()).append("\n");
         if (sprint.getFechaInicio() != null) {
-            detalle.append("Start: ").append(sprint.getFechaInicio().format(FORMATO_FECHA_COMPLETO)).append("\n");
+            detail.append("Start: ").append(sprint.getFechaInicio().format(DATE_FORMAT_FULL)).append("\n");
         }
         if (sprint.getFechaFin() != null) {
-            detalle.append("End: ").append(sprint.getFechaFin().format(FORMATO_FECHA_COMPLETO)).append("\n");
+            detail.append("End: ").append(sprint.getFechaFin().format(DATE_FORMAT_FULL)).append("\n");
         }
-        detalle.append("Estado: ").append(sprint.getEstado() != null ? sprint.getEstado() : "—").append("\n\n");
-        detalle.append("Que campo deseas editar?\n1. Nombre\n2. Fecha inicio\n3. Fecha fin");
-        BotHelper.sendMessageToTelegram(chatId, detalle.toString(), telegramClient);
+        detail.append("Status: ").append(sprint.getEstado() != null ? sprint.getEstado() : "—").append("\n\n");
+        detail.append("Which field do you want to edit?\n1. Name\n2. Start date\n3. End date");
+        BotHelper.sendMessageToTelegram(chatId, detail.toString(), telegramClient);
     }
 
-    private void procesarSeleccionCampoSprint(ConversationState estado) {
-        int campo;
+    private void processSprintFieldSelection(ConversationState state) {
+        int field;
         try {
-            campo = Integer.parseInt(textoMensaje.trim());
+            field = Integer.parseInt(textoMensaje.trim());
         } catch (NumberFormatException e) {
             BotHelper.sendMessageToTelegram(chatId, "Invalid number. Choose 1, 2 or 3:", telegramClient);
             return;
         }
 
-        if (campo < 1 || campo > 3) {
-            BotHelper.sendMessageToTelegram(chatId, "Choose a number from 1 to 3:\n1. Name\n2. Start date\n3. End date", telegramClient);
+        if (field < 1 || field > 3) {
+            BotHelper.sendMessageToTelegram(chatId,
+                    "Choose a number from 1 to 3:\n1. Name\n2. Start date\n3. End date", telegramClient);
             return;
         }
 
-        estado.setDato("campoSprint", campo);
-        estado.avanzarPaso();
+        state.setDato("campoSprint", field);
+        state.avanzarPaso();
 
-        switch (campo) {
+        switch (field) {
             case 1:
                 BotHelper.sendMessageToTelegram(chatId, "Enter the new sprint name:", telegramClient);
                 break;
@@ -1240,24 +1380,24 @@ public class TareaBotActions {
         }
     }
 
-    private void procesarNuevoValorSprint(ConversationState estado) {
-        int campo = (int) estado.getDato("campoSprint");
-        Sprint sprintActual = (Sprint) estado.getDato("sprintActual");
+    private void processNewSprintValue(ConversationState state) {
+        int field = (int) state.getDato("campoSprint");
+        Sprint currentSprint = (Sprint) state.getDato("sprintActual");
 
-        switch (campo) {
+        switch (field) {
             case 1: // name
-                String nuevoNombre = textoMensaje.trim();
-                if (nuevoNombre.isEmpty()) {
+                String newName = textoMensaje.trim();
+                if (newName.isEmpty()) {
                     BotHelper.sendMessageToTelegram(chatId, "The name cannot be empty. Please try again:", telegramClient);
                     return;
                 }
-                estado.setDato("nuevoNombreSprint", nuevoNombre);
+                state.setDato("nuevoNombreSprint", newName);
                 break;
 
             case 2: // start date
                 try {
-                    LocalDate nuevaFechaInicio = LocalDate.parse(textoMensaje.trim(), FORMATO_FECHA_COMPLETO);
-                    estado.setDato("nuevaFechaInicioSprint", nuevaFechaInicio);
+                    LocalDate newStartDate = LocalDate.parse(textoMensaje.trim(), DATE_FORMAT_FULL);
+                    state.setDato("nuevaFechaInicioSprint", newStartDate);
                 } catch (Exception e) {
                     BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWSPRINT_FECHA_INVALIDA.getMessage(), telegramClient);
                     return;
@@ -1266,18 +1406,17 @@ public class TareaBotActions {
 
             case 3: // end date
                 try {
-                    LocalDate nuevaFechaFin = LocalDate.parse(textoMensaje.trim(), FORMATO_FECHA_COMPLETO);
-                    // Validate that it is after the current or new start date
-                    LocalDate fechaInicioRef = estado.getDato("nuevaFechaInicioSprint") != null
-                            ? (LocalDate) estado.getDato("nuevaFechaInicioSprint")
-                            : sprintActual.getFechaInicio();
-                    if (fechaInicioRef != null && !nuevaFechaFin.isAfter(fechaInicioRef)) {
+                    LocalDate newEndDate = LocalDate.parse(textoMensaje.trim(), DATE_FORMAT_FULL);
+                    LocalDate startDateRef = state.getDato("nuevaFechaInicioSprint") != null
+                            ? (LocalDate) state.getDato("nuevaFechaInicioSprint")
+                            : currentSprint.getFechaInicio();
+                    if (startDateRef != null && !newEndDate.isAfter(startDateRef)) {
                         BotHelper.sendMessageToTelegram(chatId,
                                 "The end date must be after the start date. Please try again (dd/MM/yyyy):",
                                 telegramClient);
                         return;
                     }
-                    estado.setDato("nuevaFechaFinSprint", nuevaFechaFin);
+                    state.setDato("nuevaFechaFinSprint", newEndDate);
                 } catch (Exception e) {
                     BotHelper.sendMessageToTelegram(chatId, BotMessages.NEWSPRINT_FECHA_INVALIDA.getMessage(), telegramClient);
                     return;
@@ -1289,92 +1428,97 @@ public class TareaBotActions {
                 return;
         }
 
-        estado.avanzarPaso();
+        state.avanzarPaso();
 
-        // Compute name, fechaInicio, fechaFin for summary (use new value if it was modified)
-        String nombreMostrar = estado.getDato("nuevoNombreSprint") != null
-                ? (String) estado.getDato("nuevoNombreSprint")
-                : sprintActual.getNombre();
-        LocalDate inicioMostrar = estado.getDato("nuevaFechaInicioSprint") != null
-                ? (LocalDate) estado.getDato("nuevaFechaInicioSprint")
-                : sprintActual.getFechaInicio();
-        LocalDate finMostrar = estado.getDato("nuevaFechaFinSprint") != null
-                ? (LocalDate) estado.getDato("nuevaFechaFinSprint")
-                : sprintActual.getFechaFin();
+        String displayName = state.getDato("nuevoNombreSprint") != null
+                ? (String) state.getDato("nuevoNombreSprint")
+                : currentSprint.getNombre();
+        LocalDate displayStart = state.getDato("nuevaFechaInicioSprint") != null
+                ? (LocalDate) state.getDato("nuevaFechaInicioSprint")
+                : currentSprint.getFechaInicio();
+        LocalDate displayEnd = state.getDato("nuevaFechaFinSprint") != null
+                ? (LocalDate) state.getDato("nuevaFechaFinSprint")
+                : currentSprint.getFechaFin();
 
-        String resumen = String.format(
+        String summary = String.format(
                 BotMessages.SPRINT_CONFIRMACION.getMessage(),
-                nombreMostrar,
-                inicioMostrar != null ? inicioMostrar.format(FORMATO_FECHA_COMPLETO) : "—",
-                finMostrar != null ? finMostrar.format(FORMATO_FECHA_COMPLETO) : "—"
+                displayName,
+                displayStart != null ? displayStart.format(DATE_FORMAT_FULL) : "—",
+                displayEnd   != null ? displayEnd.format(DATE_FORMAT_FULL)   : "—"
         );
-        BotHelper.sendMessageToTelegram(chatId, resumen, telegramClient);
+        BotHelper.sendMessageToTelegram(chatId, summary, telegramClient);
     }
 
-    private void procesarConfirmacionModificarSprint(ConversationState estado) {
-        String texto = textoMensaje.trim().toLowerCase();
-        Long idSprint = (Long) estado.getDato("idSprint");
+    private void processModifySprintConfirmation(ConversationState state) {
+        String text    = textoMensaje.trim().toLowerCase();
+        Long sprintId  = (Long) state.getDato("idSprint");
 
-        if (texto.equals("yes") || texto.equals("si") || texto.equals("sí")) {
-            // Build sprint with the fields to update
-            Sprint sprintActualizado = new Sprint();
-            if (estado.getDato("nuevoNombreSprint") != null) {
-                sprintActualizado.setNombre((String) estado.getDato("nuevoNombreSprint"));
+        if (text.equals("yes")) {
+            Sprint updatedSprint = new Sprint();
+            if (state.getDato("nuevoNombreSprint") != null) {
+                updatedSprint.setNombre((String) state.getDato("nuevoNombreSprint"));
             }
-            if (estado.getDato("nuevaFechaInicioSprint") != null) {
-                sprintActualizado.setFechaInicio((LocalDate) estado.getDato("nuevaFechaInicioSprint"));
+            if (state.getDato("nuevaFechaInicioSprint") != null) {
+                updatedSprint.setFechaInicio((LocalDate) state.getDato("nuevaFechaInicioSprint"));
             }
-            if (estado.getDato("nuevaFechaFinSprint") != null) {
-                sprintActualizado.setFechaFin((LocalDate) estado.getDato("nuevaFechaFinSprint"));
+            if (state.getDato("nuevaFechaFinSprint") != null) {
+                updatedSprint.setFechaFin((LocalDate) state.getDato("nuevaFechaFinSprint"));
             }
 
-            Sprint resultado = sprintService.actualizarSprint(idSprint, sprintActualizado);
+            Sprint result = sprintService.actualizarSprint(sprintId, updatedSprint);
             conversationManager.terminarConversacion(chatId);
 
-            if (resultado != null) {
+            if (result != null) {
                 BotHelper.sendMessageToTelegram(chatId, BotMessages.CAMBIOS_GUARDADOS.getMessage(), telegramClient);
             } else {
                 BotHelper.sendMessageToTelegram(chatId, "Error saving changes. Please try again.", telegramClient);
             }
-        } else if (texto.equals("no") || texto.equals("cancel") || texto.equals("cancelar")) {
+        } else if (text.equals("no") || text.equals("cancel")) {
             conversationManager.terminarConversacion(chatId);
             BotHelper.sendMessageToTelegram(chatId, "Operation cancelled.", telegramClient);
         } else {
-            BotHelper.sendMessageToTelegram(chatId, "Reply 'yes' to save changes or 'no' to cancel.", telegramClient);
+            BotHelper.sendMessageToTelegram(chatId,
+                    "Reply 'yes' to save changes or 'no' to cancel.", telegramClient);
         }
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
 
-    private Usuario obtenerOAutoRegistrarUsuario() {
-        Optional<Usuario> usuarioOpt = usuarioService.buscarPorTelegramId(telegramUserId);
-        if (usuarioOpt.isPresent()) {
-            return usuarioOpt.get();
+    /**
+     * Looks up the Telegram user in the database, auto-registering them if not found.
+     */
+    private Usuario getOrRegisterUser() {
+        Optional<Usuario> userOpt = usuarioService.buscarPorTelegramId(telegramUserId);
+        if (userOpt.isPresent()) {
+            return userOpt.get();
         }
 
-        String nombreUsuario = (telegramUsername != null && !telegramUsername.isEmpty())
+        String username = (telegramUsername != null && !telegramUsername.isEmpty())
                 ? telegramUsername
                 : "user_" + telegramUserId;
 
-        String nombreCompleto;
+        String fullName;
         if (telegramFirstName != null && !telegramFirstName.isEmpty()) {
-            nombreCompleto = telegramLastName != null && !telegramLastName.isEmpty()
+            fullName = telegramLastName != null && !telegramLastName.isEmpty()
                     ? telegramFirstName + " " + telegramLastName
                     : telegramFirstName;
         } else {
-            nombreCompleto = nombreUsuario;
+            fullName = username;
         }
 
-        Usuario nuevo = usuarioService.autoRegistrarUsuario(telegramUserId, nombreUsuario, nombreCompleto);
+        Usuario newUser = usuarioService.autoRegistrarUsuario(telegramUserId, username, fullName);
         BotHelper.sendMessageToTelegram(chatId,
-                "Welcome, " + nombreCompleto + "! You have been automatically registered in the system.",
+                "Welcome, " + fullName + "! You have been automatically registered in the system.",
                 telegramClient);
-        return nuevo;
+        return newUser;
     }
 
-    private String construirListaTareas(List<Tarea> tareas) {
+    /**
+     * Builds a concise task list string (ID, title, estimated hours).
+     */
+    private String buildTaskList(List<Tarea> tasks) {
         StringBuilder sb = new StringBuilder();
-        for (Tarea t : tareas) {
+        for (Tarea t : tasks) {
             sb.append("ID ").append(t.getIdTarea())
               .append(" — ").append(t.getTitulo());
             if (t.getHorasEstimadas() != null) {
@@ -1385,9 +1529,12 @@ public class TareaBotActions {
         return sb.toString();
     }
 
-    private String construirListaTareasDetallada(List<Tarea> tareas) {
+    /**
+     * Builds a detailed task list string including status and estimated hours.
+     */
+    private String buildDetailedTaskList(List<Tarea> tasks) {
         StringBuilder sb = new StringBuilder();
-        for (Tarea t : tareas) {
+        for (Tarea t : tasks) {
             sb.append("ID ").append(t.getIdTarea())
               .append(" — ").append(t.getTitulo());
             if (t.getEstatus() != null) {
@@ -1401,60 +1548,66 @@ public class TareaBotActions {
         return sb.toString();
     }
 
-    private String mostrarDetalleTarea(Tarea tarea) {
+    /**
+     * Builds a formatted task detail block for display in the wizard.
+     */
+    private String showTaskDetail(Tarea task) {
         StringBuilder sb = new StringBuilder("Task details:\n\n");
-        sb.append("ID: ").append(tarea.getIdTarea()).append("\n");
-        sb.append("Title: ").append(tarea.getTitulo()).append("\n");
-        sb.append("Description: ").append(tarea.getDescripcion() != null ? tarea.getDescripcion() : "(no description)").append("\n");
-        sb.append("Estimated hours: ").append(tarea.getHorasEstimadas() != null ? tarea.getHorasEstimadas() + "h" : "—").append("\n");
-        sb.append("Actual hours: ").append(tarea.getHorasReales() != null ? tarea.getHorasReales() + "h" : "—").append("\n");
-        sb.append("Priority: ").append(tarea.getPrioridad() != null ? tarea.getPrioridad().getNombre() : "—").append("\n");
-        sb.append("Status: ").append(tarea.getEstatus() != null ? tarea.getEstatus().getNombre() : "—").append("\n");
-        sb.append("Assigned to: ").append(tarea.getUsuarioAsignado() != null ? tarea.getUsuarioAsignado().getNombreCompleto() : "—").append("\n");
-        sb.append("Sprint: ").append(tarea.getSprint() != null ? tarea.getSprint().getNombre() : "—").append("\n");
+        sb.append("ID: ").append(task.getIdTarea()).append("\n");
+        sb.append("Title: ").append(task.getTitulo()).append("\n");
+        sb.append("Description: ").append(task.getDescripcion() != null ? task.getDescripcion() : "(no description)").append("\n");
+        sb.append("Estimated hours: ").append(task.getHorasEstimadas() != null ? task.getHorasEstimadas() + "h" : "—").append("\n");
+        sb.append("Actual hours: ").append(task.getHorasReales() != null ? task.getHorasReales() + "h" : "—").append("\n");
+        sb.append("Priority: ").append(task.getPrioridad() != null ? task.getPrioridad().getNombre() : "—").append("\n");
+        sb.append("Status: ").append(task.getEstatus() != null ? task.getEstatus().getNombre() : "—").append("\n");
+        sb.append("Assigned to: ").append(task.getUsuarioAsignado() != null ? task.getUsuarioAsignado().getNombreCompleto() : "—").append("\n");
+        sb.append("Sprint: ").append(task.getSprint() != null ? task.getSprint().getNombre() : "—").append("\n");
         return sb.toString();
     }
 
+    /**
+     * Builds a one-line change summary for the modify-task confirmation step.
+     */
     @SuppressWarnings("unchecked")
-    private String construirResumenCambio(int campo, ConversationState estado, Tarea tareaActual) {
+    private String buildChangeSummary(int field, ConversationState state, Tarea currentTask) {
         StringBuilder sb = new StringBuilder("Proposed change:\n");
-        switch (campo) {
+        switch (field) {
             case 1:
-                sb.append("Title: ").append(tareaActual.getTitulo())
-                  .append(" -> ").append(estado.getDato("nuevoTitulo"));
+                sb.append("Title: ").append(currentTask.getTitulo())
+                  .append(" -> ").append(state.getDato("nuevoTitulo"));
                 break;
             case 2:
-                sb.append("Description: ").append(tareaActual.getDescripcion())
-                  .append(" -> ").append(estado.getDato("nuevaDescripcion"));
+                sb.append("Description: ").append(currentTask.getDescripcion())
+                  .append(" -> ").append(state.getDato("nuevaDescripcion"));
                 break;
             case 3:
-                sb.append("Estimated hours: ").append(tareaActual.getHorasEstimadas())
-                  .append(" -> ").append(estado.getDato("nuevasHoras"));
+                sb.append("Estimated hours: ").append(currentTask.getHorasEstimadas())
+                  .append(" -> ").append(state.getDato("nuevasHoras"));
                 break;
             case 4:
-                String prioridadAnterior = tareaActual.getPrioridad() != null ? tareaActual.getPrioridad().getNombre() : "—";
-                PrioridadTarea nuevaPrioridad = (PrioridadTarea) estado.getDato("nuevaPrioridad");
-                sb.append("Priority: ").append(prioridadAnterior)
-                  .append(" -> ").append(nuevaPrioridad != null ? nuevaPrioridad.getNombre() : "—");
+                String prevPriority = currentTask.getPrioridad() != null ? currentTask.getPrioridad().getNombre() : "—";
+                PrioridadTarea newPriority = (PrioridadTarea) state.getDato("nuevaPrioridad");
+                sb.append("Priority: ").append(prevPriority)
+                  .append(" -> ").append(newPriority != null ? newPriority.getNombre() : "—");
                 break;
             case 5:
-                String asignadoAnterior = tareaActual.getUsuarioAsignado() != null
-                        ? tareaActual.getUsuarioAsignado().getNombreCompleto() : "—";
-                Usuario nuevoAsignado = (Usuario) estado.getDato("nuevoAsignado");
-                sb.append("Assigned to: ").append(asignadoAnterior)
-                  .append(" -> ").append(nuevoAsignado != null ? nuevoAsignado.getNombreCompleto() : "—");
+                String prevAssignee = currentTask.getUsuarioAsignado() != null
+                        ? currentTask.getUsuarioAsignado().getNombreCompleto() : "—";
+                Usuario newAssignee = (Usuario) state.getDato("nuevoAsignado");
+                sb.append("Assigned to: ").append(prevAssignee)
+                  .append(" -> ").append(newAssignee != null ? newAssignee.getNombreCompleto() : "—");
                 break;
             case 6:
-                String sprintAnterior = tareaActual.getSprint() != null ? tareaActual.getSprint().getNombre() : "—";
-                Sprint nuevoSprint = (Sprint) estado.getDato("nuevoSprint");
-                sb.append("Sprint: ").append(sprintAnterior)
-                  .append(" -> ").append(nuevoSprint != null ? nuevoSprint.getNombre() : "—");
+                String prevSprint = currentTask.getSprint() != null ? currentTask.getSprint().getNombre() : "—";
+                Sprint newSprint = (Sprint) state.getDato("nuevoSprint");
+                sb.append("Sprint: ").append(prevSprint)
+                  .append(" -> ").append(newSprint != null ? newSprint.getNombre() : "—");
                 break;
             case 7:
-                String estatusAnterior = tareaActual.getEstatus() != null ? tareaActual.getEstatus().getNombre() : "—";
-                EstatusTarea nuevoEstatus = (EstatusTarea) estado.getDato("nuevoEstatus");
-                sb.append("Status: ").append(estatusAnterior)
-                  .append(" -> ").append(nuevoEstatus != null ? nuevoEstatus.getNombre() : "—");
+                String prevStatus = currentTask.getEstatus() != null ? currentTask.getEstatus().getNombre() : "—";
+                EstatusTarea newStatus = (EstatusTarea) state.getDato("nuevoEstatus");
+                sb.append("Status: ").append(prevStatus)
+                  .append(" -> ").append(newStatus != null ? newStatus.getNombre() : "—");
                 break;
             default:
                 sb.append("(unknown field)");
@@ -1462,80 +1615,91 @@ public class TareaBotActions {
         return sb.toString();
     }
 
-    private String construirTablaSprint(Sprint sprint, List<Tarea> tareas) {
+    /**
+     * Builds the formatted sprint task table string.
+     */
+    private String buildSprintTable(Sprint sprint, List<Tarea> tasks) {
         StringBuilder sb = new StringBuilder();
         sb.append("=== SPRINT: ").append(sprint.getNombre()).append(" ===\n");
         if (sprint.getFechaInicio() != null && sprint.getFechaFin() != null) {
-            sb.append(sprint.getFechaInicio().format(FORMATO_FECHA))
-              .append(" - ").append(sprint.getFechaFin().format(FORMATO_FECHA)).append("\n");
+            sb.append(sprint.getFechaInicio().format(DATE_FORMAT_SHORT))
+              .append(" - ").append(sprint.getFechaFin().format(DATE_FORMAT_SHORT)).append("\n");
         }
-        sb.append("Total tasks: ").append(tareas.size()).append("\n\n");
+        sb.append("Total tasks: ").append(tasks.size()).append("\n\n");
 
         sb.append(String.format("%-6s %-20s %-12s %-12s %5s %5s\n",
                 "ID", "Title", "Dev", "Status", "HEst", "HReal"));
         sb.append("-".repeat(65)).append("\n");
 
-        for (Tarea t : tareas) {
-            String dev = t.getUsuarioAsignado() != null
-                    ? truncar(t.getUsuarioAsignado().getNombreCompleto(), 12)
+        for (Tarea t : tasks) {
+            String dev     = t.getUsuarioAsignado() != null
+                    ? truncate(t.getUsuarioAsignado().getNombreCompleto(), 12)
                     : "Unassigned";
-            String estatus = t.getEstatus() != null ? truncar(t.getEstatus().getNombre(), 12) : "—";
-            String hEst = t.getHorasEstimadas() != null ? t.getHorasEstimadas() + "h" : "—";
-            String hReal = t.getHorasReales() != null ? t.getHorasReales() + "h" : "—";
-            String titulo = truncar(t.getTitulo(), 20);
+            String status  = t.getEstatus() != null ? truncate(t.getEstatus().getNombre(), 12) : "—";
+            String hEst    = t.getHorasEstimadas() != null ? t.getHorasEstimadas() + "h" : "—";
+            String hReal   = t.getHorasReales()    != null ? t.getHorasReales() + "h"    : "—";
+            String title   = truncate(t.getTitulo(), 20);
 
             sb.append(String.format("%-6s %-20s %-12s %-12s %5s %5s\n",
-                    t.getIdTarea(), titulo, dev, estatus, hEst, hReal));
+                    t.getIdTarea(), title, dev, status, hEst, hReal));
         }
         return sb.toString();
     }
 
-    private String construirReporteKpi(Sprint sprint, List<Tarea> tareas) {
+    /**
+     * Builds the KPI report per developer for the given sprint.
+     */
+    private String buildKpiReport(Sprint sprint, List<Tarea> tasks) {
         // Group by developer: [total, completed, totalEstHours, totalRealHours]
-        Map<String, double[]> kpiPorDev = new LinkedHashMap<>();
+        Map<String, double[]> kpiByDev = new LinkedHashMap<>();
 
-        for (Tarea t : tareas) {
+        for (Tarea t : tasks) {
             String dev = t.getUsuarioAsignado() != null
                     ? t.getUsuarioAsignado().getNombreCompleto() : "Unassigned";
-            kpiPorDev.putIfAbsent(dev, new double[]{0, 0, 0, 0});
-            double[] metricas = kpiPorDev.get(dev);
-            metricas[0]++;
-            boolean completada = t.getEstatus() != null
-                    && "Completada".equalsIgnoreCase(t.getEstatus().getNombre());
-            if (completada) metricas[1]++;
-            if (t.getHorasEstimadas() != null) metricas[2] += t.getHorasEstimadas();
-            if (t.getHorasReales() != null) metricas[3] += t.getHorasReales();
+            kpiByDev.putIfAbsent(dev, new double[]{0, 0, 0, 0});
+            double[] metrics = kpiByDev.get(dev);
+            metrics[0]++;
+            // Status comparison uses English names to match the database.
+            boolean completed = t.getEstatus() != null
+                    && "Completed".equalsIgnoreCase(t.getEstatus().getNombre());
+            if (completed) metrics[1]++;
+            if (t.getHorasEstimadas() != null) metrics[2] += t.getHorasEstimadas();
+            if (t.getHorasReales()    != null) metrics[3] += t.getHorasReales();
         }
 
         StringBuilder sb = new StringBuilder();
         sb.append("=== KPI — ").append(sprint.getNombre()).append(" ===\n\n");
 
-        for (Map.Entry<String, double[]> entrada : kpiPorDev.entrySet()) {
-            double[] m = entrada.getValue();
-            double eficiencia = m[2] > 0 ? (m[3] / m[2]) * 100 : 0;
-            sb.append("Developer: ").append(entrada.getKey()).append("\n");
+        for (Map.Entry<String, double[]> entry : kpiByDev.entrySet()) {
+            double[] m = entry.getValue();
+            double efficiency = m[2] > 0 ? (m[3] / m[2]) * 100 : 0;
+            sb.append("Developer: ").append(entry.getKey()).append("\n");
             sb.append("  Total tasks      : ").append((int) m[0]).append("\n");
             sb.append("  Completed        : ").append((int) m[1]).append("\n");
             sb.append("  Estimated hours  : ").append(m[2]).append("h\n");
             sb.append("  Actual hours     : ").append(m[3]).append("h\n");
             if (m[3] > 0) {
-                sb.append("  Efficiency       : ").append(String.format("%.0f%%", eficiencia))
-                  .append(eficiencia <= 100 ? " (under budget)" : " (over budget)").append("\n");
+                sb.append("  Efficiency       : ").append(String.format("%.0f%%", efficiency))
+                  .append(efficiency <= 100 ? " (under budget)" : " (over budget)").append("\n");
             }
             sb.append("\n");
         }
 
-        long completadasTotal = tareas.stream()
-                .filter(t -> t.getEstatus() != null && "Completada".equalsIgnoreCase(t.getEstatus().getNombre()))
+        long completedTotal = tasks.stream()
+                .filter(t -> t.getEstatus() != null
+                        && "Completed".equalsIgnoreCase(t.getEstatus().getNombre()))
                 .count();
-        sb.append("TOTAL SPRINT: ").append(completadasTotal).append("/").append(tareas.size())
+        sb.append("TOTAL SPRINT: ").append(completedTotal).append("/").append(tasks.size())
           .append(" tasks completed");
 
         return sb.toString();
     }
 
-    private String truncar(String texto, int maxLen) {
-        if (texto == null) return "—";
-        return texto.length() <= maxLen ? texto : texto.substring(0, maxLen - 1) + ".";
+    /**
+     * Truncates a string to maxLen characters, appending "." if shortened.
+     */
+    private String truncate(String text, int maxLen) {
+        if (text == null) return "—";
+        return text.length() <= maxLen ? text : text.substring(0, maxLen - 1) + ".";
     }
 }

@@ -1,16 +1,16 @@
 package com.springboot.MyTodoList.agent;
 
 /**
- * Contrato para los clasificadores de intención del agente IA.
- * Permite intercambiar implementaciones basadas en reglas o LLM.
+ * Contract for AI agent intent classifiers.
+ * Allows swapping rule-based and LLM-backed implementations transparently.
  */
 public interface IntentParser {
 
     /**
-     * Analiza el texto libre de un mensaje y devuelve la intención detectada.
+     * Parses the free-form text of a user message and returns the detected intent.
      *
-     * @param textoMensaje mensaje en español escrito por el usuario
-     * @return intención clasificada con sus parámetros opcionales
+     * @param userMessage free-form message typed by the user
+     * @return classified intent with its optional extracted parameters
      */
-    ParsedIntent parse(String textoMensaje);
+    ParsedIntent parse(String userMessage);
 }

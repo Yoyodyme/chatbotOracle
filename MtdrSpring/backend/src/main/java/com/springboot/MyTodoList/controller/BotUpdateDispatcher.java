@@ -1,15 +1,14 @@
 package com.springboot.MyTodoList.controller;
 
 import com.springboot.MyTodoList.agent.AgentOrchestrator;
+import com.springboot.MyTodoList.agent.IntentType;
+import com.springboot.MyTodoList.agent.ParsedIntent;
 import com.springboot.MyTodoList.config.BotProps;
-import com.springboot.MyTodoList.service.DeepSeekService;
 import com.springboot.MyTodoList.service.EstatusTareaService;
 import com.springboot.MyTodoList.service.PrioridadTareaService;
 import com.springboot.MyTodoList.service.SprintService;
 import com.springboot.MyTodoList.service.TareaService;
-import com.springboot.MyTodoList.service.ToDoItemService;
 import com.springboot.MyTodoList.service.UsuarioService;
-import com.springboot.MyTodoList.util.BotActions;
 import com.springboot.MyTodoList.util.BotConversationManager;
 import com.springboot.MyTodoList.util.BotHelper;
 import com.springboot.MyTodoList.util.BotLabels;
@@ -23,10 +22,14 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMar
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
+import java.util.List;
+import java.util.Map;
+
 /**
- * Contiene toda la lógica de enrutamiento de mensajes del bot, desacoplada
- * de SpringLongPollingBot. Puede ser invocada tanto por ToDoItemBotController
- * (producción) como por TestBotController (perfil test) sin levantar long-polling.
+ * Routes all incoming Telegram bot messages to the appropriate handler.
+ * Decoupled from SpringLongPollingBot so it can be invoked by both
+ * ToDoItemBotController (production) and TestBotController (test profile)
+ * without starting long-polling.
  */
 @Service
 public class BotUpdateDispatcher {
@@ -34,8 +37,6 @@ public class BotUpdateDispatcher {
     private static final Logger logger = LoggerFactory.getLogger(BotUpdateDispatcher.class);
 
     private final TelegramClient telegramClient;
-    private final ToDoItemService toDoItemService;
-    private final DeepSeekService deepSeekService;
     private final TareaService tareaService;
     private final SprintService sprintService;
     private final UsuarioService usuarioService;
@@ -46,8 +47,6 @@ public class BotUpdateDispatcher {
 
     public BotUpdateDispatcher(
             BotProps botProps,
-            ToDoItemService toDoItemService,
-            DeepSeekService deepSeekService,
             TareaService tareaService,
             SprintService sprintService,
             UsuarioService usuarioService,
@@ -57,8 +56,6 @@ public class BotUpdateDispatcher {
             AgentOrchestrator agentOrchestrator) {
 
         this.telegramClient = new OkHttpTelegramClient(botProps.getToken());
-        this.toDoItemService = toDoItemService;
-        this.deepSeekService = deepSeekService;
         this.tareaService = tareaService;
         this.sprintService = sprintService;
         this.usuarioService = usuarioService;
@@ -72,24 +69,24 @@ public class BotUpdateDispatcher {
         if (!update.hasMessage() || !update.getMessage().hasText()) return;
         if (update.getMessage().getFrom() == null) return;
 
-        String mensajeOriginal = update.getMessage().getText();
+        String originalMessage = update.getMessage().getText();
         long chatId = update.getMessage().getChatId();
 
-        org.telegram.telegrambots.meta.api.objects.User remitente = update.getMessage().getFrom();
-        String telegramUserId  = String.valueOf(remitente.getId());
-        String telegramFirstName = remitente.getFirstName();
-        String telegramLastName  = remitente.getLastName();
-        String telegramUsername  = remitente.getUserName();
+        org.telegram.telegrambots.meta.api.objects.User sender = update.getMessage().getFrom();
+        String telegramUserId    = String.valueOf(sender.getId());
+        String telegramFirstName = sender.getFirstName();
+        String telegramLastName  = sender.getLastName();
+        String telegramUsername  = sender.getUserName();
 
-        String mensajeEfectivo = resolverMensajeEfectivo(mensajeOriginal);
-
-        if (mensajeOriginal.equals("/start")
-                || mensajeOriginal.equals(BotLabels.SHOW_MAIN_SCREEN.getLabel())) {
+        // Step 1: Handle /start and "Show Main Screen" immediately.
+        if (originalMessage.equals("/start")
+                || originalMessage.equals(BotLabels.SHOW_MAIN_SCREEN.getLabel())) {
             conversationManager.limpiarHistorialLlm(chatId);
-            enviarMenuPrincipal(chatId);
+            sendMainMenu(chatId);
             return;
         }
 
+        // Build the TareaBotActions instance for this message.
         TareaBotActions tareaActions = new TareaBotActions(
                 telegramClient,
                 tareaService,
@@ -98,19 +95,21 @@ public class BotUpdateDispatcher {
                 estatusTareaService,
                 prioridadTareaService,
                 conversationManager);
-        tareaActions.setTextoMensaje(mensajeEfectivo);
-        tareaActions.setChatId(chatId);
         tareaActions.setTelegramUserId(telegramUserId);
         tareaActions.setTelegramFirstName(telegramFirstName);
         tareaActions.setTelegramLastName(telegramLastName);
         tareaActions.setTelegramUsername(telegramUsername);
+        tareaActions.setChatId(chatId);
 
-        logger.info("[dispatch] chatId={} tieneConversacion={} texto='{}'",
-                chatId, conversationManager.tieneConversacionActiva(chatId), mensajeEfectivo);
-
-        // Wizard activo: entregar el mensaje DIRECTAMENTE al handler correspondiente,
-        // sin pasar por los handlers legacy ni por el LLM/AgentOrchestrator.
+        // Step 3: If a wizard is active, route the message directly to the matching
+        // continuation handler — no LLM needed.
         if (conversationManager.tieneConversacionActiva(chatId)) {
+            // Resolve effective message for wizard continuations (label → command).
+            String effectiveForWizard = resolveEffectiveMessage(originalMessage);
+            tareaActions.setTextoMensaje(effectiveForWizard);
+
+            logger.info("[dispatch] wizard active — chatId={} text='{}'", chatId, effectiveForWizard);
+
             tareaActions.fnNuevatarea();
             tareaActions.fnAsignarSprint();
             tareaActions.fnCompletarTarea();
@@ -120,100 +119,157 @@ public class BotUpdateDispatcher {
 
             if (!tareaActions.isExit()) {
                 BotHelper.sendMessageToTelegram(chatId,
-                        "Escribe 'cancelar' para cancelar la operacion actual.", telegramClient);
+                        "Type 'cancel' to cancel the current operation.", telegramClient);
             }
             return;
         }
 
-        // Sin wizard activo: cadena completa de handlers + LLM como fallback.
-        BotActions actions = new BotActions(telegramClient, toDoItemService, deepSeekService, orquestador);
-        actions.setRequestText(mensajeEfectivo);
-        actions.setChatId(chatId);
-        if (actions.getTodoService() == null) {
-            logger.info("Servicio to-do no inyectado correctamente — reinyectando");
-            actions.setTodoService(toDoItemService);
+        // Step 4: No wizard active — resolve effective message for direct commands.
+        String effective = resolveEffectiveMessage(originalMessage);
+        tareaActions.setTextoMensaje(effective);
+
+        logger.info("[dispatch] no wizard — chatId={} effective='{}'", chatId, effective);
+
+        // Step 5: Handle direct commands without LLM.
+        switch (effective) {
+            case "/newtask":
+                tareaActions.startNewtask(null);
+                return;
+            case "/assignsprint":
+                tareaActions.startAssignSprint(null);
+                return;
+            case "/donetask":
+                tareaActions.startCompleteTask(null);
+                return;
+            case "/newsprint":
+                tareaActions.startNewSprint(null);
+                return;
+            case "/modifytask":
+                tareaActions.startModifyTask(null);
+                return;
+            case "/modifysprint":
+                tareaActions.startModifySprint(null);
+                return;
+            case "/sprinttable":
+                tareaActions.fnTablaSprint();
+                return;
+            case "/kpi":
+                tareaActions.fnKpi();
+                return;
+            default:
+                break;
         }
 
-        actions.fnDone();
-        actions.fnUndo();
-        actions.fnDelete();
-        actions.fnHide();
-        actions.fnListAll();
-        actions.fnAddItem();
-        actions.fnLLM();
+        // Step 6: Free text — classify intent via LLM and route accordingly.
+        List<Map<String, String>> history = conversationManager.obtenerHistorialLlm(chatId);
 
-        tareaActions.fnNuevatarea();
-        tareaActions.fnAsignarSprint();
-        tareaActions.fnCompletarTarea();
-        tareaActions.fnTablaSprint();
-        tareaActions.fnKpi();
-        tareaActions.fnNuevoSprint();
-        tareaActions.fnModificarTarea();
-        tareaActions.fnModificarSprint();
+        // TODO merge: classifyIntent() is added to AgentOrchestrator by Agent 1.
+        ParsedIntent intent = null;
+        try {
+            intent = orquestador.classifyIntent(effective, history);
+        } catch (Exception ex) {
+            logger.error("classifyIntent failed", ex);
+        }
 
-        if (!tareaActions.isExit() && !actions.isExit()) {
-            String respuesta;
-            try {
-                respuesta = orquestador.manejarMensaje(mensajeEfectivo);
-            } catch (Exception ex) {
-                logger.error("Error al invocar AgentOrchestrator desde free-text", ex);
-                respuesta = "Ocurrio un error al procesar tu mensaje. Intenta de nuevo.";
+        if (intent != null) {
+            switch (intent.getIntent()) {
+                case CREATE_TASK:
+                    tareaActions.startNewtask(intent);
+                    return;
+                case ASSIGN_SPRINT:
+                    tareaActions.startAssignSprint(intent);
+                    return;
+                case COMPLETE_TASK:
+                    tareaActions.startCompleteTask(intent);
+                    return;
+                case MODIFY_TASK:
+                    tareaActions.startModifyTask(intent);
+                    return;
+                case CREATE_SPRINT:
+                    tareaActions.startNewSprint(intent);
+                    return;
+                case MODIFY_SPRINT:
+                    tareaActions.startModifySprint(intent);
+                    return;
+                case SPRINT_TABLE:
+                    tareaActions.fnTablaSprint();
+                    return;
+                case KPI_REPORT:
+                    tareaActions.fnKpi();
+                    return;
+                default:
+                    // Informational queries and UNKNOWN fall through to the orchestrator.
+                    break;
             }
-            conversationManager.agregarAlHistorialLlm(chatId, "user", mensajeEfectivo);
-            conversationManager.agregarAlHistorialLlm(chatId, "assistant", respuesta);
-            BotHelper.sendMessageToTelegram(chatId, respuesta, telegramClient);
         }
+
+        // Informational query or UNKNOWN: use full orchestrator response.
+        // manejarMensaje() is used here for backwards compatibility; Agent 1 will
+        // rename it to handleMessage() and keep manejarMensaje() as a @Deprecated delegate.
+        String response;
+        try {
+            response = orquestador.manejarMensaje(effective, history);
+        } catch (Exception ex) {
+            logger.error("handleMessage failed", ex);
+            response = "An error occurred. Please try again.";
+        }
+        conversationManager.agregarAlHistorialLlm(chatId, "user", effective);
+        conversationManager.agregarAlHistorialLlm(chatId, "assistant", response);
+        BotHelper.sendMessageToTelegram(chatId, response, telegramClient);
     }
 
-    private String resolverMensajeEfectivo(String mensajeOriginal) {
-        if (BotLabels.NEW_TASK.getLabel().equals(mensajeOriginal))        return "/newtask";
-        else if (BotLabels.ASSIGN_TO_SPRINT.getLabel().equals(mensajeOriginal)) return "/assignsprint";
-        else if (BotLabels.COMPLETE_TASK.getLabel().equals(mensajeOriginal))  return "/donetask";
-        else if (BotLabels.SPRINT_TABLE.getLabel().equals(mensajeOriginal))   return "/sprinttable";
-        else if (BotLabels.KPI_REPORT.getLabel().equals(mensajeOriginal))     return "/kpi";
-        else if (BotLabels.NEW_SPRINT.getLabel().equals(mensajeOriginal))     return "/newsprint";
-        else if (BotLabels.MODIFY_TASK.getLabel().equals(mensajeOriginal))    return "/modifytask";
-        else if (BotLabels.MODIFY_SPRINT.getLabel().equals(mensajeOriginal))  return "/modifysprint";
-        return mensajeOriginal;
+    /**
+     * Translates keyboard button labels to their canonical bot command equivalents.
+     * Returns the original message unchanged if no mapping exists.
+     */
+    private String resolveEffectiveMessage(String originalMessage) {
+        if (BotLabels.NEW_TASK.getLabel().equals(originalMessage))         return "/newtask";
+        if (BotLabels.ASSIGN_TO_SPRINT.getLabel().equals(originalMessage)) return "/assignsprint";
+        if (BotLabels.COMPLETE_TASK.getLabel().equals(originalMessage))    return "/donetask";
+        if (BotLabels.SPRINT_TABLE.getLabel().equals(originalMessage))     return "/sprinttable";
+        if (BotLabels.KPI_REPORT.getLabel().equals(originalMessage))       return "/kpi";
+        if (BotLabels.NEW_SPRINT.getLabel().equals(originalMessage))       return "/newsprint";
+        if (BotLabels.MODIFY_TASK.getLabel().equals(originalMessage))      return "/modifytask";
+        if (BotLabels.MODIFY_SPRINT.getLabel().equals(originalMessage))    return "/modifysprint";
+        return originalMessage;
     }
 
-    private void enviarMenuPrincipal(long chatId) {
-        ReplyKeyboardMarkup teclado = ReplyKeyboardMarkup.builder()
+    /**
+     * Sends the main menu keyboard and welcome message to the given chat.
+     */
+    private void sendMainMenu(long chatId) {
+        ReplyKeyboardMarkup keyboard = ReplyKeyboardMarkup.builder()
                 .resizeKeyboard(true)
                 .keyboardRow(new KeyboardRow(
-                        BotLabels.LIST_ALL_ITEMS.getLabel(),
-                        BotLabels.NEW_TASK.getLabel()))
+                        BotLabels.NEW_TASK.getLabel(),
+                        BotLabels.ASSIGN_TO_SPRINT.getLabel()))
                 .keyboardRow(new KeyboardRow(
-                        BotLabels.ASSIGN_TO_SPRINT.getLabel(),
-                        BotLabels.COMPLETE_TASK.getLabel()))
+                        BotLabels.COMPLETE_TASK.getLabel(),
+                        BotLabels.NEW_SPRINT.getLabel()))
+                .keyboardRow(new KeyboardRow(
+                        BotLabels.MODIFY_TASK.getLabel(),
+                        BotLabels.MODIFY_SPRINT.getLabel()))
                 .keyboardRow(new KeyboardRow(
                         BotLabels.SPRINT_TABLE.getLabel(),
                         BotLabels.KPI_REPORT.getLabel()))
-                .keyboardRow(new KeyboardRow(
-                        BotLabels.NEW_SPRINT.getLabel(),
-                        BotLabels.MODIFY_TASK.getLabel()))
-                .keyboardRow(new KeyboardRow(
-                        BotLabels.MODIFY_SPRINT.getLabel()))
                 .keyboardRow(new KeyboardRow(
                         BotLabels.SHOW_MAIN_SCREEN.getLabel(),
                         BotLabels.HIDE_MAIN_SCREEN.getLabel()))
                 .build();
 
-        String mensajeBienvenida =
-                "Hola! Soy el bot de EQ51.\n\n" +
-                "Comandos disponibles:\n" +
-                "/newtask — Crear nueva tarea\n" +
-                "/newsprint — Crear nuevo sprint\n" +
-                "/assignsprint — Asignar tarea al sprint\n" +
-                "/donetask — Completar tarea\n" +
-                "/modifytask — Modificar una tarea existente\n" +
-                "/modifysprint — Modificar un sprint existente\n" +
-                "/sprinttable — Ver tabla del sprint\n" +
-                "/kpi — Ver KPIs del sprint\n" +
-                "/todolist — Lista de to-dos\n" +
-                "/llm — Consultar IA\n\n" +
-                "Tambien puedes escribir cualquier pregunta y te respondere con IA.";
+        String welcomeMessage =
+                "Hello! I'm the EQ51 project bot.\n\n" +
+                "Available commands:\n" +
+                "/newtask — Create a new task\n" +
+                "/newsprint — Create a new sprint\n" +
+                "/assignsprint — Assign a task to a sprint\n" +
+                "/donetask — Complete a task\n" +
+                "/modifytask — Modify an existing task\n" +
+                "/modifysprint — Modify an existing sprint\n" +
+                "/sprinttable — View sprint task table\n" +
+                "/kpi — View sprint KPIs\n\n" +
+                "You can also describe what you need in plain English and I'll figure it out.";
 
-        BotHelper.sendMessageToTelegram(chatId, mensajeBienvenida, telegramClient, teclado);
+        BotHelper.sendMessageToTelegram(chatId, welcomeMessage, telegramClient, keyboard);
     }
 }

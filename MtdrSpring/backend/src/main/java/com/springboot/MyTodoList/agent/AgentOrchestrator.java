@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.text.Normalizer;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -17,14 +18,14 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
- * Orquestador principal del asistente conversacional.
- * Recibe el texto del usuario, delega el análisis de intención al LlmIntentParser
- * y despacha la lógica correspondiente a cada intención reconocida.
+ * Main orchestrator for the conversational assistant.
+ * Receives the user's text, delegates intent analysis to LlmIntentParser,
+ * and dispatches logic to the appropriate handler for each recognized intent.
  *
- * Soporta historial de conversación multi-turno mediante el overload
- * {@link #manejarMensaje(String, List)}, que pasa el contexto previo al parser.
- * El overload sin historial {@link #manejarMensaje(String)} sigue siendo compatible
- * con todos los llamadores existentes (Telegram bot, etc.).
+ * Supports multi-turn conversation history through the overloaded
+ * {@link #handleMessage(String, List)}, which passes prior context to the parser.
+ * The single-argument {@link #handleMessage(String)} remains compatible with
+ * all existing callers (Telegram bot, etc.).
  */
 @Service
 public class AgentOrchestrator {
@@ -42,375 +43,412 @@ public class AgentOrchestrator {
                               SprintService sprintService,
                               UsuarioService usuarioService) {
         this.llmIntentParser = llmIntentParser;
-        this.tareaService = tareaService;
-        this.sprintService = sprintService;
-        this.usuarioService = usuarioService;
+        this.tareaService    = tareaService;
+        this.sprintService   = sprintService;
+        this.usuarioService  = usuarioService;
     }
 
     // -------------------------------------------------------------------------
-    // Punto de entrada — sin historial (compatibilidad hacia atrás)
+    // Primary entry points
     // -------------------------------------------------------------------------
 
     /**
-     * Punto de entrada compatible con llamadores existentes (bot de Telegram, etc.).
-     * Delega a {@link #manejarMensaje(String, List)} con historial vacío.
+     * Entry point compatible with existing callers (Telegram bot, etc.).
+     * Delegates to {@link #handleMessage(String, List)} with an empty history.
      *
-     * @param textoMensaje Mensaje enviado por el usuario
-     * @return Respuesta en texto plano en español
+     * @param text user message
+     * @return plain-text response in English
      */
-    public String manejarMensaje(String textoMensaje) {
-        return manejarMensaje(textoMensaje, Collections.emptyList());
+    public String handleMessage(String text) {
+        return handleMessage(text, Collections.emptyList());
     }
 
-    // -------------------------------------------------------------------------
-    // Punto de entrada principal — con historial multi-turno
-    // -------------------------------------------------------------------------
-
     /**
-     * Analiza el mensaje, determina la intención y devuelve la respuesta adecuada.
-     * El historial de la conversación se pasa al LLM para permitir respuestas con contexto.
+     * Analyses the message, determines the intent, and returns the appropriate response.
+     * The conversation history is forwarded to the LLM for context-aware replies.
      *
-     * @param textoMensaje Mensaje enviado por el usuario en el turno actual
-     * @param historial    Mensajes previos de la conversación (puede estar vacío)
-     * @return Respuesta en texto plano en español
+     * @param text    user message in the current turn
+     * @param history previous conversation messages (may be empty)
+     * @return plain-text response in English
      */
-    public String manejarMensaje(String textoMensaje, List<Map<String, String>> historial) {
-        if (textoMensaje == null || textoMensaje.isBlank()) {
-            return "Por favor escribe un mensaje. Puedes pedirme que liste tareas, "
-                    + "muestre el resumen del sprint o la carga del equipo.";
+    public String handleMessage(String text, List<Map<String, String>> history) {
+        if (text == null || text.isBlank()) {
+            return "Please type a message. You can ask me to list tasks, show sprint info, "
+                    + "or describe what you need.";
         }
 
-        ParsedIntent intentParseado;
+        ParsedIntent parsedIntent;
         try {
-            intentParseado = llmIntentParser.parse(textoMensaje, historial);
+            parsedIntent = llmIntentParser.parse(text, history);
         } catch (Exception ex) {
-            logger.error("Error al analizar la intención del mensaje: {}", textoMensaje, ex);
-            return "Ocurrió un error al procesar tu mensaje. Por favor intenta de nuevo.";
+            logger.error("Error analysing intent for message: {}", text, ex);
+            return "An error occurred while processing your message. Please try again.";
         }
 
-        // Si el modelo necesita más información antes de responder, devolver la pregunta
-        if (intentParseado.isClarificationNeeded()
-                && !seguro(intentParseado.getClarificationQuestion()).isBlank()) {
-            return intentParseado.getClarificationQuestion();
+        // If the model needs more information, return the clarification question immediately
+        if (parsedIntent.isClarificationNeeded()
+                && !safe(parsedIntent.getClarificationQuestion()).isBlank()) {
+            return parsedIntent.getClarificationQuestion();
         }
 
-        switch (intentParseado.getIntent()) {
-            case AYUDA:
-                return manejarAyuda();
-            case LISTAR_TAREAS:
-                return manejarListarTareas();
-            case TAREAS_POR_ASIGNADO:
-                return manejarTareasPorAsignado(seguro(intentParseado.getAsignado()));
-            case TAREAS_POR_ESTATUS:
-                return manejarTareasPorEstatus(seguro(intentParseado.getEstatus()));
-            case RESUMEN_SPRINT:
-                return manejarResumenSprint();
-            case CARGA_EQUIPO:
-                return manejarCargaEquipo();
-            case VER_TAREA:
-                return manejarVerTarea(seguro(intentParseado.getTitulo()));
-            case MODIFICAR_TAREA:
-                return "Para modificar una tarea, usa el comando Modificar Tarea en el menú del bot "
-                        + "o en el panel de tareas.";
-            case ASIGNAR_TAREA:
-                return "Para modificar una tarea, usa el comando Modificar Tarea en el menú del bot "
-                        + "o en el panel de tareas.";
-            case DESCONOCIDO:
+        switch (parsedIntent.getIntent()) {
+            case HELP:
+                return handleHelp();
+            case LIST_TASKS:
+                return handleListTasks();
+            case TASKS_BY_USER:
+                return handleTasksByUser(safe(parsedIntent.getAssignedTo()));
+            case TASKS_BY_STATUS:
+                return handleTasksByStatus(safe(parsedIntent.getFilterStatus()));
+            case SPRINT_SUMMARY:
+                return handleSprintSummary();
+            case TEAM_WORKLOAD:
+                return handleTeamWorkload();
+            case VIEW_TASK: {
+                String qt = parsedIntent.getQueryTitle();
+                String vt = (qt != null && !qt.isBlank()) ? qt : parsedIntent.getTitle();
+                return handleViewTask(safe(vt));
+            }
+            // Action intents — the dispatcher handles starting the wizard
+            case CREATE_TASK:
+            case ASSIGN_SPRINT:
+            case COMPLETE_TASK:
+            case MODIFY_TASK:
+            case CREATE_SPRINT:
+            case MODIFY_SPRINT:
+            case SPRINT_TABLE:
+            case KPI_REPORT:
+                return "Use the menu buttons or describe what you need and I'll get started.";
+            case UNKNOWN:
             default:
-                return llmIntentParser.generarRespuestaConversacional(textoMensaje, historial);
+                return llmIntentParser.generarRespuestaConversacional(text, history);
+        }
+    }
+
+    /**
+     * Classifies the intent of a message and extracts available slots.
+     * Used by BotUpdateDispatcher to decide which wizard to start.
+     *
+     * @param text    user message
+     * @param history previous conversation messages
+     * @return parsed intent with extracted slot values
+     */
+    public ParsedIntent classifyIntent(String text, List<Map<String, String>> history) {
+        try {
+            return llmIntentParser.parse(text, history);
+        } catch (Exception ex) {
+            logger.error("classifyIntent failed, returning UNKNOWN", ex);
+            ParsedIntent unknown = new ParsedIntent();
+            unknown.setIntent(IntentType.UNKNOWN);
+            return unknown;
         }
     }
 
     // -------------------------------------------------------------------------
-    // Manejadores por intención
+    // Deprecated backwards-compatibility delegates
     // -------------------------------------------------------------------------
 
-    /** Devuelve el texto de ayuda estático con las capacidades del asistente. */
-    private String manejarAyuda() {
-        return "Puedo ayudarte con lo siguiente:\n"
-                + "• Listar todas las tareas\n"
-                + "• Ver tareas de un usuario (ej: \"tareas de Juan\")\n"
-                + "• Filtrar tareas por estatus (ej: \"tareas pendientes\")\n"
-                + "• Ver el resumen del sprint activo\n"
-                + "• Ver la carga de trabajo del equipo\n"
-                + "• Ver los detalles de una tarea (ej: \"detalle de la tarea Login\")\n"
-                + "• Conversar sobre cualquier otro tema del proyecto";
+    /** @deprecated Use {@link #handleMessage(String)} instead. */
+    @Deprecated
+    public String manejarMensaje(String text) {
+        return handleMessage(text);
     }
 
-    /** Lista todas las tareas (máximo MAX_TAREAS visibles, con indicador si hay más). */
-    private String manejarListarTareas() {
-        List<Tarea> tareas = tareaService.obtenerTodosLasTareas();
+    /** @deprecated Use {@link #handleMessage(String, List)} instead. */
+    @Deprecated
+    public String manejarMensaje(String text, List<Map<String, String>> history) {
+        return handleMessage(text, history);
+    }
 
-        if (tareas.isEmpty()) {
-            return "No hay tareas registradas en el sistema.";
+    // -------------------------------------------------------------------------
+    // Intent handlers
+    // -------------------------------------------------------------------------
+
+    /** Returns the static help text with the assistant's capabilities. */
+    private String handleHelp() {
+        return "I can help you with:\n"
+                + "• List all tasks\n"
+                + "• Tasks by team member (e.g. \"tasks of Gabriel\")\n"
+                + "• Filter by status (e.g. \"pending tasks\")\n"
+                + "• Active sprint summary\n"
+                + "• Team workload\n"
+                + "• Task details (e.g. \"details of Login task\")\n"
+                + "• Or just ask anything about the project";
+    }
+
+    /** Lists all tasks (up to MAX_TAREAS visible, with an indicator when there are more). */
+    private String handleListTasks() {
+        List<Tarea> tasks = tareaService.obtenerTodosLasTareas();
+
+        if (tasks.isEmpty()) {
+            return "No tasks found.";
         }
 
-        int total = tareas.size();
-        StringBuilder sb = new StringBuilder("Tareas registradas:\n");
+        int total = tasks.size();
+        StringBuilder sb = new StringBuilder("Tasks on record:\n");
 
-        tareas.stream()
-              .limit(MAX_TAREAS)
-              .forEach(t -> sb.append(formatearBulletTarea(t)).append("\n"));
+        tasks.stream()
+             .limit(MAX_TAREAS)
+             .forEach(t -> sb.append(formatTaskBullet(t)).append("\n"));
 
         if (total > MAX_TAREAS) {
-            sb.append("…y ").append(total - MAX_TAREAS).append(" más.");
+            sb.append("…and ").append(total - MAX_TAREAS).append(" more.");
         }
 
         return sb.toString().trim();
     }
 
     /**
-     * Busca al usuario por nombre (fuzzy normalizado) y lista sus tareas asignadas.
+     * Looks up a user by name (fuzzy normalized match) and lists their assigned tasks.
      *
-     * @param nombreBuscado Nombre del usuario extraído de la intención
+     * @param searchName name of the user extracted from the intent
      */
-    private String manejarTareasPorAsignado(String nombreBuscado) {
-        if (nombreBuscado.isBlank()) {
-            return "No entendí el nombre del usuario. ¿Podrías indicarme el nombre completo o de usuario?";
+    private String handleTasksByUser(String searchName) {
+        if (searchName.isBlank()) {
+            return "I didn't catch the user's name. Could you provide the full name or username?";
         }
 
-        List<Usuario> usuarios = usuarioService.obtenerTodosLosUsuarios();
+        List<Usuario> users = usuarioService.obtenerTodosLosUsuarios();
 
-        Optional<Usuario> usuarioEncontrado = usuarios.stream()
-                .filter(u -> normalizar(seguro(u.getNombreCompleto())).contains(normalizar(nombreBuscado))
-                          || normalizar(seguro(u.getNombreUsuario())).contains(normalizar(nombreBuscado)))
+        Optional<Usuario> found = users.stream()
+                .filter(u -> normalize(safe(u.getNombreCompleto())).contains(normalize(searchName))
+                          || normalize(safe(u.getNombreUsuario())).contains(normalize(searchName)))
                 .findFirst();
 
-        if (usuarioEncontrado.isEmpty()) {
-            logger.warn("No se encontró ningún usuario con nombre: {}", nombreBuscado);
-            return "No encontré ningún usuario con el nombre '" + nombreBuscado + "'. "
-                    + "Verifica que el nombre esté escrito correctamente.";
+        if (found.isEmpty()) {
+            logger.warn("No user found with name: {}", searchName);
+            return "No user found with name '" + searchName + "'. "
+                    + "Please check that the name is spelled correctly.";
         }
 
-        Usuario usuario = usuarioEncontrado.get();
-        List<Tarea> tareas = tareaService.obtenerTareasPorUsuarioAsignado(usuario.getIdUsuario());
+        Usuario user = found.get();
+        List<Tarea> tasks = tareaService.obtenerTareasPorUsuarioAsignado(user.getIdUsuario());
 
-        if (tareas.isEmpty()) {
-            return "El usuario " + seguro(usuario.getNombreCompleto()) + " no tiene tareas asignadas.";
+        if (tasks.isEmpty()) {
+            return "No tasks assigned to " + safe(user.getNombreCompleto()) + ".";
         }
 
-        int total = tareas.size();
+        int total = tasks.size();
         StringBuilder sb = new StringBuilder(
-                "Tareas asignadas a " + seguro(usuario.getNombreCompleto()) + ":\n");
+                "Tasks assigned to " + safe(user.getNombreCompleto()) + ":\n");
 
-        tareas.stream()
-              .limit(MAX_TAREAS)
-              .forEach(t -> sb.append(formatearBulletTareaConEstatus(t)).append("\n"));
+        tasks.stream()
+             .limit(MAX_TAREAS)
+             .forEach(t -> sb.append(formatTaskBulletWithStatus(t)).append("\n"));
 
         if (total > MAX_TAREAS) {
-            sb.append("…y ").append(total - MAX_TAREAS).append(" más.");
+            sb.append("…and ").append(total - MAX_TAREAS).append(" more.");
         }
 
         return sb.toString().trim();
     }
 
     /**
-     * Filtra tareas por estatus usando coincidencia normalizada parcial.
+     * Filters tasks by status using a normalized partial match.
      *
-     * @param estatusBuscado Nombre de estatus extraído de la intención
+     * @param searchStatus status name extracted from the intent
      */
-    private String manejarTareasPorEstatus(String estatusBuscado) {
-        if (estatusBuscado.isBlank()) {
-            return "No entendí el estatus. Prueba con: Pendiente, En Progreso o Completada.";
+    private String handleTasksByStatus(String searchStatus) {
+        if (searchStatus.isBlank()) {
+            return "I didn't catch the status. Try: Pending, In Progress, or Completed.";
         }
 
-        List<Tarea> todas = tareaService.obtenerTodosLasTareas();
+        List<Tarea> all = tareaService.obtenerTodosLasTareas();
 
-        List<Tarea> filtradas = todas.stream()
+        List<Tarea> filtered = all.stream()
                 .filter(t -> t.getEstatus() != null
-                          && normalizar(t.getEstatus().getNombre())
-                                 .contains(normalizar(estatusBuscado)))
+                          && normalize(t.getEstatus().getNombre())
+                                 .contains(normalize(searchStatus)))
                 .collect(Collectors.toList());
 
-        if (filtradas.isEmpty()) {
-            return "No hay tareas con estatus '" + estatusBuscado + "'.";
+        if (filtered.isEmpty()) {
+            return "No tasks with status '" + searchStatus + "'.";
         }
 
-        int total = filtradas.size();
+        int total = filtered.size();
         StringBuilder sb = new StringBuilder(
-                "Tareas con estatus '" + estatusBuscado + "':\n");
+                "Tasks with status '" + searchStatus + "':\n");
 
-        filtradas.stream()
-                 .limit(MAX_TAREAS)
-                 .forEach(t -> sb.append(formatearBulletTarea(t)).append("\n"));
+        filtered.stream()
+                .limit(MAX_TAREAS)
+                .forEach(t -> sb.append(formatTaskBullet(t)).append("\n"));
 
         if (total > MAX_TAREAS) {
-            sb.append("…y ").append(total - MAX_TAREAS).append(" más.");
+            sb.append("…and ").append(total - MAX_TAREAS).append(" more.");
         }
 
         return sb.toString().trim();
     }
 
-    /** Muestra nombre, fechas, totales, conteo por estatus y horas del sprint activo. */
-    private String manejarResumenSprint() {
+    /** Shows name, dates, totals, status breakdown, and hours for the active sprint. */
+    private String handleSprintSummary() {
         Optional<Sprint> sprintOpt = sprintService.obtenerSprintActivo();
 
         if (sprintOpt.isEmpty()) {
-            return "No hay un sprint activo en este momento.";
+            return "There is no active sprint at this time.";
         }
 
         Sprint sprint = sprintOpt.get();
-        List<Tarea> tareas = tareaService.obtenerTareasPorSprint(sprint.getIdSprint());
+        List<Tarea> tasks = tareaService.obtenerTareasPorSprint(sprint.getIdSprint());
 
-        int totalTareas = tareas.size();
+        int totalTasks = tasks.size();
 
-        Map<String, Long> porEstatus = tareas.stream()
+        Map<String, Long> byStatus = tasks.stream()
                 .filter(t -> t.getEstatus() != null)
                 .collect(Collectors.groupingBy(
                         t -> t.getEstatus().getNombre(),
                         Collectors.counting()));
 
-        double horasEstimadas = tareas.stream()
+        double estimatedHours = tasks.stream()
                 .filter(t -> t.getHorasEstimadas() != null)
                 .mapToDouble(Tarea::getHorasEstimadas)
                 .sum();
 
-        double horasReales = tareas.stream()
+        double actualHours = tasks.stream()
                 .filter(t -> t.getHorasReales() != null)
                 .mapToDouble(Tarea::getHorasReales)
                 .sum();
 
         StringBuilder sb = new StringBuilder();
-        sb.append("Resumen del Sprint Activo\n");
-        sb.append("Nombre: ").append(seguro(sprint.getNombre())).append("\n");
-        sb.append("Inicio: ").append(sprint.getFechaInicio() != null ? sprint.getFechaInicio() : "—").append("\n");
-        sb.append("Fin: ").append(sprint.getFechaFin() != null ? sprint.getFechaFin() : "—").append("\n");
-        sb.append("Total de tareas: ").append(totalTareas).append("\n");
+        sb.append("Active Sprint Summary\n");
+        sb.append("Name: ").append(safe(sprint.getNombre())).append("\n");
+        sb.append("Start: ").append(sprint.getFechaInicio() != null ? sprint.getFechaInicio() : "—").append("\n");
+        sb.append("End: ").append(sprint.getFechaFin() != null ? sprint.getFechaFin() : "—").append("\n");
+        sb.append("Total tasks: ").append(totalTasks).append("\n");
 
-        if (!porEstatus.isEmpty()) {
-            sb.append("Por estatus:\n");
-            porEstatus.forEach((estatus, cantidad) ->
-                    sb.append("  • ").append(estatus).append(": ").append(cantidad).append("\n"));
+        if (!byStatus.isEmpty()) {
+            sb.append("By status:\n");
+            byStatus.forEach((status, count) ->
+                    sb.append("  • ").append(status).append(": ").append(count).append("\n"));
         }
 
-        sb.append(String.format("Horas estimadas: %.1f%n", horasEstimadas));
-        sb.append(String.format("Horas reales: %.1f", horasReales));
+        sb.append(String.format("Estimated hours: %.1f\n", estimatedHours));
+        sb.append(String.format("Actual hours: %.1f", actualHours));
 
         return sb.toString().trim();
     }
 
-    /** Muestra el conteo de tareas por miembro del equipo, ordenado de mayor a menor. */
-    private String manejarCargaEquipo() {
-        List<Tarea> todas = tareaService.obtenerTodosLasTareas();
+    /** Shows the task count per team member, sorted from highest to lowest. */
+    private String handleTeamWorkload() {
+        List<Tarea> all = tareaService.obtenerTodosLasTareas();
 
-        if (todas.isEmpty()) {
-            return "No hay tareas registradas para mostrar la carga del equipo.";
+        if (all.isEmpty()) {
+            return "No tasks on record to show team workload.";
         }
 
-        Map<String, Long> cargaPorPersona = todas.stream()
+        Map<String, Long> workloadByPerson = all.stream()
                 .collect(Collectors.groupingBy(
                         t -> (t.getUsuarioAsignado() != null
                                 && t.getUsuarioAsignado().getNombreCompleto() != null)
                              ? t.getUsuarioAsignado().getNombreCompleto()
-                             : "Sin asignar",
+                             : "Unassigned",
                         Collectors.counting()));
 
-        StringBuilder sb = new StringBuilder("Carga de trabajo del equipo:\n");
+        StringBuilder sb = new StringBuilder("Team workload:\n");
 
-        cargaPorPersona.entrySet().stream()
+        workloadByPerson.entrySet().stream()
                 .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
-                .forEach(entrada ->
-                        sb.append("• ").append(entrada.getKey())
-                          .append(": ").append(entrada.getValue())
-                          .append(" tarea(s)\n"));
+                .forEach(entry ->
+                        sb.append("• ").append(entry.getKey())
+                          .append(": ").append(entry.getValue())
+                          .append(" task(s)\n"));
 
         return sb.toString().trim();
     }
 
     /**
-     * Busca una tarea por coincidencia parcial del título y muestra sus detalles.
+     * Searches for a task by partial title match and shows its details.
      *
-     * @param tituloBuscado Título o parte del título extraído de la intención
+     * @param searchTitle title or partial title extracted from the intent
      */
-    private String manejarVerTarea(String tituloBuscado) {
-        if (tituloBuscado == null || tituloBuscado.isBlank()) {
-            return "¿De qué tarea quieres ver los detalles? Indícame el título o parte del nombre.";
+    private String handleViewTask(String searchTitle) {
+        if (searchTitle == null || searchTitle.isBlank()) {
+            return "Which task would you like to see? Please provide the title or part of the name.";
         }
 
-        List<Tarea> todas = tareaService.obtenerTodosLasTareas();
+        List<Tarea> all = tareaService.obtenerTodosLasTareas();
 
-        Optional<Tarea> encontrada = todas.stream()
+        Optional<Tarea> found = all.stream()
                 .filter(t -> t.getTitulo() != null
-                        && normalizar(t.getTitulo()).contains(normalizar(tituloBuscado)))
+                        && normalize(t.getTitulo()).contains(normalize(searchTitle)))
                 .findFirst();
 
-        if (encontrada.isEmpty()) {
-            return "No encontré ninguna tarea con el título '" + tituloBuscado + "'. "
-                    + "Verifica que el nombre esté escrito correctamente.";
+        if (found.isEmpty()) {
+            return "No task found with title '" + searchTitle + "'. "
+                    + "Please check that the name is spelled correctly.";
         }
 
-        Tarea t = encontrada.get();
-        String estatus   = t.getEstatus() != null ? seguro(t.getEstatus().getNombre()) : "—";
-        String asignado  = t.getUsuarioAsignado() != null
-                ? seguro(t.getUsuarioAsignado().getNombreCompleto()) : "Sin asignar";
-        String hEst      = t.getHorasEstimadas() != null ? String.valueOf(t.getHorasEstimadas()) : "—";
-        String hReal     = t.getHorasReales()    != null ? String.valueOf(t.getHorasReales())    : "—";
+        Tarea t = found.get();
+        String status     = t.getEstatus() != null ? safe(t.getEstatus().getNombre()) : "—";
+        String assignedTo = t.getUsuarioAsignado() != null
+                ? safe(t.getUsuarioAsignado().getNombreCompleto()) : "Unassigned";
+        String estHours   = t.getHorasEstimadas() != null ? String.valueOf(t.getHorasEstimadas()) : "—";
+        String actHours   = t.getHorasReales()    != null ? String.valueOf(t.getHorasReales())    : "—";
 
-        return "Tarea: " + seguro(t.getTitulo()) + "\n"
-                + "Estatus: " + estatus + "\n"
-                + "Asignado a: " + asignado + "\n"
-                + "Horas estimadas: " + hEst + "\n"
-                + "Horas reales: " + hReal;
+        return "Task: " + safe(t.getTitulo()) + "\n"
+                + "Status: " + status + "\n"
+                + "Assigned to: " + assignedTo + "\n"
+                + "Estimated hours: " + estHours + "\n"
+                + "Actual hours: " + actHours;
     }
 
     // -------------------------------------------------------------------------
-    // Helpers de formato
+    // Format helpers
     // -------------------------------------------------------------------------
 
     /**
-     * Formatea una tarea en una línea: "• titulo [estatus] — asignado"
-     * Incluye título, estatus y nombre del asignado (o "sin asignar" si es null).
+     * Formats a task as a single line: "• title [status] — assignee".
+     * Shows title, status, and assignee name ("Unassigned" when null).
      */
-    private String formatearBulletTarea(Tarea tarea) {
-        String titulo = seguro(tarea.getTitulo());
-        String estatus = tarea.getEstatus() != null
-                ? seguro(tarea.getEstatus().getNombre())
-                : "sin estatus";
-        String asignado = tarea.getUsuarioAsignado() != null
-                ? seguro(tarea.getUsuarioAsignado().getNombreCompleto())
-                : "sin asignar";
-        return "• " + titulo + " [" + estatus + "] — " + asignado;
+    private String formatTaskBullet(Tarea task) {
+        String title    = safe(task.getTitulo());
+        String status   = task.getEstatus() != null
+                ? safe(task.getEstatus().getNombre())
+                : "no status";
+        String assignee = task.getUsuarioAsignado() != null
+                ? safe(task.getUsuarioAsignado().getNombreCompleto())
+                : "Unassigned";
+        return "• " + title + " [" + status + "] — " + assignee;
     }
 
     /**
-     * Formatea una tarea mostrando únicamente título y estatus (sin asignado).
-     * Usado en listas donde el asignado ya es el contexto (TAREAS_POR_ASIGNADO).
+     * Formats a task showing only title and status (without assignee).
+     * Used in lists where the assignee is already the context (TASKS_BY_USER).
      */
-    private String formatearBulletTareaConEstatus(Tarea tarea) {
-        String titulo = seguro(tarea.getTitulo());
-        String estatus = tarea.getEstatus() != null
-                ? seguro(tarea.getEstatus().getNombre())
-                : "sin estatus";
-        return "• " + titulo + " [" + estatus + "]";
+    private String formatTaskBulletWithStatus(Tarea task) {
+        String title  = safe(task.getTitulo());
+        String status = task.getEstatus() != null
+                ? safe(task.getEstatus().getNombre())
+                : "no status";
+        return "• " + title + " [" + status + "]";
     }
 
     // -------------------------------------------------------------------------
-    // Helpers utilitarios
+    // Utility helpers
     // -------------------------------------------------------------------------
 
     /**
-     * Normaliza un texto para comparación: convierte a minúsculas y elimina acentos.
+     * Normalizes text for comparison: converts to lowercase and removes accents.
      *
-     * @param texto Texto a normalizar
-     * @return Texto normalizado, o cadena vacía si es null
+     * @param text text to normalize
+     * @return normalized text, or empty string if null
      */
-    private String normalizar(String texto) {
-        if (texto == null) {
+    private String normalize(String text) {
+        if (text == null) {
             return "";
         }
-        return texto.toLowerCase()
-                .replace('á', 'a').replace('é', 'e').replace('í', 'i')
-                .replace('ó', 'o').replace('ú', 'u').replace('ñ', 'n')
-                .replace('ü', 'u');
+        return Normalizer.normalize(text, Normalizer.Form.NFD)
+                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
+                .toLowerCase();
     }
 
     /**
-     * Devuelve el valor si no es null, o una cadena vacía en caso contrario.
+     * Returns the value if non-null, or an empty string otherwise.
      *
-     * @param valor Valor posiblemente null
-     * @return El valor original o ""
+     * @param value possibly-null value
+     * @return the original value or ""
      */
-    private String seguro(String valor) {
-        return valor != null ? valor : "";
+    private String safe(String value) {
+        return value != null ? value : "";
     }
 }
