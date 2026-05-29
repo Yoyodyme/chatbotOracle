@@ -16,6 +16,7 @@ import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -335,14 +336,22 @@ public class TareaBotActions {
         nuevaTarea.setUsuarioAsignado(usuarioAsignado != null ? usuarioAsignado : usuarioCreador);
         nuevaTarea.setPrioridad(prioridad);
 
-        EstatusTarea estatusPendiente = estatusTareaService.obtenerEstatusPorNombre("Pendiente");
-        if (estatusPendiente != null) {
-            nuevaTarea.setEstatus(estatusPendiente);
+        EstatusTarea estatusInicial = null;
+        for (String candidato : List.of("Pending", "Backlog", "Pendiente", "In Progress")) {
+            estatusInicial = estatusTareaService.obtenerEstatusPorNombre(candidato);
+            if (estatusInicial != null) break;
+        }
+        if (estatusInicial != null) {
+            nuevaTarea.setEstatus(estatusInicial);
         } else {
             List<EstatusTarea> todosLosEstatus = estatusTareaService.obtenerTodosLosEstatus();
             if (!todosLosEstatus.isEmpty()) {
                 nuevaTarea.setEstatus(todosLosEstatus.get(0));
+<<<<<<< Updated upstream
                 logger.warn("Estatus 'Pendiente' no encontrado; usando '{}' como fallback",
+=======
+                logger.warn("No initial status found by name; using '{}' as fallback",
+>>>>>>> Stashed changes
                         todosLosEstatus.get(0).getNombre());
             } else {
                 logger.warn("No se encontro ningun estatus en la BD; la tarea se guardara sin estatus");
@@ -432,10 +441,18 @@ public class TareaBotActions {
             return;
         }
 
-        EstatusTarea estatusEnProgreso = estatusTareaService.obtenerEstatusPorNombre("En Progreso");
+        EstatusTarea estatusEnProgreso = null;
+        for (String candidato : List.of("In Progress", "En Progreso")) {
+            estatusEnProgreso = estatusTareaService.obtenerEstatusPorNombre(candidato);
+            if (estatusEnProgreso != null) break;
+        }
         if (estatusEnProgreso == null) {
             conversationManager.terminarConversacion(chatId);
+<<<<<<< Updated upstream
             BotHelper.sendMessageToTelegram(chatId, "Error de configuracion: estatus 'En Progreso' no encontrado.", telegramClient);
+=======
+            BotHelper.sendMessageToTelegram(chatId, "Configuration error: no active status found ('In Progress' / 'En Progreso').", telegramClient);
+>>>>>>> Stashed changes
             return;
         }
         tarea.setEstatus(estatusEnProgreso);
@@ -530,11 +547,20 @@ public class TareaBotActions {
                 return;
             }
 
-            String estatusActual = tarea.getEstatus() != null ? tarea.getEstatus().getNombre() : "";
-            if (!estatusActual.equals("Pendiente") && !estatusActual.equals("En Progreso")) {
+            String estatusActualNombre = tarea.getEstatus() != null ? tarea.getEstatus().getNombre() : "";
+            String estatusActualLower = estatusActualNombre.toLowerCase();
+            boolean esActiva = estatusActualLower.contains("pending")
+                    || estatusActualLower.contains("pendiente")
+                    || estatusActualLower.contains("progress")
+                    || estatusActualLower.contains("backlog");
+            if (!esActiva) {
                 conversationManager.terminarConversacion(chatId);
                 BotHelper.sendMessageToTelegram(chatId,
+<<<<<<< Updated upstream
                         "Esa tarea ya no esta activa (estatus: " + estatusActual + "). Operacion cancelada.",
+=======
+                        "That task is no longer active (status: " + estatusActualNombre + "). Operation cancelled.",
+>>>>>>> Stashed changes
                         telegramClient);
                 return;
             }
@@ -563,15 +589,31 @@ public class TareaBotActions {
                 return;
             }
 
-            EstatusTarea estatusCompletada = estatusTareaService.obtenerEstatusPorNombre("Completada");
+            EstatusTarea estatusCompletada = null;
+            for (String candidato : List.of("Completed", "Done", "Completada")) {
+                estatusCompletada = estatusTareaService.obtenerEstatusPorNombre(candidato);
+                if (estatusCompletada != null) break;
+            }
+            if (estatusCompletada == null) {
+                // Fallback: usar el estatus con orden más alto (el último en el flujo)
+                estatusCompletada = estatusTareaService.obtenerTodosLosEstatus().stream()
+                        .filter(e -> e.getOrden() != null)
+                        .max(Comparator.comparingLong(EstatusTarea::getOrden))
+                        .orElse(null);
+            }
             if (estatusCompletada == null) {
                 conversationManager.terminarConversacion(chatId);
+<<<<<<< Updated upstream
                 BotHelper.sendMessageToTelegram(chatId, "Error de configuracion: estatus 'Completada' no encontrado.", telegramClient);
+=======
+                BotHelper.sendMessageToTelegram(chatId, "Configuration error: no completed status found in the database.", telegramClient);
+>>>>>>> Stashed changes
                 return;
             }
-            tarea.setEstatus(estatusCompletada);
-            tarea.setHorasReales(horasReales);
-            tareaService.actualizarTarea(idTarea, tarea);
+            Tarea tareaParaActualizar = new Tarea();
+            tareaParaActualizar.setEstatus(estatusCompletada);
+            tareaParaActualizar.setHorasReales(horasReales);
+            tareaService.actualizarTarea(idTarea, tareaParaActualizar);
             conversationManager.terminarConversacion(chatId);
 
             String mensaje = BotMessages.DONETASK_DONE.getMessage()
@@ -1496,8 +1538,8 @@ public class TareaBotActions {
             kpiPorDev.putIfAbsent(dev, new double[]{0, 0, 0, 0});
             double[] metricas = kpiPorDev.get(dev);
             metricas[0]++;
-            boolean completada = t.getEstatus() != null
-                    && "Completada".equalsIgnoreCase(t.getEstatus().getNombre());
+            String nEst = t.getEstatus() != null ? t.getEstatus().getNombre().toLowerCase() : "";
+            boolean completada = nEst.contains("complet") || nEst.contains("done");
             if (completada) metricas[1]++;
             if (t.getHorasEstimadas() != null) metricas[2] += t.getHorasEstimadas();
             if (t.getHorasReales() != null) metricas[3] += t.getHorasReales();
@@ -1522,7 +1564,10 @@ public class TareaBotActions {
         }
 
         long completadasTotal = tareas.stream()
-                .filter(t -> t.getEstatus() != null && "Completada".equalsIgnoreCase(t.getEstatus().getNombre()))
+                .filter(t -> {
+                    String n = t.getEstatus() != null ? t.getEstatus().getNombre().toLowerCase() : "";
+                    return n.contains("complet") || n.contains("done");
+                })
                 .count();
         sb.append("TOTAL SPRINT: ").append(completadasTotal).append("/").append(tareas.size())
           .append(" tareas completadas");

@@ -165,7 +165,7 @@ class TelegramE2ETest {
     }
 
     private EstatusTarea obtenerEstatusPendiente() {
-        EstatusTarea pendiente = estatusTareaRepository.findByNombre("Pendiente");
+        EstatusTarea pendiente = buscarEstatus("Pending", "Backlog", "Pendiente", "In Progress");
         if (pendiente != null) return pendiente;
         return estatusTareaRepository.findAll().stream()
                 .findFirst()
@@ -179,9 +179,17 @@ class TelegramE2ETest {
     }
 
     private EstatusTarea obtenerEstatusCompletada() {
-        EstatusTarea completada = estatusTareaRepository.findByNombre("Completada");
-        assertThat(completada).withFailMessage("No existe estatus 'Completada'").isNotNull();
+        EstatusTarea completada = buscarEstatus("Completed", "Done", "Completada");
+        assertThat(completada).withFailMessage("No existe estatus 'Completed', 'Done' ni 'Completada'").isNotNull();
         return completada;
+    }
+
+    private EstatusTarea buscarEstatus(String... nombres) {
+        for (String nombre : nombres) {
+            EstatusTarea e = estatusTareaRepository.findByNombre(nombre);
+            if (e != null) return e;
+        }
+        return null;
     }
 
     private Rol obtenerRolDefault() {
@@ -289,10 +297,11 @@ class TelegramE2ETest {
 
         Tarea tareaCompletada = tareaRepository.findById(tareaIdAsignada).orElseThrow();
         assertThat(tareaCompletada.getEstatus()).withFailMessage("Estatus null en BD").isNotNull();
-        assertThat(tareaCompletada.getEstatus().getNombre().toLowerCase())
-                .withFailMessage("Estatus no es 'completada': "
+        String estatusNombre = tareaCompletada.getEstatus().getNombre().toLowerCase();
+        assertThat(estatusNombre.contains("done") || estatusNombre.contains("complet"))
+                .withFailMessage("Estatus no es done/completada: "
                         + tareaCompletada.getEstatus().getNombre())
-                .contains("complet");
+                .isTrue();
 
         System.out.println("✅ Test 4 PASSED — Estatus: " + tareaCompletada.getEstatus().getNombre());
     }
@@ -344,7 +353,9 @@ class TelegramE2ETest {
     void testVisualizarKPIs() throws Exception {
         EstatusTarea completada = obtenerEstatusCompletada();
         EstatusTarea pendiente = estatusTareaRepository.findAll().stream()
-                .filter(e -> !e.getNombre().equalsIgnoreCase("Completada"))
+                .filter(e -> !e.getNombre().equalsIgnoreCase("Completada")
+                          && !e.getNombre().equalsIgnoreCase("Done")
+                          && !e.getNombre().equalsIgnoreCase("Completed"))
                 .findFirst()
                 .orElse(completada);
 
@@ -374,7 +385,10 @@ class TelegramE2ETest {
         long completadasLuis = tareaRepository.findAll().stream()
                 .filter(t -> t.getUsuarioAsignado() != null &&
                         t.getUsuarioAsignado().getNombreCompleto().toLowerCase().contains("luis") &&
-                        t.getEstatus().getNombre().equalsIgnoreCase("Completada"))
+                        t.getEstatus() != null && (
+                            t.getEstatus().getNombre().equalsIgnoreCase("Completed") ||
+                            t.getEstatus().getNombre().equalsIgnoreCase("Done") ||
+                            t.getEstatus().getNombre().equalsIgnoreCase("Completada")))
                 .count();
 
         long totalLuis = tareaRepository.findAll().stream()

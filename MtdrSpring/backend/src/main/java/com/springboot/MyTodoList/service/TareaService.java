@@ -90,7 +90,13 @@ public class TareaService {
     }
 
     public List<Tarea> obtenerTareasActivasPorUsuario(Long idUsuario) {
+<<<<<<< Updated upstream
         return tareaRepository.findByUsuarioAsignadoAndEstatusNombres(idUsuario, List.of("pendiente", "en progreso"));
+=======
+        // El JPQL aplica LOWER() al campo de BD, así que los parámetros deben ser minúsculas
+        return tareaRepository.findByUsuarioAsignadoAndEstatusNombres(
+                idUsuario, List.of("pending", "in progress", "pendiente", "backlog"));
+>>>>>>> Stashed changes
     }
 
     public boolean eliminarTarea(Long id) {
