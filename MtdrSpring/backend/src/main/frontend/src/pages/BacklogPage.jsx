@@ -254,6 +254,7 @@ export default function BacklogPage() {
   const estiloTabla = {
     width: '100%',
     borderCollapse: 'collapse',
+    tableLayout: 'fixed',
   };
 
   const estiloTh = {
@@ -400,6 +401,15 @@ export default function BacklogPage() {
       {/* Tabla */}
       <div style={estiloTablaWrapper}>
         <table style={estiloTabla}>
+          <colgroup>
+            <col style={{ width: '70px' }} />
+            <col style={{ width: '30%' }} />
+            <col style={{ width: '130px' }} />
+            <col style={{ width: '110px' }} />
+            <col style={{ width: '150px' }} />
+            <col style={{ width: '120px' }} />
+            <col style={{ width: '60px' }} />
+          </colgroup>
           <thead>
             <tr>
               {columnas.map((col) => (
