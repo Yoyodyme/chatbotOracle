@@ -65,6 +65,7 @@ export default function TaskRow({ tarea, onClick, onDelete }) {
   };
 
   const estiloTitulo = {
+    display: 'inline-block',
     fontSize: '0.9rem',
     color: 'var(--text-primary)',
     fontWeight: 500,
@@ -72,6 +73,7 @@ export default function TaskRow({ tarea, onClick, onDelete }) {
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
+    verticalAlign: 'middle',
   };
 
   const estiloAsignado = {

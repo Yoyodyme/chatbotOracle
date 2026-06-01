@@ -172,8 +172,18 @@ export default function SprintDetailPanel({ sprint, onClose, onStatusChange }) {
 
   const total = tareas.length;
   const done = tareas.filter((t) => {
-    const name = (t.estatus?.nombre ?? "").toLowerCase();
-    return name === "completada" || name === "done";
+    const name = (t.estatus?.nombre ?? "").toLowerCase().trim();
+    return name === "completed" || name === "completada" || name === "done";
+  }).length;
+  const outstanding = tareas.filter((t) => {
+    const name = (t.estatus?.nombre ?? "").toLowerCase().trim();
+    return (
+      name === "in progress" ||
+      name === "en progreso" ||
+      name === "pending" ||
+      name === "pendiente" ||
+      name === "not started"
+    );
   }).length;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
@@ -285,6 +295,7 @@ export default function SprintDetailPanel({ sprint, onClose, onStatusChange }) {
       color: "var(--text-primary)",
       borderBottom: "1px solid var(--border)",
       verticalAlign: "middle",
+      overflow: "hidden",
     },
     tdMono: {
       padding: "8px 12px",
@@ -295,10 +306,10 @@ export default function SprintDetailPanel({ sprint, onClose, onStatusChange }) {
       verticalAlign: "middle",
     },
     taskTitle: {
+      display: "block",
       overflow: "hidden",
       textOverflow: "ellipsis",
       whiteSpace: "nowrap",
-      maxWidth: "100%",
     },
     apiNote: {
       fontFamily: "var(--font-mono)",
@@ -445,6 +456,10 @@ export default function SprintDetailPanel({ sprint, onClose, onStatusChange }) {
         <div>
           <div style={S.metaLabel}>Done</div>
           <div style={S.metaValue}>{loading ? "—" : done}</div>
+        </div>
+        <div>
+          <div style={S.metaLabel}>Outstanding</div>
+          <div style={S.metaValue}>{loading ? "—" : outstanding}</div>
         </div>
       </div>
 

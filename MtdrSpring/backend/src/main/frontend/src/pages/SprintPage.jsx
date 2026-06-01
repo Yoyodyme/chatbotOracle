@@ -18,9 +18,9 @@
  *   fechaFin <= today && !activo          → PASADO
  */
 
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import useSprints, { deriveSprintStatus } from "../hooks/useSprints";
-import { createSprint, updateSprint, deleteSprint } from "../api/sprints";
+import { createSprint, updateSprint, deleteSprint, getTareasBySprint } from "../api/sprints";
 import SprintDetailPanel from "../components/sprint/SprintDetailModal";
 import ConfirmDialog from "../components/shared/ConfirmDialog";
 import Skeleton from "../components/shared/Skeleton";
@@ -135,6 +135,9 @@ function SkeletonRows({ n = 5 }) {
     <tr key={i} style={{ borderBottom: "1px solid var(--border)" }}>
       <td style={{ padding: "10px 10px" }}>
         <Skeleton width="14px" height="14px" borderRadius="3px" />
+      </td>
+      <td style={{ padding: "10px 10px" }}>
+        <Skeleton width="44px" height="12px" />
       </td>
       <td style={{ padding: "10px 10px" }}>
         <Skeleton width="160px" height="13px" />
@@ -632,6 +635,29 @@ export default function SprintPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [showStatus, setShowStatus] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [taskCounts, setTaskCounts] = useState({});
+
+  useEffect(() => {
+    if (!sprints.length) return;
+    let cancelled = false;
+    Promise.all(
+      sprints.map((s) =>
+        getTareasBySprint(s.idSprint)
+          .then((tareas) => {
+            const total = tareas.length;
+            const done = tareas.filter((t) => {
+              const name = (t.estatus?.nombre ?? "").toLowerCase().trim();
+              return name === "completed" || name === "completada" || name === "done";
+            }).length;
+            return [s.idSprint, { total, done }];
+          })
+          .catch(() => [s.idSprint, { total: 0, done: 0 }])
+      )
+    ).then((entries) => {
+      if (!cancelled) setTaskCounts(Object.fromEntries(entries));
+    });
+    return () => { cancelled = true; };
+  }, [sprints]);
 
   // ── Filtering & sorting ───────────────────────────────────────────────────
 
@@ -1144,11 +1170,12 @@ export default function SprintPage() {
         >
           <colgroup>
             <col style={{ width: 36 }} />
-            <col style={{ width: "30%" }} />
+            <col style={{ width: 72 }} />
+            <col style={{ width: "25%" }} />
             <col style={{ width: "16%" }} />
-            <col style={{ width: "26%" }} />
-            <col style={{ width: "14%" }} />
-            <col style={{ width: "14%" }} />
+            <col style={{ width: "24%" }} />
+            <col style={{ width: "12%" }} />
+            <col style={{ width: "12%" }} />
           </colgroup>
           <thead>
             <tr>
@@ -1165,6 +1192,7 @@ export default function SprintPage() {
                   }}
                 />
               </th>
+              <th style={thStyle}>ID</th>
               <th style={thStyle}>
                 <svg
                   width="12"
@@ -1276,7 +1304,7 @@ export default function SprintPage() {
               <SkeletonRows n={5} />
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={7}>
                   <EmptyState
                     icon="⚡"
                     title={search ? "No sprints match" : "No sprints yet"}
@@ -1342,6 +1370,15 @@ export default function SprintPage() {
                             cursor: "pointer",
                           }}
                         />
+                      </td>
+                      <td style={{
+                        ...tdStyle,
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 11,
+                        color: "var(--text-muted)",
+                        letterSpacing: "0.02em",
+                      }}>
+                        SP-{sprint.idSprint}
                       </td>
                       <td style={tdStyle}>
                         <div
@@ -1430,9 +1467,11 @@ export default function SprintPage() {
                           color: "var(--text-secondary)",
                         }}
                       >
-                        —
+                        {taskCounts[sprint.idSprint]?.total ?? "—"}
                       </td>
-                      <td style={{ ...tdStyle, textAlign: "center" }}>—</td>
+                      <td style={{ ...tdStyle, textAlign: "center" }}>
+                        {taskCounts[sprint.idSprint]?.done ?? "—"}
+                      </td>
                     </tr>
                   );
                 })}
@@ -1451,7 +1490,7 @@ export default function SprintPage() {
                   }}
                 >
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     style={{
                       padding: "8px 10px",
                       fontSize: 12,
