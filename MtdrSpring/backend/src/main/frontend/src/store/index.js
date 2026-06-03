@@ -53,6 +53,12 @@ const useStore = create((set) => ({
   setEquipos: (equipos) => set({ equipos }),
 
   /* --------------------------------------------------
+     Sprints
+  -------------------------------------------------- */
+  sprints: [],
+  setSprints: (sprints) => set({ sprints }),
+
+  /* --------------------------------------------------
      Tarea seleccionada (panel de detalle / modal)
   -------------------------------------------------- */
   selectedTask: null,
