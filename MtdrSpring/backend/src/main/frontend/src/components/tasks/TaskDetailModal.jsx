@@ -2,9 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { format, parseISO, isValid } from 'date-fns';
 import useAppStore from '../../store/index';
 import { updateTarea as apiActualizarTarea, deleteTarea as apiEliminarTarea } from '../../api/tareas';
+import { getSprints } from '../../api/sprints';
 import ConfirmDialog from '../shared/ConfirmDialog';
 import Avatar from '../shared/Avatar';
-
 import Skeleton from '../shared/Skeleton';
 import '../../styles/animations.css';
 
@@ -132,17 +132,40 @@ export default function TaskDetailModal() {
   const estatuses = useAppStore((s) => s.estatuses);
   const prioridades = useAppStore((s) => s.prioridades);
   const usuarios = useAppStore((s) => s.usuarios);
+  const storeSprints = useAppStore((s) => s.sprints);
+  const setStoreSprints = useAppStore((s) => s.setSprints);
   const updateTarea = useAppStore((s) => s.updateTarea);
   const deleteTarea = useAppStore((s) => s.deleteTarea);
   const addToast = useAppStore((s) => s.addToast);
 
   const [campos, setCampos] = useState(null);
+  const [sprints, setSprints] = useState([]);
   const [comentarios, setComentarios] = useState([]);
   const [cargandoComentarios, setCargandoComentarios] = useState(false);
   const [nuevoComentario, setNuevoComentario] = useState('');
   const [enviandoComentario, setEnviandoComentario] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [confirmarEliminar, setConfirmarEliminar] = useState(false);
+
+  // Load sprints once (use store cache)
+  useEffect(() => {
+    if (storeSprints.length > 0) {
+      setSprints(storeSprints);
+      return;
+    }
+    getSprints()
+      .then((data) => {
+        const lista = data ?? [];
+        setSprints(lista);
+        setStoreSprints(lista);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Sync store sprints into local state when store updates
+  useEffect(() => {
+    if (storeSprints.length > 0) setSprints(storeSprints);
+  }, [storeSprints]);
 
   useEffect(() => {
     if (!selectedTask) return;
@@ -153,6 +176,9 @@ export default function TaskDetailModal() {
       idPrioridad: selectedTask.prioridad?.idPrioridad ?? selectedTask.idPrioridad ?? '',
       idUsuarioAsignado: selectedTask.usuarioAsignado?.idUsuario ?? selectedTask.idUsuarioAsignado ?? '',
       fechaVencimiento: formatearFechaInput(selectedTask.fechaVencimiento),
+      idSprint: selectedTask.sprint?.idSprint ?? selectedTask.idSprint ?? '',
+      horasEstimadas: selectedTask.horasEstimadas ?? '',
+      horasReales: selectedTask.horasReales ?? '',
     });
     cargarComentarios(selectedTask.idTarea);
   }, [selectedTask?.idTarea]);
@@ -169,8 +195,8 @@ export default function TaskDetailModal() {
         const datos = await resp.json();
         setComentarios(datos);
       }
-    } catch (err) {
-      // Fallo silencioso — la sección queda vacía
+    } catch {
+      // silent — section stays empty
     } finally {
       setCargandoComentarios(false);
     }
@@ -190,11 +216,14 @@ export default function TaskDetailModal() {
           ? { idUsuario: Number(campos.idUsuarioAsignado) }
           : null,
         fechaVencimiento: campos.fechaVencimiento || null,
+        sprint: campos.idSprint ? { idSprint: Number(campos.idSprint) } : null,
+        horasEstimadas: campos.horasEstimadas !== '' ? Number(campos.horasEstimadas) : null,
+        horasReales: campos.horasReales !== '' ? Number(campos.horasReales) : null,
       };
       const actualizada = await apiActualizarTarea(selectedTask.idTarea, payload);
       updateTarea(selectedTask.idTarea, actualizada ?? payload);
       addToast({ id: `upd-${Date.now()}`, type: 'success', message: 'Task updated successfully' });
-    } catch (err) {
+    } catch {
       addToast({ id: `err-${Date.now()}`, type: 'error', message: 'Error saving task' });
     } finally {
       setGuardando(false);
@@ -208,7 +237,7 @@ export default function TaskDetailModal() {
       deleteTarea(selectedTask.idTarea);
       addToast({ id: `del-${Date.now()}`, type: 'success', message: `Task YD-${selectedTask.idTarea} deleted` });
       setSelectedTask(null);
-    } catch (err) {
+    } catch {
       addToast({ id: `err-${Date.now()}`, type: 'error', message: 'Error deleting task' });
     }
     setConfirmarEliminar(false);
@@ -477,9 +506,9 @@ export default function TaskDetailModal() {
             </button>
           </div>
 
-          {/* Cuerpo en dos columnas */}
+          {/* Body — two columns */}
           <div style={estiloCuerpo}>
-            {/* Columna izquierda — formulario de edición */}
+            {/* Left column — edit form */}
             <div style={estiloColumnaIzq}>
               <CampoEditable label="Title">
                 <InputFocusable
@@ -544,6 +573,20 @@ export default function TaskDetailModal() {
                 </SelectFocusable>
               </CampoEditable>
 
+              <CampoEditable label="Sprint">
+                <SelectFocusable
+                  value={campos.idSprint}
+                  onChange={(e) => setCampos((p) => ({ ...p, idSprint: e.target.value }))}
+                >
+                  <option value="">No sprint</option>
+                  {sprints.map((sp) => (
+                    <option key={sp.idSprint} value={sp.idSprint}>
+                      {sp.nombre}
+                    </option>
+                  ))}
+                </SelectFocusable>
+              </CampoEditable>
+
               <CampoEditable label="Due date">
                 <InputFocusable
                   type="date"
@@ -553,7 +596,31 @@ export default function TaskDetailModal() {
                 />
               </CampoEditable>
 
-              {/* Fechas de auditoría */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <CampoEditable label="Estimated hours">
+                  <InputFocusable
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={campos.horasEstimadas}
+                    onChange={(e) => setCampos((p) => ({ ...p, horasEstimadas: e.target.value }))}
+                    placeholder="0"
+                  />
+                </CampoEditable>
+
+                <CampoEditable label="Actual hours">
+                  <InputFocusable
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={campos.horasReales}
+                    onChange={(e) => setCampos((p) => ({ ...p, horasReales: e.target.value }))}
+                    placeholder="0"
+                  />
+                </CampoEditable>
+              </div>
+
+              {/* Audit dates */}
               {selectedTask.creadoEn && (
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                   Created: {formatearFechaHora(selectedTask.creadoEn)}
@@ -561,7 +628,7 @@ export default function TaskDetailModal() {
               )}
             </div>
 
-            {/* Columna derecha — comentarios */}
+            {/* Right column — comments */}
             <div style={estiloColumnaDer}>
               <div style={estiloSeccionComentarios}>
                 <p style={estiloTituloSeccion}>Comments</p>
@@ -594,7 +661,7 @@ export default function TaskDetailModal() {
                   )}
                 </div>
 
-                {/* Nuevo comentario */}
+                {/* New comment */}
                 <form onSubmit={manejarEnviarComentario} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <TextareaFocusable
                     value={nuevoComentario}

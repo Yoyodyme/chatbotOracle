@@ -36,7 +36,7 @@ function SkeletonRows({ n = 5 }) {
     <>
       {[...Array(n)].map((_, i) => (
         <tr key={i}>
-          {[72, 200, 100, 80, 120, 90, 60].map((w, j) => (
+          {[72, 200, 100, 80, 120, 110, 90, 60].map((w, j) => (
             <td key={j} style={{ padding: '12px 16px' }}>
               <Skeleton width={`${w}px`} height="14px" />
             </td>
@@ -56,6 +56,7 @@ export default function BacklogPage() {
   const deleteTareaStore = useAppStore((s) => s.deleteTarea);
   const addTarea = useAppStore((s) => s.addTarea);
   const addToast = useAppStore((s) => s.addToast);
+  const setSelectedTask = useAppStore((s) => s.setSelectedTask);
 
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstatus, setFiltroEstatus] = useState('');
@@ -93,6 +94,10 @@ export default function BacklogPage() {
       if (sort.key === 'usuarioAsignado') {
         va = a.usuarioAsignado?.nombreCompleto ?? '';
         vb = b.usuarioAsignado?.nombreCompleto ?? '';
+      }
+      if (sort.key === 'sprint') {
+        va = a.sprint?.nombre ?? '';
+        vb = b.sprint?.nombre ?? '';
       }
       if (va < vb) return sort.dir === 'asc' ? -1 : 1;
       if (va > vb) return sort.dir === 'asc' ? 1 : -1;
@@ -173,7 +178,7 @@ export default function BacklogPage() {
     }
   }
 
-  // ── Estilos ────────────────────────────────────────────────────────────────
+  // ── Styles ────────────────────────────────────────────────────────────────
   const estiloPage = { display: 'flex', flexDirection: 'column', gap: '20px' };
 
   const estiloHeaderRow = {
@@ -295,7 +300,7 @@ export default function BacklogPage() {
     fontSize: '0.875rem',
     color: 'var(--text-primary)',
     fontWeight: 500,
-    maxWidth: '280px',
+    maxWidth: '260px',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
@@ -326,6 +331,7 @@ export default function BacklogPage() {
     { key: 'estatus', label: 'Status', sortable: true },
     { key: 'prioridad', label: 'Priority', sortable: true },
     { key: 'usuarioAsignado', label: 'Assigned', sortable: false },
+    { key: 'sprint', label: 'Sprint', sortable: true },
     { key: 'fechaVencimiento', label: 'Due date', sortable: true },
     { key: 'acciones', label: 'Actions', sortable: false },
   ];
@@ -345,7 +351,7 @@ export default function BacklogPage() {
         </button>
       </div>
 
-      {/* Filtros */}
+      {/* Filters */}
       <div style={estiloFiltros}>
         <input
           type="text"
@@ -397,7 +403,7 @@ export default function BacklogPage() {
         )}
       </div>
 
-      {/* Tabla */}
+      {/* Table */}
       <div style={estiloTablaWrapper}>
         <table style={estiloTabla}>
           <thead>
@@ -422,7 +428,7 @@ export default function BacklogPage() {
               <SkeletonRows n={6} />
             ) : tareasFiltradas.length === 0 ? (
               <tr>
-                <td colSpan={7}>
+                <td colSpan={8}>
                   <EmptyState
                     icon="🔍"
                     title="No results"
@@ -443,9 +449,11 @@ export default function BacklogPage() {
               tareasFiltradas.map((tarea) => (
                 <tr
                   key={tarea.idTarea}
+                  onClick={() => setSelectedTask(tarea)}
                   onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-hover)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                  style={{ transition: 'background-color 100ms' }}
+                  style={{ transition: 'background-color 100ms', cursor: 'pointer' }}
+                  title="Click to edit"
                 >
                   <td style={{ ...estiloTd }}>
                     <span style={estiloIdCell}>YD-{tarea.idTarea}</span>
@@ -484,6 +492,26 @@ export default function BacklogPage() {
                     )}
                   </td>
                   <td style={estiloTd}>
+                    {tarea.sprint ? (
+                      <span
+                        style={{
+                          fontSize: '0.8125rem',
+                          color: 'var(--text-secondary)',
+                          backgroundColor: 'rgba(6,111,204,0.08)',
+                          border: '1px solid rgba(6,111,204,0.2)',
+                          borderRadius: 'var(--radius-sm)',
+                          padding: '2px 8px',
+                          whiteSpace: 'nowrap',
+                          fontWeight: 500,
+                        }}
+                      >
+                        {tarea.sprint.nombre}
+                      </span>
+                    ) : (
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>—</span>
+                    )}
+                  </td>
+                  <td style={estiloTd}>
                     <span style={estiloFechaCell}>
                       {formatFecha(tarea.fechaVencimiento)}
                     </span>
@@ -491,7 +519,10 @@ export default function BacklogPage() {
                   <td style={estiloTd}>
                     <button
                       style={estiloBtnEliminar}
-                      onClick={() => setConfirmEliminar(tarea)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmEliminar(tarea);
+                      }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.backgroundColor = 'rgba(218,30,40,0.08)';
                       }}
@@ -510,7 +541,7 @@ export default function BacklogPage() {
         </table>
       </div>
 
-      {/* Modal: Crear tarea */}
+      {/* Modal: Create task */}
       {showForm && (
         <div
           style={{
@@ -559,7 +590,7 @@ export default function BacklogPage() {
         </div>
       )}
 
-      {/* Confirmar eliminación */}
+      {/* Confirm delete */}
       <ConfirmDialog
         open={Boolean(confirmEliminar)}
         title="Delete task?"
