@@ -137,9 +137,6 @@ function SkeletonRows({ n = 5 }) {
         <Skeleton width="14px" height="14px" borderRadius="3px" />
       </td>
       <td style={{ padding: "10px 10px" }}>
-        <Skeleton width="44px" height="12px" />
-      </td>
-      <td style={{ padding: "10px 10px" }}>
         <Skeleton width="160px" height="13px" />
       </td>
       <td style={{ padding: "10px 10px" }}>
@@ -816,7 +813,7 @@ export default function SprintPage() {
   };
 
   const thStyle = {
-    padding: "7px 10px",
+    padding: "12px 16px",
     textAlign: "left",
     fontSize: 11,
     fontWeight: 600,
@@ -829,7 +826,7 @@ export default function SprintPage() {
   };
 
   const tdStyle = {
-    padding: "9px 10px",
+    padding: "12px 16px",
     fontSize: 13,
     color: "var(--text-primary)",
     verticalAlign: "middle",
@@ -1170,8 +1167,7 @@ export default function SprintPage() {
         >
           <colgroup>
             <col style={{ width: 36 }} />
-            <col style={{ width: 72 }} />
-            <col style={{ width: "25%" }} />
+            <col style={{ width: "35%" }} />
             <col style={{ width: "16%" }} />
             <col style={{ width: "24%" }} />
             <col style={{ width: "12%" }} />
@@ -1192,7 +1188,6 @@ export default function SprintPage() {
                   }}
                 />
               </th>
-              <th style={thStyle}>ID</th>
               <th style={thStyle}>
                 <svg
                   width="12"
@@ -1304,7 +1299,7 @@ export default function SprintPage() {
               <SkeletonRows n={5} />
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={7}>
+                <td colSpan={6}>
                   <EmptyState
                     icon="⚡"
                     title={search ? "No sprints match" : "No sprints yet"}
@@ -1370,15 +1365,6 @@ export default function SprintPage() {
                             cursor: "pointer",
                           }}
                         />
-                      </td>
-                      <td style={{
-                        ...tdStyle,
-                        fontFamily: "var(--font-mono)",
-                        fontSize: 11,
-                        color: "var(--text-muted)",
-                        letterSpacing: "0.02em",
-                      }}>
-                        SP-{sprint.idSprint}
                       </td>
                       <td style={tdStyle}>
                         <div
@@ -1475,46 +1461,6 @@ export default function SprintPage() {
                     </tr>
                   );
                 })}
-                {/* Add row */}
-                <tr
-                  onClick={() => {
-                    setShowCreate(true);
-                    setActiveSprint(null);
-                  }}
-                  style={{ borderBottom: "none", cursor: "pointer" }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "var(--bg-hover)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "transparent";
-                  }}
-                >
-                  <td
-                    colSpan={7}
-                    style={{
-                      padding: "8px 10px",
-                      fontSize: 12,
-                      color: "var(--text-muted)",
-                    }}
-                  >
-                    <svg
-                      width="13"
-                      height="13"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      style={{ verticalAlign: -2, marginRight: 5 }}
-                      aria-hidden="true"
-                    >
-                      <line x1="12" y1="5" x2="12" y2="19" />
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                    New sprint
-                  </td>
-                </tr>
               </>
             )}
           </tbody>

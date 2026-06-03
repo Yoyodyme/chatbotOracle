@@ -204,12 +204,6 @@ export default function SprintDetailPanel({ sprint, onClose, onStatusChange }) {
       alignItems: "flex-start",
       marginBottom: 16,
     },
-    sub: {
-      fontFamily: "var(--font-mono)",
-      fontSize: 11,
-      color: "var(--text-muted)",
-      marginBottom: 3,
-    },
     title: {
       fontFamily: "var(--font-heading)",
       fontWeight: 600,
@@ -342,7 +336,6 @@ export default function SprintDetailPanel({ sprint, onClose, onStatusChange }) {
       {/* Header */}
       <div style={S.header}>
         <div>
-          <div style={S.sub}>idSprint: {sprint.idSprint}</div>
           <div style={S.title}>{sprint.nombre}</div>
         </div>
         <button
