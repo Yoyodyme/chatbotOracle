@@ -714,15 +714,13 @@ export default function SprintPage() {
 
   const handleRowClick = useCallback(
     (sprint) => {
-      toggleOne(sprint.idSprint);
-      if (selected.size > 0) return;
       setActiveSprint((prev) =>
         prev?.idSprint === sprint.idSprint ? null : sprint,
       );
       setShowCreate(false);
       setShowStatus(false);
     },
-    [selected.size, toggleOne],
+    [],
   );
 
   // ── CRUD handlers ─────────────────────────────────────────────────────────
@@ -815,14 +813,16 @@ export default function SprintPage() {
   const thStyle = {
     padding: "12px 16px",
     textAlign: "left",
-    fontSize: 11,
+    fontFamily: "var(--font-body)",
+    fontSize: "0.75rem",
     fontWeight: 600,
     color: "var(--text-muted)",
     letterSpacing: "0.04em",
     textTransform: "uppercase",
     borderBottom: "1px solid var(--border)",
-    background: "#f7f8f9",
+    backgroundColor: "#f7f8f9",
     whiteSpace: "nowrap",
+    userSelect: "none",
   };
 
   const tdStyle = {
@@ -1189,108 +1189,19 @@ export default function SprintPage() {
                 />
               </th>
               <th style={thStyle}>
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ verticalAlign: -2, marginRight: 4 }}
-                  aria-hidden="true"
-                >
-                  <polyline points="4 7 4 4 20 4 20 7" />
-                  <line x1="9" y1="20" x2="15" y2="20" />
-                  <line x1="12" y1="4" x2="12" y2="20" />
-                </svg>
                 Sprint name
               </th>
               <th style={thStyle}>
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ verticalAlign: -2, marginRight: 4 }}
-                  aria-hidden="true"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                </svg>
                 Status
               </th>
               <th style={thStyle}>
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ verticalAlign: -2, marginRight: 4 }}
-                  aria-hidden="true"
-                >
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
-                </svg>
                 Dates
               </th>
               <th style={{ ...thStyle, textAlign: "center" }}>
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 4,
-                  }}
-                >
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <path d="M18 7H6l6 5-6 5h12" />
-                  </svg>
-                  Total
-                </span>
+                Total
               </th>
               <th style={{ ...thStyle, textAlign: "center" }}>
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 4,
-                  }}
-                >
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  Done
-                </span>
+                Done
               </th>
             </tr>
           </thead>
