@@ -9,6 +9,7 @@ import com.springboot.MyTodoList.repository.RolRepository;
 import com.springboot.MyTodoList.repository.TareaRepository;
 import com.springboot.MyTodoList.repository.UsuarioRepository;
 import com.springboot.MyTodoList.util.BotConversationManager;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -22,6 +23,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.IntStream;
@@ -57,6 +59,11 @@ class TelegramE2ETest {
     private Long tareaIdCreada;
     private Long tareaIdAsignada;
 
+    // IDs de todo lo que las pruebas insertan, para limpiarlo en el teardown
+    private final List<Long> tareasCreadasIds = new ArrayList<>();
+    private final List<Long> usuariosCreadosIds = new ArrayList<>();
+    private Long rolManagerCreadoId = null; // solo si la prueba lo crea
+
     // -------------------------------------------------------------------------
     // Setup
     // -------------------------------------------------------------------------
@@ -91,11 +98,13 @@ class TelegramE2ETest {
         sendMessageToBot("1");       // assignee: first in list
         sendMessageToBot("si");      // confirm creation
 
-        return tareaRepository.findAll().stream()
+        Long id = tareaRepository.findAll().stream()
                 .filter(t -> t.getTitulo() != null && t.getTitulo().contains(titulo))
                 .findFirst()
                 .map(Tarea::getIdTarea)
                 .orElseThrow(() -> new AssertionError("Tarea '" + titulo + "' no encontrada en BD tras wizard"));
+        tareasCreadasIds.add(id);
+        return id;
     }
 
     /**
@@ -165,7 +174,7 @@ class TelegramE2ETest {
     }
 
     private EstatusTarea obtenerEstatusPendiente() {
-        EstatusTarea pendiente = buscarEstatus("Pending", "Backlog", "Pendiente", "In Progress");
+        EstatusTarea pendiente = estatusTareaRepository.findByNombre("Pendiente");
         if (pendiente != null) return pendiente;
         return estatusTareaRepository.findAll().stream()
                 .findFirst()
@@ -179,17 +188,9 @@ class TelegramE2ETest {
     }
 
     private EstatusTarea obtenerEstatusCompletada() {
-        EstatusTarea completada = buscarEstatus("Completed", "Done", "Completada");
-        assertThat(completada).withFailMessage("No existe estatus 'Completed', 'Done' ni 'Completada'").isNotNull();
+        EstatusTarea completada = estatusTareaRepository.findByNombre("Completada");
+        assertThat(completada).withFailMessage("No existe estatus 'Completada'").isNotNull();
         return completada;
-    }
-
-    private EstatusTarea buscarEstatus(String... nombres) {
-        for (String nombre : nombres) {
-            EstatusTarea e = estatusTareaRepository.findByNombre(nombre);
-            if (e != null) return e;
-        }
-        return null;
     }
 
     private Rol obtenerRolDefault() {
@@ -201,7 +202,7 @@ class TelegramE2ETest {
     private Usuario buscarOCrearUsuario(String nombreUsuario, String nombreCompleto, String integrationId, Rol rol) {
         Usuario usuario = usuarioRepository.findByNombreUsuario(nombreUsuario);
         if (usuario != null) return usuario;
-        
+
         usuario = usuarioRepository.findAll().stream()
                 .filter(u -> integrationId.equals(u.getIdIntegrationUsuario()))
                 .findFirst()
@@ -213,7 +214,9 @@ class TelegramE2ETest {
         usuario.setNombreUsuario(nombreUsuario);
         usuario.setNombreCompleto(nombreCompleto);
         usuario.setRol(rol);
-        return usuarioRepository.save(usuario);
+        Usuario guardado = usuarioRepository.save(usuario);
+        usuariosCreadosIds.add(guardado.getIdUsuario()); // ajusta al getter real del PK
+        return guardado;
     }
 
     // -------------------------------------------------------------------------
@@ -242,6 +245,7 @@ class TelegramE2ETest {
         Long idEliminar = crearTareaConWizard("E2E baja automatica");
 
         tareaRepository.deleteById(idEliminar);
+        tareasCreadasIds.remove(idEliminar); // ya no existe, evitar borrarla de nuevo
 
         Optional<Tarea> tareaEliminada = tareaRepository.findById(idEliminar);
         assertThat(tareaEliminada)
@@ -268,6 +272,7 @@ class TelegramE2ETest {
         tarea.setUsuarioAsignado(botUser);
         tarea = tareaRepository.save(tarea);
         tareaIdAsignada = tarea.getIdTarea();
+        tareasCreadasIds.add(tareaIdAsignada);
 
         asignarTareaConFlujo(tareaIdAsignada, "Ana");
 
@@ -297,11 +302,10 @@ class TelegramE2ETest {
 
         Tarea tareaCompletada = tareaRepository.findById(tareaIdAsignada).orElseThrow();
         assertThat(tareaCompletada.getEstatus()).withFailMessage("Estatus null en BD").isNotNull();
-        String estatusNombre = tareaCompletada.getEstatus().getNombre().toLowerCase();
-        assertThat(estatusNombre.contains("done") || estatusNombre.contains("complet"))
-                .withFailMessage("Estatus no es done/completada: "
+        assertThat(tareaCompletada.getEstatus().getNombre().toLowerCase())
+                .withFailMessage("Estatus no es 'completada': "
                         + tareaCompletada.getEstatus().getNombre())
-                .isTrue();
+                .contains("complet");
 
         System.out.println("✅ Test 4 PASSED — Estatus: " + tareaCompletada.getEstatus().getNombre());
     }
@@ -321,12 +325,14 @@ class TelegramE2ETest {
         t1.setEstatus(estatus);
         t1.setUsuarioAsignado(ana);
         tareaRepository.save(t1);
+        tareasCreadasIds.add(t1.getIdTarea());
 
         Tarea t2 = new Tarea();
         t2.setTitulo("Tarea E2E visualizacion dos");
         t2.setEstatus(estatus);
         t2.setUsuarioAsignado(ana);
         tareaRepository.save(t2);
+        tareasCreadasIds.add(t2.getIdTarea());
 
         sendMessageToBot("que tareas tiene Ana");
 
@@ -353,9 +359,7 @@ class TelegramE2ETest {
     void testVisualizarKPIs() throws Exception {
         EstatusTarea completada = obtenerEstatusCompletada();
         EstatusTarea pendiente = estatusTareaRepository.findAll().stream()
-                .filter(e -> !e.getNombre().equalsIgnoreCase("Completada")
-                          && !e.getNombre().equalsIgnoreCase("Done")
-                          && !e.getNombre().equalsIgnoreCase("Completed"))
+                .filter(e -> !e.getNombre().equalsIgnoreCase("Completada"))
                 .findFirst()
                 .orElse(completada);
 
@@ -367,28 +371,28 @@ class TelegramE2ETest {
         c1.setEstatus(completada);
         c1.setUsuarioAsignado(luis);
         tareaRepository.save(c1);
+        tareasCreadasIds.add(c1.getIdTarea());
 
         Tarea c2 = new Tarea();
         c2.setTitulo("KPI completada dos luis");
         c2.setEstatus(completada);
         c2.setUsuarioAsignado(luis);
         tareaRepository.save(c2);
+        tareasCreadasIds.add(c2.getIdTarea());
 
         Tarea p1 = new Tarea();
         p1.setTitulo("KPI pendiente uno luis");
         p1.setEstatus(pendiente);
         p1.setUsuarioAsignado(luis);
         tareaRepository.save(p1);
+        tareasCreadasIds.add(p1.getIdTarea());
 
         sendMessageToBot("kpi de Luis");
 
         long completadasLuis = tareaRepository.findAll().stream()
                 .filter(t -> t.getUsuarioAsignado() != null &&
                         t.getUsuarioAsignado().getNombreCompleto().toLowerCase().contains("luis") &&
-                        t.getEstatus() != null && (
-                            t.getEstatus().getNombre().equalsIgnoreCase("Completed") ||
-                            t.getEstatus().getNombre().equalsIgnoreCase("Done") ||
-                            t.getEstatus().getNombre().equalsIgnoreCase("Completada")))
+                        t.getEstatus().getNombre().equalsIgnoreCase("Completada"))
                 .count();
 
         long totalLuis = tareaRepository.findAll().stream()
@@ -416,6 +420,7 @@ class TelegramE2ETest {
             rolManager.setNombre("MANAGER");
             rolManager.setDescripcion("Manager E2E");
             rolManager = rolRepository.save(rolManager);
+            rolManagerCreadoId = rolManager.getIdRol(); // ajusta al getter real del PK
         }
 
         sendMessageToBot("ver tareas del equipo");
@@ -432,5 +437,47 @@ class TelegramE2ETest {
 
         System.out.println("✅ Test 7 PASSED — Equipo: " + totalUsuarios
                 + " usuarios, " + totalTareas + " tareas en BD");
+    }
+
+    // -------------------------------------------------------------------------
+    // Teardown — eliminar SOLO lo insertado por las pruebas (por ID exacto)
+    // -------------------------------------------------------------------------
+    @AfterAll
+    void tearDown() {
+        // 1. Tareas primero (FK hacia usuarios)
+        for (Long id : tareasCreadasIds) {
+            try {
+                tareaRepository.deleteById(id);
+            } catch (Exception e) {
+                System.err.println("No se pudo borrar tarea " + id + ": " + e.getMessage());
+            }
+        }
+
+        // 2. Usuarios creados por las pruebas
+        for (Long id : usuariosCreadosIds) {
+            try {
+                usuarioRepository.deleteById(id);
+            } catch (Exception e) {
+                System.err.println("No se pudo borrar usuario " + id + ": " + e.getMessage());
+            }
+        }
+
+        // 3. Rol MANAGER solo si lo creó la prueba
+        if (rolManagerCreadoId != null) {
+            try {
+                rolRepository.deleteById(rolManagerCreadoId);
+            } catch (Exception e) {
+                System.err.println("No se pudo borrar rol " + rolManagerCreadoId + ": " + e.getMessage());
+            }
+        }
+
+        // 4. Limpiar estado de conversación del bot
+        conversationManager.terminarConversacion(Long.parseLong(testChatId));
+
+        System.out.println("🧹 Teardown — eliminadas "
+                + tareasCreadasIds.size() + " tareas, "
+                + usuariosCreadosIds.size() + " usuarios"
+                + (rolManagerCreadoId != null ? " y 1 rol" : "")
+                + " creados por las pruebas");
     }
 }
