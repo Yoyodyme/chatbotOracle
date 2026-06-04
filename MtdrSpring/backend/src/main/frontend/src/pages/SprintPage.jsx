@@ -800,12 +800,12 @@ export default function SprintPage() {
 
   const inputStyle = {
     fontFamily: "var(--font-body)",
-    fontSize: "0.8125rem",
+    fontSize: "0.875rem",
     color: "var(--text-primary)",
     backgroundColor: "var(--bg-surface)",
     border: "1px solid var(--border)",
     borderRadius: "var(--radius-md)",
-    padding: "6px 10px",
+    padding: "8px 12px",
     outline: "none",
     transition: "border-color 150ms",
   };
@@ -875,7 +875,15 @@ export default function SprintPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20, paddingTop: 24 }}>
       {/* ── Page header ── */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "12px",
+          flexWrap: "wrap",
+        }}
+      >
         <h1
           style={{
             margin: 0,
@@ -886,115 +894,94 @@ export default function SprintPage() {
         >
           Sprints
         </h1>
+        {selected.size === 0 && (
+          <button
+            onClick={() => {
+              setActiveSprint(null);
+              setShowCreate(true);
+              setShowStatus(false);
+            }}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "9px 18px",
+              borderRadius: "var(--radius-md)",
+              fontSize: "0.875rem",
+              fontWeight: 600,
+              color: "#fff",
+              background: "var(--accent)",
+              border: "none",
+              cursor: "pointer",
+              transition: "opacity 150ms",
+              flexShrink: 0,
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.85"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
+          >
+            <span style={{ fontSize: "16px", lineHeight: 1 }}>+</span>
+            New sprint
+          </button>
+        )}
+      </div>
 
-        <div
+      {/* ── Filters ── */}
+      <div
+        style={{
+          display: "flex",
+          gap: "10px",
+          flexWrap: "wrap",
+          alignItems: "center",
+        }}
+      >
+        <input
+          type="text"
+          placeholder="Search by name…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ ...inputStyle, width: "220px" }}
+          onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
+          onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
+        />
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            flexWrap: "nowrap",
+            ...inputStyle,
+            width: "auto",
+            minWidth: "140px",
+            cursor: "pointer",
+            backgroundImage:
+              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238d8d8d' d='M6 8L1 3h10z'/%3E%3C/svg%3E\")",
+            backgroundRepeat: "no-repeat",
+            backgroundPosition: "right 10px center",
+            paddingRight: "32px",
+            appearance: "none",
+            WebkitAppearance: "none",
           }}
         >
-          {/* Search */}
-          <div
+          <option value="date-desc">Date: most recent</option>
+          <option value="date-asc">Date: oldest</option>
+          <option value="status-asc">Status: Activo → Pasado</option>
+          <option value="status-desc">Status: Pasado → Activo</option>
+          <option value="name-asc">Name: A → Z</option>
+          <option value="name-desc">Name: Z → A</option>
+        </select>
+        {search && (
+          <button
             style={{
-              position: "relative",
-              display: "flex",
-              alignItems: "center",
-            }}
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{
-                position: "absolute",
-                left: 8,
-                color: "var(--text-muted)",
-                pointerEvents: "none",
-              }}
-            >
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name…"
-              style={{ ...inputStyle, paddingLeft: 28, width: 180 }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = "var(--accent)";
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = "var(--border)";
-              }}
-            />
-          </div>
-
-          {/* Sort */}
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-            style={{
-              ...inputStyle,
-              width: "auto",
-              paddingRight: 28,
+              fontSize: "0.8125rem",
+              color: "var(--text-muted)",
+              background: "none",
+              border: "none",
               cursor: "pointer",
-              backgroundImage:
-                "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238d8d8d' d='M6 8L1 3h10z'/%3E%3C/svg%3E\")",
-              backgroundRepeat: "no-repeat",
-              backgroundPosition: "right 8px center",
-              appearance: "none",
-              WebkitAppearance: "none",
+              padding: "4px 8px",
             }}
+            onClick={() => setSearch("")}
           >
-            <option value="date-desc">Date: most recent</option>
-            <option value="date-asc">Date: oldest</option>
-            <option value="status-asc">Status: Activo → Pasado</option>
-            <option value="status-desc">Status: Pasado → Activo</option>
-            <option value="name-asc">Name: A → Z</option>
-            <option value="name-desc">Name: Z → A</option>
-          </select>
-
-          {/* New sprint button — hidden when rows are selected */}
-          {selected.size === 0 && (
-            <button
-              onClick={() => {
-                setActiveSprint(null);
-                setShowCreate(true);
-                setShowStatus(false);
-              }}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "7px 16px",
-                borderRadius: "var(--radius-md)",
-                fontSize: "0.875rem",
-                fontWeight: 600,
-                color: "#fff",
-                background: "var(--accent)",
-                border: "none",
-                cursor: "pointer",
-                transition: "opacity 150ms",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = "0.85";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = "1";
-              }}
-            >
-              <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> New sprint
-            </button>
-          )}
-        </div>
+            ✕ Clear filters
+          </button>
+        )}
       </div>
 
       {/* ── Action bar (visible only when rows are selected) ── */}
