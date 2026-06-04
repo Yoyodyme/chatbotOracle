@@ -300,7 +300,6 @@ export default function BacklogPage() {
     fontSize: '0.875rem',
     color: 'var(--text-primary)',
     fontWeight: 500,
-    maxWidth: '260px',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
@@ -406,13 +405,13 @@ export default function BacklogPage() {
       <div style={estiloTablaWrapper}>
         <table style={estiloTabla}>
           <colgroup>
-            <col style={{ width: '70px' }} />
-            <col style={{ width: '30%' }} />
-            <col style={{ width: '130px' }} />
-            <col style={{ width: '110px' }} />
+            <col />
+            <col style={{ width: '120px' }} />
+            <col style={{ width: '100px' }} />
             <col style={{ width: '150px' }} />
             <col style={{ width: '120px' }} />
-            <col style={{ width: '60px' }} />
+            <col style={{ width: '110px' }} />
+            <col style={{ width: '80px' }} />
           </colgroup>
           <thead>
             <tr>
