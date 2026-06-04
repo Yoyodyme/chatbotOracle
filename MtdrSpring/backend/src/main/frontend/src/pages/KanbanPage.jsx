@@ -12,12 +12,7 @@ export default function KanbanPage() {
 
   useEffect(() => {
     getSprints()
-      .then((data) => {
-        const lista = data ?? [];
-        setSprints(lista);
-        const activo = lista.find((s) => s.estado === 'current');
-        if (activo) setSprintSeleccionado(String(activo.idSprint));
-      })
+      .then((data) => setSprints(data ?? []))
       .catch(() => {});
   }, []);
 
