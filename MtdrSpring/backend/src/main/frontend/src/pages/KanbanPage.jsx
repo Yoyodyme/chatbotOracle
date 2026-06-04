@@ -21,6 +21,7 @@ export default function KanbanPage() {
     flexDirection: 'column',
     gap: '20px',
     height: '100%',
+    paddingTop: 24,
   };
 
   const estiloHeader = {
@@ -32,11 +33,10 @@ export default function KanbanPage() {
   };
 
   const estiloTitulo = {
-    fontFamily: "'IBM Plex Sans', sans-serif",
-    fontWeight: 600,
-    fontSize: '1.5rem',
+    margin: 0,
+    fontSize: 24,
+    fontWeight: 700,
     color: 'var(--text-primary)',
-    letterSpacing: '-0.01em',
   };
 
   const estiloSelector = {

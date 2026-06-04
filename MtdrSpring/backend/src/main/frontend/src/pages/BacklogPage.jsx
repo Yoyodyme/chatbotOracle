@@ -179,7 +179,7 @@ export default function BacklogPage() {
   }
 
   // ── Styles ────────────────────────────────────────────────────────────────
-  const estiloPage = { display: 'flex', flexDirection: 'column', gap: '20px' };
+  const estiloPage = { display: 'flex', flexDirection: 'column', gap: '20px', paddingTop: 24 };
 
   const estiloHeaderRow = {
     display: 'flex',
@@ -190,11 +190,10 @@ export default function BacklogPage() {
   };
 
   const estiloTitulo = {
-    fontFamily: 'var(--font-heading)',
-    fontWeight: 600,
-    fontSize: '1.375rem',
+    margin: 0,
+    fontSize: 24,
+    fontWeight: 700,
     color: 'var(--text-primary)',
-    letterSpacing: '-0.01em',
   };
 
   const estiloBtnNueva = {

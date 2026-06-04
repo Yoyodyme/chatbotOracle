@@ -873,16 +873,15 @@ export default function SprintPage() {
     filtered.length > 0 && filtered.every((s) => selected.has(s.idSprint));
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, paddingTop: 24 }}>
       {/* ── Page header ── */}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <h1
           style={{
-            fontFamily: "var(--font-heading)",
-            fontWeight: 600,
-            fontSize: "1.375rem",
+            margin: 0,
+            fontSize: 24,
+            fontWeight: 700,
             color: "var(--text-primary)",
-            letterSpacing: "-0.01em",
           }}
         >
           Sprints
