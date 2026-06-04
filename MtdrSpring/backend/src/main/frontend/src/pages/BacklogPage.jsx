@@ -36,7 +36,7 @@ function SkeletonRows({ n = 5 }) {
     <>
       {[...Array(n)].map((_, i) => (
         <tr key={i}>
-          {[72, 200, 100, 80, 120, 110, 90, 60].map((w, j) => (
+          {[200, 100, 80, 120, 110, 90, 60].map((w, j) => (
             <td key={j} style={{ padding: '12px 16px' }}>
               <Skeleton width={`${w}px`} height="14px" />
             </td>
@@ -327,7 +327,6 @@ export default function BacklogPage() {
   };
 
   const columnas = [
-    { key: 'idTarea', label: 'ID', sortable: true },
     { key: 'titulo', label: 'Title', sortable: true },
     { key: 'estatus', label: 'Status', sortable: true },
     { key: 'prioridad', label: 'Priority', sortable: true },
@@ -438,7 +437,7 @@ export default function BacklogPage() {
               <SkeletonRows n={6} />
             ) : tareasFiltradas.length === 0 ? (
               <tr>
-                <td colSpan={8}>
+                <td colSpan={7}>
                   <EmptyState
                     icon="🔍"
                     title="No results"
@@ -465,9 +464,6 @@ export default function BacklogPage() {
                   style={{ transition: 'background-color 100ms', cursor: 'pointer' }}
                   title="Click to edit"
                 >
-                  <td style={{ ...estiloTd }}>
-                    <span style={estiloIdCell}>YD-{tarea.idTarea}</span>
-                  </td>
                   <td style={estiloTd}>
                     <span style={estiloTituloCell} title={tarea.titulo}>
                       {tarea.titulo}
