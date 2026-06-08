@@ -5,13 +5,13 @@
 
 const onSigninCallback = () => {
   // Remove the OIDC code/state params from the URL after sign-in completes.
-  window.history.replaceState({}, document.title, window.location.pathname);
+  globalThis.history.replaceState({}, document.title, globalThis.location.pathname);
 };
 
 export const ociAuthConfig = {
-  authority: 'REPLACE_WITH_OCI_ISSUER_URL',
-  client_id: 'REPLACE_WITH_OCI_CLIENT_ID',
-  redirect_uri: window.location.origin,
+  authority: 'https://idcs-51b2f6e16d974aedba8f49fa2dce9503.identity.oraclecloud.com:443/oauth2/v1',
+  client_id: 'cc728b78e0b44f7f8346b44f4f6fe110',
+  redirect_uri: globalThis.location.origin,
   scope: 'openid',
   onSigninCallback,
 };
