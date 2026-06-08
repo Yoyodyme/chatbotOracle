@@ -16,13 +16,21 @@ import { getSprints } from "../api/sprints";
  * @param {Object} sprint
  * @returns {'ACTIVO'|'FUTURO'|'PASADO'}
  */
+const ESTADO_NORM = {
+  current: 'ACTIVO',
+  activo:  'ACTIVO',
+  futuro:  'FUTURO',
+  pasado:  'PASADO',
+};
+
 export function deriveSprintStatus(sprint) {
-  if (sprint.estado) return sprint.estado;
-  // fallback for rows that predate the ESTADO column
+  if (sprint.estado) {
+    return ESTADO_NORM[sprint.estado.trim().toLowerCase()] ?? sprint.estado.trim().toUpperCase();
+  }
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  if (sprint.fechaInicio && new Date(sprint.fechaInicio) > today) return "FUTURO";
-  return "PASADO";
+  if (sprint.fechaInicio && new Date(sprint.fechaInicio) > today) return 'FUTURO';
+  return 'PASADO';
 }
 
 /**

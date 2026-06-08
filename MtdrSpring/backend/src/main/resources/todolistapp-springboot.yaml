@@ -3,6 +3,7 @@ kind: Service
 metadata:
   name: todolistapp-springboot-service
   annotations:
+    oci.oraclecloud.com/reserved-ips: "160.34.214.149"
     oci.oraclecloud.com/loadbalancer-policy: "IP_HASH"
 spec:
   type: LoadBalancer

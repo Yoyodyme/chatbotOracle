@@ -170,9 +170,31 @@ export default function Sidebar() {
   return (
     <aside style={estiloSidebar}>
       {/* Logo */}
-      <div style={estiloLogo}>
-        <IconCloud />
-        <span style={estiloTextoLogo}>Yoyodyne</span>
+      <div style={{
+        padding: '10px 14px 6px 14px',
+        backgroundColor: 'transparent',
+        borderBottom: '1px solid var(--sidebar-border)',
+      }}>
+        <div style={{
+          backgroundColor: '#ffffff',
+          borderRadius: 12,
+          padding: '8px 12px',
+          display: 'inline-block',
+          width: '100%',
+          boxSizing: 'border-box',
+        }}>
+          <img
+            src="/yoyodyne.png"
+            alt="Yoyodyne"
+            style={{
+              width: '100%',
+              height: 'auto',
+              maxHeight: 52,
+              display: 'block',
+              objectFit: 'contain',
+            }}
+          />
+        </div>
       </div>
 
       {/* Navigation */}

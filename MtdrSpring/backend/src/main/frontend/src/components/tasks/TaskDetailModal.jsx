@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { format, parseISO, isValid } from 'date-fns';
 import useAppStore from '../../store/index';
 import { updateTarea as apiActualizarTarea, deleteTarea as apiEliminarTarea } from '../../api/tareas';
+import { getSprints } from '../../api/sprints';
 import ConfirmDialog from '../shared/ConfirmDialog';
-import Avatar from '../shared/Avatar';
-
-import Skeleton from '../shared/Skeleton';
 import '../../styles/animations.css';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -132,17 +130,36 @@ export default function TaskDetailModal() {
   const estatuses = useAppStore((s) => s.estatuses);
   const prioridades = useAppStore((s) => s.prioridades);
   const usuarios = useAppStore((s) => s.usuarios);
+  const storeSprints = useAppStore((s) => s.sprints);
+  const setStoreSprints = useAppStore((s) => s.setSprints);
   const updateTarea = useAppStore((s) => s.updateTarea);
   const deleteTarea = useAppStore((s) => s.deleteTarea);
   const addToast = useAppStore((s) => s.addToast);
 
   const [campos, setCampos] = useState(null);
-  const [comentarios, setComentarios] = useState([]);
-  const [cargandoComentarios, setCargandoComentarios] = useState(false);
-  const [nuevoComentario, setNuevoComentario] = useState('');
-  const [enviandoComentario, setEnviandoComentario] = useState(false);
+  const [sprints, setSprints] = useState([]);
   const [guardando, setGuardando] = useState(false);
   const [confirmarEliminar, setConfirmarEliminar] = useState(false);
+
+  // Load sprints once (use store cache)
+  useEffect(() => {
+    if (storeSprints.length > 0) {
+      setSprints(storeSprints);
+      return;
+    }
+    getSprints()
+      .then((data) => {
+        const lista = data ?? [];
+        setSprints(lista);
+        setStoreSprints(lista);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Sync store sprints into local state when store updates
+  useEffect(() => {
+    if (storeSprints.length > 0) setSprints(storeSprints);
+  }, [storeSprints]);
 
   useEffect(() => {
     if (!selectedTask) return;
@@ -153,28 +170,11 @@ export default function TaskDetailModal() {
       idPrioridad: selectedTask.prioridad?.idPrioridad ?? selectedTask.idPrioridad ?? '',
       idUsuarioAsignado: selectedTask.usuarioAsignado?.idUsuario ?? selectedTask.idUsuarioAsignado ?? '',
       fechaVencimiento: formatearFechaInput(selectedTask.fechaVencimiento),
+      idSprint: selectedTask.sprint?.idSprint ?? selectedTask.idSprint ?? '',
+      horasEstimadas: selectedTask.horasEstimadas ?? '',
+      horasReales: selectedTask.horasReales ?? '',
     });
-    cargarComentarios(selectedTask.idTarea);
   }, [selectedTask?.idTarea]);
-
-  const cargarComentarios = useCallback(async (idTarea) => {
-    if (!idTarea) return;
-    setCargandoComentarios(true);
-    try {
-      const resp = await fetch(`/api/comentarios-tareas/tarea/${idTarea}`, {
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-      });
-      if (resp.ok) {
-        const datos = await resp.json();
-        setComentarios(datos);
-      }
-    } catch (err) {
-      // Fallo silencioso — la sección queda vacía
-    } finally {
-      setCargandoComentarios(false);
-    }
-  }, []);
 
   async function manejarGuardar() {
     if (!selectedTask || !campos) return;
@@ -190,11 +190,15 @@ export default function TaskDetailModal() {
           ? { idUsuario: Number(campos.idUsuarioAsignado) }
           : null,
         fechaVencimiento: campos.fechaVencimiento || null,
+        sprint: campos.idSprint ? { idSprint: Number(campos.idSprint) } : null,
+        horasEstimadas: campos.horasEstimadas !== '' ? Number(campos.horasEstimadas) : null,
+        horasReales: campos.horasReales !== '' ? Number(campos.horasReales) : null,
       };
       const actualizada = await apiActualizarTarea(selectedTask.idTarea, payload);
       updateTarea(selectedTask.idTarea, actualizada ?? payload);
       addToast({ id: `upd-${Date.now()}`, type: 'success', message: 'Task updated successfully' });
-    } catch (err) {
+      cerrarModal();
+    } catch {
       addToast({ id: `err-${Date.now()}`, type: 'error', message: 'Error saving task' });
     } finally {
       setGuardando(false);
@@ -208,43 +212,14 @@ export default function TaskDetailModal() {
       deleteTarea(selectedTask.idTarea);
       addToast({ id: `del-${Date.now()}`, type: 'success', message: `Task YD-${selectedTask.idTarea} deleted` });
       setSelectedTask(null);
-    } catch (err) {
+    } catch {
       addToast({ id: `err-${Date.now()}`, type: 'error', message: 'Error deleting task' });
     }
     setConfirmarEliminar(false);
   }
 
-  async function manejarEnviarComentario(e) {
-    e.preventDefault();
-    if (!nuevoComentario.trim() || !selectedTask) return;
-    setEnviandoComentario(true);
-    try {
-      const resp = await fetch('/api/comentarios-tareas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          cuerpo: nuevoComentario.trim(),
-          idTarea: selectedTask.idTarea,
-        }),
-      });
-      if (resp.ok) {
-        const nuevo = await resp.json();
-        setComentarios((prev) => [...prev, nuevo]);
-        setNuevoComentario('');
-      } else {
-        addToast({ type: 'error', message: 'Error posting comment' });
-      }
-    } catch {
-      addToast({ type: 'error', message: 'Error posting comment' });
-    } finally {
-      setEnviandoComentario(false);
-    }
-  }
-
   function cerrarModal() {
     setSelectedTask(null);
-    setComentarios([]);
     setCampos(null);
   }
 
@@ -272,7 +247,7 @@ export default function TaskDetailModal() {
 
   const estiloCard = {
     width: '100%',
-    maxWidth: '800px',
+    maxWidth: '520px',
     backgroundColor: 'var(--bg-surface)',
     border: '1px solid var(--border)',
     borderRadius: 'var(--radius-lg)',
@@ -293,17 +268,6 @@ export default function TaskDetailModal() {
     flexShrink: 0,
   };
 
-  const estiloIDHeader = {
-    fontFamily: 'var(--font-mono)',
-    fontSize: '0.75rem',
-    color: 'var(--text-muted)',
-    backgroundColor: '#f7f8f9',
-    border: '1px solid var(--border)',
-    borderRadius: 'var(--radius-md)',
-    padding: '3px 8px',
-    flexShrink: 0,
-  };
-
   const estiloTituloHeader = {
     flex: 1,
     fontFamily: 'var(--font-heading)',
@@ -316,8 +280,6 @@ export default function TaskDetailModal() {
   };
 
   const estiloCuerpo = {
-    display: 'grid',
-    gridTemplateColumns: '1fr 320px',
     flex: 1,
     overflow: 'hidden',
   };
@@ -325,19 +287,11 @@ export default function TaskDetailModal() {
   const estiloColumnaIzq = {
     padding: '20px 22px',
     overflowY: 'auto',
-    borderRight: '1px solid var(--border)',
+    height: '100%',
     display: 'flex',
     flexDirection: 'column',
     gap: '1rem',
     alignItems: 'stretch',
-  };
-
-  const estiloColumnaDer = {
-    padding: '20px',
-    overflowY: 'auto',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0',
   };
 
   const estiloFooter = {
@@ -391,74 +345,12 @@ export default function TaskDetailModal() {
     transition: 'color 100ms, background-color 100ms',
   };
 
-  const estiloSeccionComentarios = {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    minHeight: 0,
-  };
-
-  const estiloTituloSeccion = {
-    fontSize: '0.8125rem',
-    fontWeight: 600,
-    color: 'var(--text-secondary)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.06em',
-    marginBottom: '12px',
-  };
-
-  const estiloListaComentarios = {
-    flex: 1,
-    overflowY: 'auto',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-    marginBottom: '14px',
-    minHeight: 0,
-    maxHeight: '280px',
-  };
-
-  const estiloItemComentario = {
-    backgroundColor: '#f7f8f9',
-    border: '1px solid var(--border)',
-    borderRadius: 'var(--radius-md)',
-    padding: '10px 12px',
-  };
-
-  const estiloAutorComentario = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '7px',
-    marginBottom: '5px',
-  };
-
-  const estiloNombreAutor = {
-    fontSize: '0.8125rem',
-    fontWeight: 600,
-    color: 'var(--text-secondary)',
-  };
-
-  const estiloFechaComentario = {
-    fontSize: '0.7rem',
-    fontFamily: 'var(--font-mono)',
-    color: 'var(--text-muted)',
-    marginLeft: 'auto',
-  };
-
-  const estiloCuerpoComentario = {
-    fontSize: '0.875rem',
-    color: 'var(--text-primary)',
-    lineHeight: 1.5,
-    wordBreak: 'break-word',
-  };
-
   return (
     <>
       <div style={estiloOverlay} onClick={cerrarModal}>
         <div style={estiloCard} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
           {/* Header */}
           <div style={estiloHeader}>
-            <span style={estiloIDHeader}>YD-{selectedTask.idTarea}</span>
             <span style={estiloTituloHeader}>{campos.titulo || selectedTask.titulo}</span>
             <button
               style={estiloBotonCerrar}
@@ -477,9 +369,8 @@ export default function TaskDetailModal() {
             </button>
           </div>
 
-          {/* Cuerpo en dos columnas */}
+          {/* Body */}
           <div style={estiloCuerpo}>
-            {/* Columna izquierda — formulario de edición */}
             <div style={estiloColumnaIzq}>
               <CampoEditable label="Title">
                 <InputFocusable
@@ -500,35 +391,19 @@ export default function TaskDetailModal() {
                 />
               </CampoEditable>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                <CampoEditable label="Status">
-                  <SelectFocusable
-                    value={campos.idEstatus}
-                    onChange={(e) => setCampos((p) => ({ ...p, idEstatus: e.target.value }))}
-                  >
-                    <option value="">No status</option>
-                    {(estatuses || []).map((est) => (
-                      <option key={est.idEstatus} value={est.idEstatus}>
-                        {est.nombre}
-                      </option>
-                    ))}
-                  </SelectFocusable>
-                </CampoEditable>
-
-                <CampoEditable label="Priority">
-                  <SelectFocusable
-                    value={campos.idPrioridad}
-                    onChange={(e) => setCampos((p) => ({ ...p, idPrioridad: e.target.value }))}
-                  >
-                    <option value="">No priority</option>
-                    {(prioridades || []).map((pri) => (
-                      <option key={pri.idPrioridad} value={pri.idPrioridad}>
-                        {pri.nombre}
-                      </option>
-                    ))}
-                  </SelectFocusable>
-                </CampoEditable>
-              </div>
+              <CampoEditable label="Priority">
+                <SelectFocusable
+                  value={campos.idPrioridad}
+                  onChange={(e) => setCampos((p) => ({ ...p, idPrioridad: e.target.value }))}
+                >
+                  <option value="">No priority</option>
+                  {(prioridades || []).map((pri) => (
+                    <option key={pri.idPrioridad} value={pri.idPrioridad}>
+                      {pri.nombre}
+                    </option>
+                  ))}
+                </SelectFocusable>
+              </CampoEditable>
 
               <CampoEditable label="Assigned to">
                 <SelectFocusable
@@ -544,6 +419,20 @@ export default function TaskDetailModal() {
                 </SelectFocusable>
               </CampoEditable>
 
+              <CampoEditable label="Sprint">
+                <SelectFocusable
+                  value={campos.idSprint}
+                  onChange={(e) => setCampos((p) => ({ ...p, idSprint: e.target.value }))}
+                >
+                  <option value="">No sprint</option>
+                  {sprints.map((sp) => (
+                    <option key={sp.idSprint} value={sp.idSprint}>
+                      {sp.nombre}
+                    </option>
+                  ))}
+                </SelectFocusable>
+              </CampoEditable>
+
               <CampoEditable label="Due date">
                 <InputFocusable
                   type="date"
@@ -553,76 +442,23 @@ export default function TaskDetailModal() {
                 />
               </CampoEditable>
 
-              {/* Fechas de auditoría */}
+              <CampoEditable label="Estimated hours">
+                <InputFocusable
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={campos.horasEstimadas}
+                  onChange={(e) => setCampos((p) => ({ ...p, horasEstimadas: e.target.value }))}
+                  placeholder="0"
+                />
+              </CampoEditable>
+
+              {/* Audit dates */}
               {selectedTask.creadoEn && (
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                   Created: {formatearFechaHora(selectedTask.creadoEn)}
                 </div>
               )}
-            </div>
-
-            {/* Columna derecha — comentarios */}
-            <div style={estiloColumnaDer}>
-              <div style={estiloSeccionComentarios}>
-                <p style={estiloTituloSeccion}>Comments</p>
-
-                <div style={estiloListaComentarios}>
-                  {cargandoComentarios ? (
-                    <>
-                      <Skeleton height="60px" borderRadius="4px" />
-                      <Skeleton height="60px" borderRadius="4px" />
-                    </>
-                  ) : comentarios.length === 0 ? (
-                    <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>
-                      No comments yet
-                    </p>
-                  ) : (
-                    comentarios.map((com, idx) => (
-                      <div key={com.idComentario ?? idx} style={estiloItemComentario}>
-                        <div style={estiloAutorComentario}>
-                          {com.usuarioAutor && <Avatar user={com.usuarioAutor} size="sm" />}
-                          <span style={estiloNombreAutor}>
-                            {com.usuarioAutor?.nombreUsuario ?? 'Unknown'}
-                          </span>
-                          <span style={estiloFechaComentario}>
-                            {formatearFechaHora(com.creadoEn)}
-                          </span>
-                        </div>
-                        <p style={estiloCuerpoComentario}>{com.cuerpo}</p>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                {/* Nuevo comentario */}
-                <form onSubmit={manejarEnviarComentario} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <TextareaFocusable
-                    value={nuevoComentario}
-                    onChange={(e) => setNuevoComentario(e.target.value)}
-                    placeholder="Write a comment..."
-                    style={{ minHeight: '72px', fontSize: '0.875rem' }}
-                  />
-                  <button
-                    type="submit"
-                    disabled={!nuevoComentario.trim() || enviandoComentario}
-                    style={{
-                      alignSelf: 'flex-end',
-                      padding: '7px 16px',
-                      borderRadius: 'var(--radius-md)',
-                      fontSize: '0.8125rem',
-                      fontWeight: 600,
-                      color: '#fff',
-                      background: 'var(--accent)',
-                      border: 'none',
-                      cursor: !nuevoComentario.trim() || enviandoComentario ? 'not-allowed' : 'pointer',
-                      opacity: !nuevoComentario.trim() || enviandoComentario ? 0.5 : 1,
-                      transition: 'opacity 100ms',
-                    }}
-                  >
-                    {enviandoComentario ? 'Sending…' : 'Comment'}
-                  </button>
-                </form>
-              </div>
             </div>
           </div>
 

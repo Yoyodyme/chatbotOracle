@@ -19,7 +19,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
  * Toda la lógica de procesamiento de mensajes vive en BotUpdateDispatcher.
  */
 @Component
-@ConditionalOnProperty(name = "telegram.bot.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "telegram.bot.enabled", havingValue = "true", matchIfMissing = false)
 public class ToDoItemBotController implements SpringLongPollingBot, LongPollingSingleThreadUpdateConsumer {
 
     private static final Logger logger = LoggerFactory.getLogger(ToDoItemBotController.class);

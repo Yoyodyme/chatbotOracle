@@ -1,7 +1,6 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import TopBar from './TopBar';
 import Toast from '../shared/Toast';
 import TaskDetailModal from '../tasks/TaskDetailModal';
 import ChatbotPanel from '../chatbot/ChatbotPanel';
@@ -12,7 +11,6 @@ import '../../styles/globals.css';
 
 const ANCHO_SIDEBAR_EXPANDIDO = 220;
 const ANCHO_SIDEBAR_COLAPSADO = 52;
-const ALTO_TOPBAR = 48;
 
 export default function AppShell({ tituloPagina }) {
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
@@ -30,18 +28,13 @@ export default function AppShell({ tituloPagina }) {
 
   const estiloMain = {
     marginLeft: anchoSidebar,
-    paddingTop: ALTO_TOPBAR,
     flex: 1,
     minWidth: 0,
-    minHeight: '100vh',
-    backgroundColor: '#f8fafc',
+    overflow: 'auto',
+    paddingTop: 0,
+    marginTop: 0,
+    height: '100vh',
     transition: 'margin-left 250ms cubic-bezier(0.4, 0, 0.2, 1)',
-  };
-
-  const estiloContenido = {
-    padding: '0 24px 24px',
-    minHeight: `calc(100vh - ${ALTO_TOPBAR}px)`,
-    backgroundColor: '#f8fafc',
   };
 
   return (
@@ -49,14 +42,9 @@ export default function AppShell({ tituloPagina }) {
       {/* Fixed left sidebar */}
       <Sidebar />
 
-      {/* Fixed top bar (occupies remaining width) */}
-      <TopBar titulo={tituloPagina} />
-
-      {/* Main content area */}
+      {/* Main content area — starts at top with no offset */}
       <main style={estiloMain}>
-        <div style={estiloContenido}>
-          <Outlet />
-        </div>
+        <Outlet />
       </main>
 
       {/* Task detail modal (controlled by store.selectedTask) */}
