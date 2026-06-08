@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import jakarta.transaction.Transactional;
+import java.util.List;
 
 /**
  * Repositorio heredado del bot.
@@ -17,4 +18,5 @@ import jakarta.transaction.Transactional;
 @EnableTransactionManagement
 public interface ToDoItemRepository extends JpaRepository<Tarea, Long> {
 
+    List<Tarea> findByUsuarioAsignadoIdUsuario(Long idUsuario);
 }

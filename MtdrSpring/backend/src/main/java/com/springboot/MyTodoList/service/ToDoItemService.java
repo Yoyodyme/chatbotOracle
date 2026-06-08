@@ -38,6 +38,10 @@ public class ToDoItemService {
         return envolverLista(repository.findAll());
     }
 
+    public List<ToDoItem> findByUsuarioAsignado(Long userId) {
+        return envolverLista(repository.findByUsuarioAsignadoIdUsuario(userId));
+    }
+
     public ResponseEntity<ToDoItem> getItemById(int id) {
         Optional<Tarea> item = repository.findById((long) id);
         if (item.isPresent()) {
