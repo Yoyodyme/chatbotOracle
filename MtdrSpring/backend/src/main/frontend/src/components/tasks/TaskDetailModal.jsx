@@ -179,27 +179,48 @@ export default function TaskDetailModal() {
   async function manejarGuardar() {
     if (!selectedTask || !campos) return;
     setGuardando(true);
+
+    // Resolve full nested objects from local catalogs so display is instant
+    const estatusObj  = campos.idEstatus
+      ? (estatuses.find(e => e.idEstatus === Number(campos.idEstatus)) ?? { idEstatus: Number(campos.idEstatus) })
+      : null;
+    const prioridadObj = campos.idPrioridad
+      ? (prioridades.find(p => p.idPrioridad === Number(campos.idPrioridad)) ?? { idPrioridad: Number(campos.idPrioridad) })
+      : null;
+    const usuarioObj  = campos.idUsuarioAsignado
+      ? (usuarios.find(u => u.idUsuario === Number(campos.idUsuarioAsignado)) ?? { idUsuario: Number(campos.idUsuarioAsignado) })
+      : null;
+    const sprintObj   = campos.idSprint
+      ? (sprints.find(s => s.idSprint === Number(campos.idSprint)) ?? { idSprint: Number(campos.idSprint) })
+      : null;
+
+    // Payload sent to the API (IDs only, as the backend expects)
+    const payload = {
+      ...selectedTask,
+      titulo:           campos.titulo.trim(),
+      descripcion:      campos.descripcion.trim() || null,
+      estatus:          campos.idEstatus ? { idEstatus: Number(campos.idEstatus) } : null,
+      prioridad:        campos.idPrioridad ? { idPrioridad: Number(campos.idPrioridad) } : null,
+      usuarioAsignado:  campos.idUsuarioAsignado ? { idUsuario: Number(campos.idUsuarioAsignado) } : null,
+      fechaVencimiento: campos.fechaVencimiento || null,
+      sprint:           campos.idSprint ? { idSprint: Number(campos.idSprint) } : null,
+      horasEstimadas:   campos.horasEstimadas !== '' ? Number(campos.horasEstimadas) : null,
+      horasReales:      campos.horasReales !== '' ? Number(campos.horasReales) : null,
+    };
+
+    // Optimistic update — store gets full display objects immediately, modal closes
+    updateTarea(selectedTask.idTarea, { ...payload, estatus: estatusObj, prioridad: prioridadObj, usuarioAsignado: usuarioObj, sprint: sprintObj });
+    cerrarModal();
+
     try {
-      const payload = {
-        ...selectedTask,
-        titulo: campos.titulo.trim(),
-        descripcion: campos.descripcion.trim() || null,
-        estatus: campos.idEstatus ? { idEstatus: Number(campos.idEstatus) } : null,
-        prioridad: campos.idPrioridad ? { idPrioridad: Number(campos.idPrioridad) } : null,
-        usuarioAsignado: campos.idUsuarioAsignado
-          ? { idUsuario: Number(campos.idUsuarioAsignado) }
-          : null,
-        fechaVencimiento: campos.fechaVencimiento || null,
-        sprint: campos.idSprint ? { idSprint: Number(campos.idSprint) } : null,
-        horasEstimadas: campos.horasEstimadas !== '' ? Number(campos.horasEstimadas) : null,
-        horasReales: campos.horasReales !== '' ? Number(campos.horasReales) : null,
-      };
       const actualizada = await apiActualizarTarea(selectedTask.idTarea, payload);
-      updateTarea(selectedTask.idTarea, actualizada ?? payload);
+      // If the API returns richer data (e.g. server-computed fields), apply it
+      if (actualizada) updateTarea(selectedTask.idTarea, actualizada);
       addToast({ id: `upd-${Date.now()}`, type: 'success', message: 'Task updated successfully' });
-      cerrarModal();
     } catch {
-      addToast({ id: `err-${Date.now()}`, type: 'error', message: 'Error saving task' });
+      // Rollback to the original task on failure
+      updateTarea(selectedTask.idTarea, selectedTask);
+      addToast({ id: `err-${Date.now()}`, type: 'error', message: 'Error saving task — changes reverted' });
     } finally {
       setGuardando(false);
     }

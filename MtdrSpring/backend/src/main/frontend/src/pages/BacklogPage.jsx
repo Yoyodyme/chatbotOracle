@@ -48,7 +48,7 @@ function SkeletonRows({ n = 5 }) {
 }
 
 export default function BacklogPage() {
-  const { loading } = useTareas();
+  const { loading, refetch } = useTareas();
   const tareas = useAppStore((s) => s.tareas);
   const estatuses = useAppStore((s) => s.estatuses);
   const prioridades = useAppStore((s) => s.prioridades);
@@ -338,15 +338,44 @@ export default function BacklogPage() {
     <div style={estiloPage}>
       <div style={estiloHeaderRow}>
         <h1 style={estiloTitulo}>Backlog</h1>
-        <button
-          style={estiloBtnNueva}
-          onClick={() => setShowForm(true)}
-          onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.85'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
-        >
-          <span style={{ fontSize: '16px', lineHeight: 1 }}>+</span>
-          New Task
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            onClick={refetch}
+            disabled={loading}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '9px 14px', borderRadius: 'var(--radius-md)',
+              fontSize: '0.875rem', fontWeight: 600,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              border: '1px solid var(--border)',
+              background: 'var(--bg-surface)',
+              color: 'var(--text-primary)',
+              opacity: loading ? 0.6 : 1,
+              transition: 'opacity 150ms',
+            }}
+            onMouseEnter={(e) => { if (!loading) e.currentTarget.style.opacity = '0.75'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.opacity = loading ? '0.6' : '1'; }}
+            title="Refresh tasks"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+                 style={loading ? { animation: 'spin 1s linear infinite' } : undefined}>
+              <polyline points="23 4 23 10 17 10" />
+              <polyline points="1 20 1 14 7 14" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            </svg>
+            Refresh
+          </button>
+          <button
+            style={estiloBtnNueva}
+            onClick={() => setShowForm(true)}
+            onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.85'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+          >
+            <span style={{ fontSize: '16px', lineHeight: 1 }}>+</span>
+            New Task
+          </button>
+        </div>
       </div>
 
       {/* Filters */}

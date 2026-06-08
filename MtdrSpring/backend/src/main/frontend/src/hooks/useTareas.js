@@ -50,27 +50,13 @@ export function useTareas() {
   }, [cargarDatos]);
 
   useEffect(() => {
-    // Carga inicial
+    // Initial load
     cargarDatos();
 
-    // Re-carga automática cada 30 segundos
-    const intervalo = setInterval(() => {
-      cargarDatos();
-    }, 30000);
+    // Auto-refresh every 1 hour
+    const intervalo = setInterval(cargarDatos, 3_600_000);
 
-    // Re-carga al volver a la pestaña
-    function alVisibilidadCambiar() {
-      if (document.visibilityState === 'visible') {
-        cargarDatos();
-      }
-    }
-    window.addEventListener('visibilitychange', alVisibilidadCambiar);
-
-    // Limpieza al desmontar
-    return () => {
-      clearInterval(intervalo);
-      window.removeEventListener('visibilitychange', alVisibilidadCambiar);
-    };
+    return () => clearInterval(intervalo);
   }, [cargarDatos]);
 
   return { loading, error, refetch };
