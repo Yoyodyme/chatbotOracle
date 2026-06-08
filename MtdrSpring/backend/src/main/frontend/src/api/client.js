@@ -1,22 +1,19 @@
 /**
  * Base HTTP client for the Spring Boot API.
- * Uses HTTP Basic auth with development credentials.
- * All requests are relative to the server root (BASE_URL = ''),
- * allowing Vite's proxy to forward /api and /todolist in development,
- * and Spring Boot to serve directly in production.
+ * In prod the Authorization header is populated with a Bearer token via
+ * setAuthToken(), called by OidcTokenSync in main.jsx whenever the OIDC
+ * session changes. In local dev no token is set and the backend (profile
+ * "local") permits all requests.
  */
 
 const BASE_URL = '';
 
-// Development credentials — in production these would be injected from env vars
-const BASIC_CREDENTIALS = btoa('admin:admin123');
+let _bearerToken = null;
 
-const AUTH_HEADER = `Basic ${BASIC_CREDENTIALS}`;
-
-const DEFAULT_HEADERS = {
-  'Content-Type': 'application/json',
-  Authorization: AUTH_HEADER,
-};
+/** Called by OidcTokenSync whenever the OIDC access token changes. */
+export function setAuthToken(token) {
+  _bearerToken = token;
+}
 
 /**
  * Performs an HTTP request to the API.
@@ -29,15 +26,17 @@ const DEFAULT_HEADERS = {
 export async function apiFetch(path, options = {}) {
   const url = `${BASE_URL}${path}`;
 
+  const authHeader = _bearerToken ? { Authorization: `Bearer ${_bearerToken}` } : {};
+
   const config = {
     ...options,
     headers: {
-      ...DEFAULT_HEADERS,
+      'Content-Type': 'application/json',
+      ...authHeader,
       ...options.headers,
     },
   };
 
-  // Serialize body to JSON if it is an object
   if (config.body && typeof config.body === 'object') {
     config.body = JSON.stringify(config.body);
   }
@@ -45,7 +44,6 @@ export async function apiFetch(path, options = {}) {
   try {
     const response = await fetch(url, config);
 
-    // No content — valid response for DELETE/PUT
     if (response.status === 204) {
       return null;
     }

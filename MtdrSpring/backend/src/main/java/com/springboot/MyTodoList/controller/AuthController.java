@@ -16,25 +16,26 @@ public class AuthController {
     @Autowired
     private UsuarioService usuarioService;
 
-    @PostMapping("/login")
-    public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> body) {
-        String nombreUsuario = body.get("nombreUsuario");
-        String password      = body.get("password");
+    // Step 1 — Remove conflicting code
+    // @PostMapping("/login")
+    // public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> body) {
+    //     String nombreUsuario = body.get("nombreUsuario");
+    //     String password      = body.get("password");
 
-        if (nombreUsuario == null || password == null) {
-            Map<String, Object> err = new LinkedHashMap<>();
-            err.put("error", "Credenciales invalidas");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(err);
-        }
+    //     if (nombreUsuario == null || password == null) {
+    //         Map<String, Object> err = new LinkedHashMap<>();
+    //         err.put("error", "Credenciales invalidas");
+    //         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(err);
+    //     }
 
-        Map<String, Object> result = usuarioService.login(nombreUsuario, password);
-        if (result == null) {
-            Map<String, Object> err = new LinkedHashMap<>();
-            err.put("error", "Credenciales invalidas");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(err);
-        }
-        return ResponseEntity.ok(result);
-    }
+    //     Map<String, Object> result = usuarioService.login(nombreUsuario, password);
+    //     if (result == null) {
+    //         Map<String, Object> err = new LinkedHashMap<>();
+    //         err.put("error", "Credenciales invalidas");
+    //         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(err);
+    //     }
+    //     return ResponseEntity.ok(result);
+    // }
 
     @GetMapping("/me")
     public ResponseEntity<Map<String, Object>> me(@RequestParam Long idUsuario) {
