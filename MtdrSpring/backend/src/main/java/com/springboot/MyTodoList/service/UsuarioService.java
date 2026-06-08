@@ -49,6 +49,20 @@ public class UsuarioService {
         return usuarioRepository.findByIdIntegrationUsuario(telegramId);
     }
 
+    public Optional<Usuario> buscarPorOciSubject(String ociSubject) {
+        return usuarioRepository.findByOciSubject(ociSubject);
+    }
+
+    @Transactional
+    public Usuario autoRegistrarDesdeOci(String ociSubject, String nombreUsuario, String nombreCompleto) {
+        Usuario nuevo = new Usuario();
+        nuevo.setOciSubject(ociSubject);
+        nuevo.setNombreUsuario(nombreUsuario);
+        nuevo.setNombreCompleto(nombreCompleto);
+        nuevo.setRol(null);
+        return usuarioRepository.save(nuevo);
+    }
+
     @Transactional
     public Usuario autoRegistrarUsuario(String telegramId, String nombreUsuario, String nombreCompleto) {
         Usuario nuevo = new Usuario();
