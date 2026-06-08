@@ -1,0 +1,252 @@
+/* =====================================================
+   Login Page — Centered card
+   Matches dashboard card style: #1e293b / #334155
+   ===================================================== */
+
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+  padding: 1.5rem;
+}
+
+/* Card: identical to the CARD object used in Dashboard.jsx */
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 32px 36px 36px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.14);
+  animation: fadeInUp 280ms ease-out both;
+}
+
+.login-card__header {
+  margin-bottom: 1.75rem;
+}
+
+.login-card__title {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  letter-spacing: -0.025em;
+  margin-bottom: 0.25rem;
+}
+
+.login-card__subtitle {
+  font-size: 0.9375rem;
+  color: #94a3b8;
+}
+
+/* ── Form ───────────────────────────────────────────── */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.125rem;
+}
+
+/* ── Field ──────────────────────────────────────────── */
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.login-field__label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Dashboard-style labels: uppercase, small, muted */
+.login-field__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.login-field__forgot {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #94a3b8;
+  transition: color var(--transition-fast);
+}
+.login-field__forgot:hover {
+  color: #cbd5e1;
+}
+
+.login-field__input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.login-field__icon {
+  position: absolute;
+  left: 0.875rem;
+  color: var(--text-muted);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  transition: color var(--transition-fast);
+  z-index: 1;
+}
+
+/* Inputs: same pattern as TaskForm.jsx */
+.login-field__input-wrap input {
+  padding-left: 2.625rem;
+  padding-right: 0.875rem;
+  height: 40px;
+  font-size: 0.9375rem;
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: border-color 150ms, box-shadow 150ms;
+  outline: none;
+  width: 100%;
+}
+
+.login-field__input-wrap--has-toggle input {
+  padding-right: 2.75rem;
+}
+
+.login-field__input-wrap input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(6, 111, 204, 0.18);
+}
+
+.login-field__input-wrap:focus-within .login-field__icon {
+  color: var(--accent);
+}
+
+/* ─ Error state */
+.login-field--error .login-field__input-wrap input {
+  border-color: var(--danger);
+  box-shadow: none;
+}
+.login-field--error .login-field__input-wrap input:focus {
+  box-shadow: 0 0 0 3px rgba(218, 30, 40, 0.15);
+}
+.login-field--error .login-field__icon {
+  color: var(--danger);
+}
+
+/* ─ Valid state */
+.login-field--valid .login-field__input-wrap input {
+  border-color: var(--success);
+}
+
+.login-field__error {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #f87171;
+  animation: fadeInUp 150ms ease-out both;
+}
+
+/* Show/hide password toggle */
+.login-field__toggle {
+  position: absolute;
+  right: 0.75rem;
+  padding: 0.25rem;
+  color: var(--text-muted);
+  border-radius: var(--radius-md);
+  transition: color var(--transition-fast);
+  pointer-events: auto;
+  opacity: 1 !important;
+}
+.login-field__toggle:hover {
+  color: var(--accent);
+}
+
+/* ── Submit error banner ─────────────────────────────── */
+.login-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: var(--radius-lg);
+  background: rgba(218, 30, 40, 0.1);
+  border: 1px solid rgba(218, 30, 40, 0.22);
+  color: #f87171;
+  font-size: 0.875rem;
+  font-weight: 500;
+  animation: fadeInUp 150ms ease-out both;
+}
+
+/* ── Submit button ───────────────────────────────────── */
+.login-btn {
+  width: 100%;
+  height: 40px;
+  margin-top: 0.25rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.login-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+  box-shadow: 0 4px 14px rgba(6, 111, 204, 0.35);
+  transform: translateY(-1px);
+}
+
+.login-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.login-btn:disabled {
+  opacity: 0.75 !important;
+  cursor: not-allowed;
+}
+
+.login-btn__spinner {
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+/* ── Register footer ─────────────────────────────────── */
+.login-card__register {
+  margin-top: 1.375rem;
+  text-align: center;
+  font-size: 0.9375rem;
+  color: #64748b;
+}
+
+.login-card__register a {
+  color: var(--accent);
+  font-weight: 600;
+}
+.login-card__register a:hover {
+  color: var(--accent-hover);
+}
+
+/* ── Responsive ──────────────────────────────────────── */
+@media (max-width: 480px) {
+  .login-card {
+    padding: 24px 20px 28px;
+  }
+}
