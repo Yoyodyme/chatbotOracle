@@ -179,7 +179,7 @@ export default function BacklogPage() {
   }
 
   // ── Styles ────────────────────────────────────────────────────────────────
-  const estiloPage = { display: 'flex', flexDirection: 'column', gap: '20px', paddingTop: 24 };
+  const estiloPage = { display: 'flex', flexDirection: 'column', gap: '20px', padding: '40px 32px 28px 32px' };
 
   const estiloHeaderRow = {
     display: 'flex',
@@ -191,9 +191,11 @@ export default function BacklogPage() {
 
   const estiloTitulo = {
     margin: 0,
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 700,
     color: 'var(--text-primary)',
+    letterSpacing: '-0.02em',
+    lineHeight: 1.2,
   };
 
   const estiloBtnNueva = {

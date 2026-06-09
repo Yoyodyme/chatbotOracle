@@ -873,7 +873,7 @@ export default function SprintPage() {
     filtered.length > 0 && filtered.every((s) => selected.has(s.idSprint));
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20, paddingTop: 24 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, padding: "40px 32px 28px 32px" }}>
       {/* ── Page header ── */}
       <div
         style={{
@@ -887,9 +887,11 @@ export default function SprintPage() {
         <h1
           style={{
             margin: 0,
-            fontSize: 24,
+            fontSize: 28,
             fontWeight: 700,
             color: "var(--text-primary)",
+            letterSpacing: "-0.02em",
+            lineHeight: 1.2,
           }}
         >
           Sprints
