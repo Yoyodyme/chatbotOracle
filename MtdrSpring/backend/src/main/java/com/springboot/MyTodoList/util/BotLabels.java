@@ -20,6 +20,8 @@ public enum BotLabels {
 	NEW_SPRINT("New Sprint"),
 	MODIFY_TASK("Modify Task"),
 	MODIFY_SPRINT("Modify Sprint"),
+	ACTIVE_SPRINT("Active Sprint"),
+	LIST_SPRINTS("List Sprints"),
 	CONFIRM_YES("Yes, confirm"),
 	CONFIRM_EDIT("No, edit");
 
