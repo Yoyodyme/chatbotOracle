@@ -9,5 +9,7 @@ jobs:
         with:
           java-version: '11'
           distribution: 'temurin'
+      - name: Clean frontend cache
+        run: rm -rf MtdrSpring/backend/src/main/frontend/node_modules MtdrSpring/backend/src/main/frontend/package-lock.json
       - name: Build and test
         run: cd MtdrSpring/backend && ./mvnw clean verify "-Dtest=!TelegramE2ETest" -DfailIfNoTests=false
