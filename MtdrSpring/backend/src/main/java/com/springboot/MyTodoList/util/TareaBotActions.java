@@ -21,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Handles all Telegram bot commands related to the Tarea (task) domain:
@@ -825,6 +826,90 @@ public class TareaBotActions {
 
         String report = buildKpiReport(sprint, tasks);
         BotHelper.sendMessageToTelegram(chatId, report, telegramClient);
+        exit = true;
+    }
+
+    // ── /activesprint ──────────────────────────────────────────────────────────
+
+    public void fnActiveSprint() {
+        if (exit) return;
+        if (!textoMensaje.equals(BotCommands.ACTIVE_SPRINT.getCommand())) return;
+
+        Optional<Sprint> sprintOpt = sprintService.obtenerSprintActivo();
+        if (sprintOpt.isEmpty()) {
+            BotHelper.sendMessageToTelegram(chatId, BotMessages.ACTIVESPRINT_NO_SPRINT.getMessage(), telegramClient);
+            exit = true;
+            return;
+        }
+
+        Sprint sprint = sprintOpt.get();
+        List<Tarea> tasks = tareaService.obtenerTareasPorSprint(sprint.getIdSprint());
+        BotHelper.sendMessageToTelegram(chatId, buildActiveSprintReport(sprint, tasks), telegramClient);
+        exit = true;
+    }
+
+    private String buildActiveSprintReport(Sprint sprint, List<Tarea> tasks) {
+        Map<String, Long> byStatus = tasks.stream()
+                .filter(t -> t.getEstatus() != null)
+                .collect(Collectors.groupingBy(t -> t.getEstatus().getNombre(), Collectors.counting()));
+
+        double estimatedHours = tasks.stream()
+                .filter(t -> t.getHorasEstimadas() != null)
+                .mapToDouble(Tarea::getHorasEstimadas)
+                .sum();
+
+        double actualHours = tasks.stream()
+                .filter(t -> t.getHorasReales() != null)
+                .mapToDouble(Tarea::getHorasReales)
+                .sum();
+
+        StringBuilder sb = new StringBuilder("=== ACTIVE SPRINT ===\n");
+        sb.append("Name: ").append(sprint.getNombre()).append("\n");
+        if (sprint.getFechaInicio() != null && sprint.getFechaFin() != null) {
+            sb.append("Start: ").append(sprint.getFechaInicio().format(DATE_FORMAT_SHORT))
+              .append("  End: ").append(sprint.getFechaFin().format(DATE_FORMAT_SHORT)).append("\n");
+        }
+        sb.append("Status: ").append(sprint.getEstado() != null ? sprint.getEstado() : "—").append("\n\n");
+        sb.append("Tasks: ").append(tasks.size()).append(" total\n");
+        if (!byStatus.isEmpty()) {
+            byStatus.forEach((status, count) ->
+                    sb.append("  • ").append(status).append(": ").append(count).append("\n"));
+        }
+        sb.append(String.format("%nEstimated: %.1fh  |  Actual: %.1fh", estimatedHours, actualHours));
+        return sb.toString();
+    }
+
+    // ── /listsprints ───────────────────────────────────────────────────────────
+
+    public void fnListSprints() {
+        if (exit) return;
+        if (!textoMensaje.equals(BotCommands.LIST_SPRINTS.getCommand())) return;
+
+        List<Sprint> sprints = sprintService.obtenerTodosLosSprints();
+        if (sprints.isEmpty()) {
+            BotHelper.sendMessageToTelegram(chatId, BotMessages.LISTSPRINTS_EMPTY.getMessage(), telegramClient);
+            exit = true;
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder("All Sprints:\n\n");
+        for (int i = 0; i < sprints.size(); i++) {
+            Sprint s = sprints.get(i);
+            sb.append(i + 1).append(". ").append(s.getNombre());
+            if ("current".equals(s.getEstado())) {
+                sb.append("  [current]");
+            } else if ("past".equals(s.getEstado())) {
+                sb.append("  [past]");
+            } else if (s.getEstado() != null) {
+                sb.append("  [").append(s.getEstado()).append("]");
+            }
+            if (s.getFechaInicio() != null && s.getFechaFin() != null) {
+                sb.append("  ").append(s.getFechaInicio().format(DATE_FORMAT_SHORT))
+                  .append(" → ").append(s.getFechaFin().format(DATE_FORMAT_SHORT));
+            }
+            sb.append("\n");
+        }
+        BotHelper.sendMessageToTelegram(chatId, sb.toString(), telegramClient);
         exit = true;
     }
 
