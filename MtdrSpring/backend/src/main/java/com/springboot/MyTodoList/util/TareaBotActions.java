@@ -448,6 +448,9 @@ public class TareaBotActions {
         List<Sprint> allSprints    = sprintService.obtenerTodosLosSprints();
 
         state.setDato("sprintActivoPresente", activeOpt.isPresent());
+        if (activeOpt.isPresent()) {
+            state.setDato("sprintActivo", activeOpt.get());
+        }
         state.setDato("listaSprintsDisponibles", allSprints);
 
         StringBuilder sb = new StringBuilder();
@@ -500,8 +503,10 @@ public class TareaBotActions {
         if (hasActive) {
             switch (choice) {
                 case 1:
-                    sprintService.obtenerSprintActivo()
-                            .ifPresent(s -> state.setDato("sprintSeleccionado", s));
+                    Sprint activeSprint = (Sprint) state.getDato("sprintActivo");
+                    if (activeSprint != null) {
+                        state.setDato("sprintSeleccionado", activeSprint);
+                    }
                     state.setPaso(7);
                     showNewTaskConfirmation(state);
                     return;
@@ -570,6 +575,7 @@ public class TareaBotActions {
 
     private void showFullSprintList(ConversationState state, List<Sprint> sprints) {
         if (sprints == null || sprints.isEmpty()) {
+            logger.warn("No sprints available in full sprint list; assigning to backlog. chatId={}", chatId);
             state.setDato("sprintSeleccionado", null);
             state.setPaso(7);
             BotHelper.sendMessageToTelegram(chatId,
