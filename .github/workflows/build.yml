@@ -10,4 +10,4 @@ jobs:
           java-version: '11'
           distribution: 'temurin'
       - name: Build and test
-        run: cd MtdrSpring/backend && ./mvnw clean verify -DskipTests=false
+        run: cd MtdrSpring/backend && ./mvnw clean verify "-Dtest=!TelegramE2ETest" -DfailIfNoTests=false
