@@ -171,30 +171,29 @@ export default function Sidebar() {
     <aside style={estiloSidebar}>
       {/* Logo */}
       <div style={{
-        padding: '10px 14px 6px 14px',
-        backgroundColor: 'transparent',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+        padding: sidebarCollapsed ? '12px 15px' : '14px 18px',
         borderBottom: '1px solid var(--sidebar-border)',
+        flexShrink: 0,
+        overflow: 'hidden',
+        transition: 'padding 250ms cubic-bezier(0.4, 0, 0.2, 1)',
       }}>
-        <div style={{
-          backgroundColor: '#ffffff',
-          borderRadius: 12,
-          padding: '8px 12px',
-          display: 'inline-block',
-          width: '100%',
-          boxSizing: 'border-box',
-        }}>
-          <img
-            src="/yoyodyne.png"
-            alt="Yoyodyne"
-            style={{
-              width: '100%',
-              height: 'auto',
-              maxHeight: 52,
-              display: 'block',
-              objectFit: 'contain',
-            }}
-          />
-        </div>
+        <img
+          src="/logo.png"
+          alt="Yoyodyne"
+          style={{
+            height: sidebarCollapsed ? 28 : 38,
+            width: 'auto',
+            maxWidth: sidebarCollapsed ? 28 : 160,
+            display: 'block',
+            objectFit: 'contain',
+            objectPosition: 'left center',
+            transition: 'height 250ms, max-width 250ms',
+            flexShrink: 0,
+          }}
+        />
       </div>
 
       {/* Navigation */}
