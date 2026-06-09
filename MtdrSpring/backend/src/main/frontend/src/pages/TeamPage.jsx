@@ -222,7 +222,6 @@ export default function TeamPage() {
       {mostrarSinEquipo && (
         <section>
           <h2 style={{ ...estiloSeccionHeader, color: 'var(--text-muted)' }}>
-            No team
             <span style={estiloContadorEquipo}>
               {sinEquipo.length} member{sinEquipo.length !== 1 ? 's' : ''}
             </span>
