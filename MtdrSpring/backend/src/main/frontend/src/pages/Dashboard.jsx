@@ -905,18 +905,19 @@ export default function Dashboard() {
   );
 
   return (
-    <div style={{ padding: '0 28px 24px', background: 'var(--bg-base)', minHeight: '100vh',
+    <div style={{ padding: '40px 32px 28px 32px', background: 'var(--bg-base)', minHeight: '100vh',
                   display: 'flex', flexDirection: 'column', gap: 20 }}>
 
       {/* ── SECTION 1 — Header ── */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
-                    flexWrap: 'wrap', gap: 12 }}>
+                    flexWrap: 'wrap', gap: 12, marginBottom: 8 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#1a1a2e' }}>
+          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: 'var(--text-primary)',
+                        letterSpacing: '-0.02em', lineHeight: 1.2 }}>
             Dashboard
           </h1>
           {ultimaAct && (
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748b' }}>
+            <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>
               Updated {ultimaAct.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })} · refreshes every hour
             </p>
           )}

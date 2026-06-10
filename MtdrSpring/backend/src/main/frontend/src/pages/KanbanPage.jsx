@@ -21,7 +21,7 @@ export default function KanbanPage() {
     flexDirection: 'column',
     gap: '20px',
     height: '100%',
-    paddingTop: 24,
+    padding: '40px 32px 28px 32px',
   };
 
   const estiloHeader = {
@@ -34,9 +34,11 @@ export default function KanbanPage() {
 
   const estiloTitulo = {
     margin: 0,
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 700,
     color: 'var(--text-primary)',
+    letterSpacing: '-0.02em',
+    lineHeight: 1.2,
   };
 
   const estiloSelector = {

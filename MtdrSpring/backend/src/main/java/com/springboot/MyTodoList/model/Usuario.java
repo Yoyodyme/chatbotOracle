@@ -33,6 +33,9 @@ public class Usuario {
     @Column(name = "PASSWORD_HASH")
     private String passwordHash;
 
+    @Column(name = "OCI_SUBJECT", unique = true, length = 100)
+    private String ociSubject;
+
     @Column(name = "CREADO_EN", nullable = false, updatable = false)
     private LocalDateTime creadoEn;
 
