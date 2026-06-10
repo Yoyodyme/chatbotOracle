@@ -1,7 +1,9 @@
-import React from 'react';
+// CHANGED 2026-06-10: moved collapse toggle to logo row, added user avatar with profile popover, added sign-out button at bottom
+import React, { useState, useRef, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { NavLink } from 'react-router-dom';
 import useAppStore from '../../store/index';
-import { useCurrentUser } from '../../utils/auth';
+import { useCurrentUser, useSignOut } from '../../utils/auth';
 
 // ── Inline SVG icons ─────────────────────────────────────────────────────────
 function IconDashboard() {
@@ -74,18 +76,28 @@ function IconCollapse({ collapsed }) {
     </svg>
   );
 }
+IconCollapse.propTypes = { collapsed: PropTypes.bool.isRequired };
 
-// ── Oracle-style cloud icon ───────────────────────────────────────────────────
-function IconCloud() {
+function IconLogout() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-      <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
     </svg>
   );
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function getInitials(name) {
+  if (!name) return '?';
+  const words = name.trim().split(/\s+/);
+  if (words.length === 1) return words[0][0].toUpperCase();
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+}
+
 // ── Navigation data ───────────────────────────────────────────────────────────
-const ITEMS_NAV = [
+const NAV_ITEMS = [
   { to: '/',        label: 'Dashboard', icon: <IconDashboard />, exact: true },
   { to: '/board',   label: 'Board',     icon: <IconBoard /> },
   { to: '/backlog', label: 'Backlog',   icon: <IconBacklog /> },
@@ -93,112 +105,209 @@ const ITEMS_NAV = [
   { to: '/team',    label: 'Team',      icon: <IconTeam /> },
 ];
 
-const ANCHO_EXPANDIDO = 220;
-const ANCHO_COLAPSADO = 52;
-const ALTO_TOPBAR = 48;
+const SIDEBAR_W_EXPANDED  = 220;
+const SIDEBAR_W_COLLAPSED = 52;
 
+// ── Sidebar ───────────────────────────────────────────────────────────────────
 export default function Sidebar() {
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
   const toggleSidebar    = useAppStore((s) => s.toggleSidebar);
-  const usuario          = useCurrentUser();
+  const user             = useCurrentUser();
+  const signOut          = useSignOut();
 
-  const ancho = sidebarCollapsed ? ANCHO_COLAPSADO : ANCHO_EXPANDIDO;
+  const [profileOpen, setProfileOpen] = useState(false);
+  const avatarRef = useRef(null);
+  const cardRef   = useRef(null);
+  const [cardPos, setCardPos] = useState({ top: 0, left: 0 });
 
-  const estiloSidebar = {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    bottom: 0,
-    width: ancho,
-    backgroundColor: 'var(--sidebar-bg)',
-    borderRight: 'none',
-    display: 'flex',
-    flexDirection: 'column',
-    zIndex: 100,
-    overflow: 'hidden',
-    transition: 'width 250ms cubic-bezier(0.4, 0, 0.2, 1)',
-  };
+  const initials = getInitials(user.name);
+  const width    = sidebarCollapsed ? SIDEBAR_W_COLLAPSED : SIDEBAR_W_EXPANDED;
 
-  const estiloLogo = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    padding: sidebarCollapsed ? '0 15px' : '0 18px',
-    height: ALTO_TOPBAR,
-    borderBottom: '1px solid var(--sidebar-border)',
-    flexShrink: 0,
-    overflow: 'hidden',
-    whiteSpace: 'nowrap',
-    textDecoration: 'none',
-    transition: 'padding 250ms cubic-bezier(0.4, 0, 0.2, 1)',
-  };
+  // Close profile card when clicking outside both the avatar button and the card
+  useEffect(() => {
+    if (!profileOpen) return;
+    const handler = (e) => {
+      if (avatarRef.current?.contains(e.target)) return;
+      if (cardRef.current?.contains(e.target)) return;
+      setProfileOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [profileOpen]);
 
-  const estiloTextoLogo = {
-    fontFamily: 'var(--font-heading)',
-    fontWeight: 600,
-    fontSize: '1.0625rem',
-    color: '#ffffff',
-    letterSpacing: '-0.01em',
-    opacity: sidebarCollapsed ? 0 : 1,
-    transform: sidebarCollapsed ? 'translateX(-8px)' : 'translateX(0)',
-    transition: 'opacity 200ms, transform 250ms',
-    pointerEvents: 'none',
-  };
-
-  const estiloNav = {
-    flex: 1,
-    padding: '10px 0',
-    overflowX: 'hidden',
-    overflowY: 'auto',
-  };
-
-  const estiloBotonColapsar = {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: sidebarCollapsed ? 'center' : 'flex-end',
-    padding: sidebarCollapsed ? '12px 14px' : '12px 16px',
-    borderTop: '1px solid var(--sidebar-border)',
-    cursor: 'pointer',
-    color: 'var(--sidebar-text)',
-    background: 'none',
-    border: 'none',
-    width: '100%',
-    transition: 'color 100ms, padding 250ms',
-    flexShrink: 0,
+  const handleAvatarClick = () => {
+    if (!profileOpen && avatarRef.current) {
+      const rect = avatarRef.current.getBoundingClientRect();
+      setCardPos({ top: rect.top, left: rect.right + 8 });
+    }
+    setProfileOpen((p) => !p);
   };
 
   return (
-    <aside style={estiloSidebar}>
-      {/* Logo */}
+    <aside style={{
+      position: 'fixed',
+      top: 0, left: 0, bottom: 0,
+      width,
+      backgroundColor: 'var(--sidebar-bg)',
+      display: 'flex',
+      flexDirection: 'column',
+      zIndex: 100,
+      overflow: 'hidden',
+      transition: 'width 250ms cubic-bezier(0.4, 0, 0.2, 1)',
+    }}>
+
+      {/* ── Logo row + collapse toggle ─────────────────────────────────────── */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
-        padding: sidebarCollapsed ? '12px 15px' : '14px 18px',
+        height: 48,
         borderBottom: '1px solid var(--sidebar-border)',
         flexShrink: 0,
         overflow: 'hidden',
+        paddingLeft: sidebarCollapsed ? 0 : 18,
         transition: 'padding 250ms cubic-bezier(0.4, 0, 0.2, 1)',
       }}>
-        <img
-          src="/logo.png"
-          alt="Yoyodyne"
+        {!sidebarCollapsed && (
+          <img
+            src="/logo.png"
+            alt="Yoyodyne"
+            style={{
+              height: 28,
+              width: 'auto',
+              flex: 1,
+              minWidth: 0,
+              objectFit: 'contain',
+              objectPosition: 'left center',
+              display: 'block',
+            }}
+          />
+        )}
+        <button
+          onClick={toggleSidebar}
+          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           style={{
-            height: sidebarCollapsed ? 28 : 38,
-            width: 'auto',
-            maxWidth: sidebarCollapsed ? 28 : 160,
-            display: 'block',
-            objectFit: 'contain',
-            objectPosition: 'left center',
-            transition: 'height 250ms, max-width 250ms',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: sidebarCollapsed ? SIDEBAR_W_COLLAPSED : 36,
+            height: 48,
             flexShrink: 0,
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            color: 'var(--sidebar-text)',
           }}
-        />
+          onMouseEnter={(e) => { e.currentTarget.style.color = '#ffffff'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--sidebar-text)'; }}
+        >
+          <IconCollapse collapsed={sidebarCollapsed} />
+        </button>
       </div>
 
-      {/* Navigation */}
-      <nav style={estiloNav}>
-        {ITEMS_NAV.map((item) => (
+      {/* ── User avatar ───────────────────────────────────────────────────── */}
+      <button
+        ref={avatarRef}
+        onClick={handleAvatarClick}
+        title={sidebarCollapsed ? (user.name || 'Profile') : undefined}
+        aria-label="View profile"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: sidebarCollapsed ? '12px 0' : '12px 14px',
+          justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+          flexShrink: 0,
+          cursor: 'pointer',
+          background: 'none',
+          border: 'none',
+          borderBottom: '1px solid var(--sidebar-border)',
+          width: '100%',
+          color: 'var(--sidebar-text)',
+          overflow: 'hidden',
+          whiteSpace: 'nowrap',
+          transition: 'background-color 100ms, padding 250ms cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--sidebar-hover)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+      >
+        <span style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 28,
+          height: 28,
+          borderRadius: '50%',
+          backgroundColor: 'var(--accent)',
+          color: '#ffffff',
+          fontSize: '0.6875rem',
+          fontWeight: 700,
+          flexShrink: 0,
+          letterSpacing: '0.03em',
+        }}>
+          {initials}
+        </span>
+        {!sidebarCollapsed && (
+          <span style={{
+            fontFamily: 'var(--font-body)',
+            fontSize: '0.8125rem',
+            fontWeight: 500,
+            color: '#ffffff',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
+            {user.name || user.email || 'User'}
+          </span>
+        )}
+      </button>
+
+      {/* ── Profile card (position:fixed escapes overflow:hidden on the aside) */}
+      {profileOpen && (
+        <div
+          ref={cardRef}
+          style={{
+            position: 'fixed',
+            top: cardPos.top,
+            left: cardPos.left,
+            zIndex: 300,
+            backgroundColor: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            padding: '14px 16px',
+            minWidth: 210,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+          }}
+        >
+          <span style={{
+            fontFamily: 'var(--font-body)',
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            color: 'var(--text-primary)',
+          }}>
+            {user.name || '—'}
+          </span>
+          <span style={{
+            fontFamily: 'var(--font-body)',
+            fontSize: '0.8125rem',
+            color: 'var(--text-muted)',
+          }}>
+            {user.email || '—'}
+          </span>
+        </div>
+      )}
+
+      {/* ── Navigation ────────────────────────────────────────────────────── */}
+      <nav style={{
+        flex: 1,
+        padding: '10px 0',
+        overflowX: 'hidden',
+        overflowY: 'auto',
+      }}>
+        {NAV_ITEMS.map((item) => (
           <SidebarNavLink
             key={item.to}
             to={item.to}
@@ -210,46 +319,71 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Collapse button */}
+      {/* ── Sign out ──────────────────────────────────────────────────────── */}
       <button
-        style={estiloBotonColapsar}
-        onClick={toggleSidebar}
-        title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        onMouseEnter={(e) => { e.currentTarget.style.color = '#ffffff'; }}
+        onClick={signOut}
+        title={sidebarCollapsed ? 'Sign out' : undefined}
+        aria-label="Sign out"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: sidebarCollapsed ? '14px 0' : '14px 18px',
+          justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+          cursor: 'pointer',
+          color: 'var(--sidebar-text)',
+          background: 'none',
+          border: 'none',
+          borderTop: '1px solid var(--sidebar-border)',
+          width: '100%',
+          flexShrink: 0,
+          overflow: 'hidden',
+          whiteSpace: 'nowrap',
+          transition: 'color 100ms, padding 250ms cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = '#ff6b6b'; }}
         onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--sidebar-text)'; }}
       >
-        <IconCollapse collapsed={sidebarCollapsed} />
+        <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+          <IconLogout />
+        </span>
+        {!sidebarCollapsed && (
+          <span style={{
+            fontFamily: 'var(--font-body)',
+            fontSize: '0.875rem',
+            fontWeight: 500,
+          }}>
+            Sign out
+          </span>
+        )}
       </button>
     </aside>
   );
 }
 
+// ── SidebarNavLink ────────────────────────────────────────────────────────────
 function SidebarNavLink({ to, label, icon, collapsed, exact }) {
-  const [hovered, setHovered] = React.useState(false);
+  const [hovered, setHovered] = useState(false);
 
   return (
     <NavLink
       to={to}
       end={exact}
-      style={({ isActive }) => ({
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        padding: '10px 18px',
-        paddingLeft: collapsed ? 0 : '18px',
-        justifyContent: collapsed ? 'center' : 'flex-start',
-        textDecoration: 'none',
-        color: isActive
-          ? '#ffffff'
-          : hovered
-          ? '#ffffff'
-          : 'var(--sidebar-text)',
-        backgroundColor: isActive
-          ? 'var(--sidebar-active)'
-          : hovered
-          ? 'var(--sidebar-hover)'
-          : 'transparent',
+      style={({ isActive }) => {
+        const linkColor = (isActive || hovered) ? '#ffffff' : 'var(--sidebar-text)';
+        let bgColor = 'transparent';
+        if (hovered) bgColor = 'var(--sidebar-hover)';
+        if (isActive) bgColor = 'var(--sidebar-active)';
+        return ({
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          padding: '10px 18px',
+          paddingLeft: collapsed ? 0 : '18px',
+          justifyContent: collapsed ? 'center' : 'flex-start',
+          textDecoration: 'none',
+          color: linkColor,
+          backgroundColor: bgColor,
         borderRadius: '0',
         margin: '1px 0',
         transition: 'background-color 100ms, color 100ms, padding 250ms',
@@ -258,7 +392,8 @@ function SidebarNavLink({ to, label, icon, collapsed, exact }) {
         borderLeft: isActive ? '3px solid var(--accent)' : '3px solid transparent',
         borderRight: 'none',
         position: 'relative',
-      })}
+      });
+      }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       title={collapsed ? label : undefined}
@@ -278,3 +413,10 @@ function SidebarNavLink({ to, label, icon, collapsed, exact }) {
     </NavLink>
   );
 }
+SidebarNavLink.propTypes = {
+  to:        PropTypes.string.isRequired,
+  label:     PropTypes.string.isRequired,
+  icon:      PropTypes.node.isRequired,
+  collapsed: PropTypes.bool.isRequired,
+  exact:     PropTypes.bool,
+};
