@@ -348,16 +348,11 @@ export default function Dashboard() {
       };
 
       // 2. Call backend proxy → DeepSeek (API key stays server-side)
-      const response = await fetch('/api/dashboard/generar-reporte', {
+      const aiData = await apiFetch('/api/dashboard/generar-reporte', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(promptData),
+        body: promptData,
       });
 
-      const aiData = await response.json();
-      if (!response.ok) {
-        throw new Error(aiData.error ?? `Server error ${response.status}`);
-      }
       const aiText = aiData.reporte ?? '';
 
       // 3. Parse AI sections

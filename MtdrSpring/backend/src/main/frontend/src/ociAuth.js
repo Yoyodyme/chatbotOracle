@@ -9,9 +9,9 @@ const onSigninCallback = () => {
 };
 
 export const ociAuthConfig = {
-  authority: 'https://idcs-51b2f6e16d974aedba8f49fa2dce9503.identity.oraclecloud.com:443/oauth2/v1',
-  client_id: 'cc728b78e0b44f7f8346b44f4f6fe110',
+  authority: 'https://idcs-51b2f6e16d974aedba8f49fa2dce9503.identity.oraclecloud.com',
+  client_id: '2cc2c70123b74e258a167a9a263a3124',
   redirect_uri: globalThis.location.origin,
-  scope: 'openid',
+  scope: 'openid mytodolist-apiread mytodolist-apiadmin',
   onSigninCallback,
 };
