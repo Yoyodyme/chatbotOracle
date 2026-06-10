@@ -14,7 +14,9 @@ public enum BotCommands {
 	KPI("/kpi"),
 	NEW_SPRINT("/newsprint"),
 	MODIFY_TASK("/modifytask"),
-	MODIFY_SPRINT("/modifysprint");
+	MODIFY_SPRINT("/modifysprint"),
+	ACTIVE_SPRINT("/activesprint"),
+	LIST_SPRINTS("/listsprints");
 
 	private String command;
 
