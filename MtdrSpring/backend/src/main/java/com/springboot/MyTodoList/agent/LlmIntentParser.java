@@ -51,7 +51,8 @@ public class LlmIntentParser implements IntentParser {
             + "If critical information is missing and a clarification is needed, set clarificationNeeded:true.";
 
     private static final String PROMPT_SISTEMA_CONVERSACIONAL =
-            "You are an assistant for the EQ51 agile project. "
+            "You MUST always respond in English regardless of the language of the input. "
+            + "You are an assistant for the EQ51 agile project. "
             + "You can answer questions about tasks, sprints, team members, Scrum, Kanban, and agile methodologies. "
             + "Always respond in English. "
             + "For topics unrelated to project management, respond: "

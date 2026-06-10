@@ -81,6 +81,7 @@ public class BotUpdateDispatcher {
         // Step 1: Handle /start and "Show Main Screen" immediately.
         if (originalMessage.equals("/start")
                 || originalMessage.equals(BotLabels.SHOW_MAIN_SCREEN.getLabel())) {
+            conversationManager.terminarConversacion(chatId);
             conversationManager.limpiarHistorialLlm(chatId);
             sendMainMenu(chatId);
             return;
@@ -156,6 +157,17 @@ public class BotUpdateDispatcher {
             case "/kpi":
                 tareaActions.fnKpi();
                 return;
+            case "/llm":
+                BotHelper.sendMessageToTelegram(chatId,
+                        "Just type your question or request directly — the AI assistant reads all your messages automatically. No prefix needed.",
+                        telegramClient);
+                return;
+            case "/activesprint":
+                tareaActions.fnActiveSprint();
+                return;
+            case "/listsprints":
+                tareaActions.fnListSprints();
+                return;
             default:
                 break;
         }
@@ -229,6 +241,7 @@ public class BotUpdateDispatcher {
      * Returns the original message unchanged if no mapping exists.
      */
     private String resolveEffectiveMessage(String originalMessage) {
+        if ("start".equals(originalMessage))                               return "/start";
         if (BotLabels.NEW_TASK.getLabel().equals(originalMessage))         return "/newtask";
         if (BotLabels.ASSIGN_TO_SPRINT.getLabel().equals(originalMessage)) return "/assignsprint";
         if (BotLabels.COMPLETE_TASK.getLabel().equals(originalMessage))    return "/donetask";
@@ -237,6 +250,8 @@ public class BotUpdateDispatcher {
         if (BotLabels.NEW_SPRINT.getLabel().equals(originalMessage))       return "/newsprint";
         if (BotLabels.MODIFY_TASK.getLabel().equals(originalMessage))      return "/modifytask";
         if (BotLabels.MODIFY_SPRINT.getLabel().equals(originalMessage))    return "/modifysprint";
+        if (BotLabels.ACTIVE_SPRINT.getLabel().equals(originalMessage))    return "/activesprint";
+        if (BotLabels.LIST_SPRINTS.getLabel().equals(originalMessage))     return "/listsprints";
         return originalMessage;
     }
 
@@ -248,16 +263,19 @@ public class BotUpdateDispatcher {
                 .resizeKeyboard(true)
                 .keyboardRow(new KeyboardRow(
                         BotLabels.NEW_TASK.getLabel(),
-                        BotLabels.ASSIGN_TO_SPRINT.getLabel()))
+                        BotLabels.ACTIVE_SPRINT.getLabel()))
                 .keyboardRow(new KeyboardRow(
                         BotLabels.COMPLETE_TASK.getLabel(),
-                        BotLabels.NEW_SPRINT.getLabel()))
-                .keyboardRow(new KeyboardRow(
-                        BotLabels.MODIFY_TASK.getLabel(),
-                        BotLabels.MODIFY_SPRINT.getLabel()))
+                        BotLabels.ASSIGN_TO_SPRINT.getLabel()))
                 .keyboardRow(new KeyboardRow(
                         BotLabels.SPRINT_TABLE.getLabel(),
                         BotLabels.KPI_REPORT.getLabel()))
+                .keyboardRow(new KeyboardRow(
+                        BotLabels.NEW_SPRINT.getLabel(),
+                        BotLabels.LIST_SPRINTS.getLabel()))
+                .keyboardRow(new KeyboardRow(
+                        BotLabels.MODIFY_TASK.getLabel(),
+                        BotLabels.MODIFY_SPRINT.getLabel()))
                 .keyboardRow(new KeyboardRow(
                         BotLabels.SHOW_MAIN_SCREEN.getLabel(),
                         BotLabels.HIDE_MAIN_SCREEN.getLabel()))

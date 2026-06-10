@@ -13,14 +13,18 @@ public enum BotMessages {
 	BYE("Bye! Select /start to resume!"),
 
 	// newtask flow
-	NEWTASK_TITLE("New task\n\nStep 1/4 — Enter the task title:"),
-	NEWTASK_DESC("Step 2/4 — Enter a brief description (or type 'skip' to omit):"),
-	NEWTASK_HOURS("Step 3/4 — How many estimated hours does this task require? (number, max 4h)\nOracle recommends tasks of at most 4 hours. If longer, break it down."),
+	NEWTASK_TITLE("New task\n\nStep 1/6 — Enter the task title:"),
+	NEWTASK_DESC("Step 2/6 — Enter a brief description (or type 'skip' to omit):"),
+	NEWTASK_HOURS("Step 3/6 — How many estimated hours does this task require? (number, max 4h)\nOracle recommends tasks of at most 4 hours. If longer, break it down."),
 	NEWTASK_HOURS_INVALID("Please enter a valid number of hours (e.g. 2, 1.5)."),
 	NEWTASK_HOURS_TOO_LONG("This task exceeds the 4-hour limit recommended by Oracle.\n\nIt is recommended to break it down. Do you want to continue anyway? Type 'yes' to continue or 'cancel' to start over."),
-	NEWTASK_PRIORITY("Step 4/4 — Select the priority:"),
+	NEWTASK_PRIORITY("Step 4/6 — Select the priority:"),
 	NEWTASK_CREATED("Task created successfully.\n\nID: {id}\nTitle: {titulo}\nEstimated hours: {horas}h"),
 	NEWTASK_CANCELLED("Task creation cancelled."),
+
+	// newtask sprint step
+	NEWTASK_SPRINT("Step 6/6 — Which sprint should this task go to?\n\n{lista}\nOr type 'backlog' to add to the backlog without a sprint."),
+	NEWTASK_SPRINT_INVALID("Invalid option. Enter a number from the list, or type 'backlog'."),
 
 	// assignsprint flow
 	ASSIGNSPRINT_NO_SPRINT("There is no active sprint at the moment. Ask your manager to activate a sprint."),
@@ -45,6 +49,12 @@ public enum BotMessages {
 	KPI_NO_SPRINT("There is no active sprint."),
 	KPI_EMPTY("The current sprint has no tasks."),
 
+	// active sprint
+	ACTIVESPRINT_NO_SPRINT("No active sprint. Use 'New Sprint' to create one."),
+
+	// list sprints
+	LISTSPRINTS_EMPTY("No sprints on record yet. Use 'New Sprint' to create one."),
+
 	// newsprint flow
 	NEWSPRINT_NOMBRE("New Sprint\n\nStep 1/3 — Enter the sprint name:"),
 	NEWSPRINT_FECHA_INICIO("Step 2/3 — Start date (dd/MM/yyyy):"),
@@ -53,11 +63,11 @@ public enum BotMessages {
 	NEWSPRINT_CREADO("Sprint '{nombre}' created and activated."),
 	NEWSPRINT_CANCELLED("Sprint creation cancelled."),
 
-	// select assignee in newtask
-	SELECCIONAR_ASIGNADO("Select who to assign the task to:\n(Reply with the number)"),
+	// select assignee in newtask (step 5/6)
+	SELECCIONAR_ASIGNADO("Step 5/6 — Select who to assign the task to:\n(Reply with the number)"),
 
-	// new task confirmation
-	TAREA_CONFIRMACION("Task summary:\nTitle: %s\nDescription: %s\nEstimated hours: %.1f\nPriority: %s\nAssigned to: %s\n\nIs this correct? Reply 'yes' to save, or 'edit [field]' to correct.\nExample: edit title, edit hours, edit priority, edit assigned"),
+	// new task confirmation — 6 format args: title, desc, hours, priority, assignee, sprint
+	TAREA_CONFIRMACION("Task summary:\nTitle: %s\nDescription: %s\nEstimated hours: %.1f\nPriority: %s\nAssigned to: %s\nSprint: %s\n\nIs this correct? Reply 'yes' to save, or 'edit [field]' to correct.\nExample: edit title, edit hours, edit priority, edit assigned, edit sprint"),
 
 	// modify task
 	MODIFICAR_CAMPO("Which field do you want to edit?\n1. Title\n2. Description\n3. Estimated hours\n4. Priority\n5. Assigned to\n6. Sprint\n7. Status\n\nReply with the number."),
