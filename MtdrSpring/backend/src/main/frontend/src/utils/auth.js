@@ -1,25 +1,16 @@
-export function getUsuarioLogueado() {
+import { useAuth } from 'react-oidc-context';
+
+export function useCurrentUser() {
+  const { user } = useAuth();
+  const profile = user?.profile ?? {};
   return {
-    idUsuario: 3,
-    nombreUsuario: 'gabriel.peres',
-    nombreCompleto: 'Gabriel Peres Baptista',
-    rol: 'Scrum Master',
-    idRol: 1,
+    sub:   profile.sub   ?? null,
+    name:  profile.name  ?? profile.preferred_username ?? null,
+    email: profile.email ?? null,
   };
 }
 
-export function isLoggedIn() {
-  return true;
-}
-
-export function logout() {
-  window.location.href = '/';
-}
-
-export function esDeveloper() {
-  return false;
-}
-
-export function esManager() {
-  return true;
+export function useSignOut() {
+  const auth = useAuth();
+  return () => auth.signoutRedirect();
 }

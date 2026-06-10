@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
+import { useAuth } from 'react-oidc-context';
 import Sidebar from './Sidebar';
 import Toast from '../shared/Toast';
 import TaskDetailModal from '../tasks/TaskDetailModal';
@@ -13,8 +14,17 @@ const ANCHO_SIDEBAR_EXPANDIDO = 220;
 const ANCHO_SIDEBAR_COLAPSADO = 52;
 
 export default function AppShell({ tituloPagina }) {
+  const auth = useAuth();
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
   useUsuarios(); // Loads the user list globally for all assignment selectors
+
+  useEffect(() => {
+    if (!auth.isLoading && !auth.isAuthenticated) {
+      auth.signinRedirect();
+    }
+  }, [auth.isLoading, auth.isAuthenticated]);
+
+  if (auth.isLoading || !auth.isAuthenticated) return null;
 
   const anchoSidebar = sidebarCollapsed
     ? ANCHO_SIDEBAR_COLAPSADO

@@ -12,15 +12,7 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 public class WebSecurityConfiguration {
 
-    // ------------------------------------------------------------------
-    // PROD: JWT validation via OCI OIDC. Spring auto-fetches signing keys
-    // from the issuer-uri set in application-prod.properties.
-    //
-    // Scope authority names depend on how OCI formats the scope claim.
-    // After Step 7, verify the token and adjust the hasAuthority() strings
-    // to either SCOPE_read / SCOPE_admin
-    // or SCOPE_mytodolist-api.read / SCOPE_mytodolist-api.admin.
-    // ------------------------------------------------------------------
+    // PROD: JWT validation via OCI OIDC. Signing keys fetched from jwk-set-uri in application-prod.properties.
     @Configuration
     @Profile("prod")
     static class ProdSecurity {
@@ -32,9 +24,9 @@ public class WebSecurityConfiguration {
                 .authorizeHttpRequests(auth -> auth
                     .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                     .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/**")
-                        .hasAnyAuthority("SCOPE_read", "SCOPE_mytodolist-api.read")
+                        .hasAnyAuthority("SCOPE_mytodolist-apiread", "SCOPE_mytodolist-apiadmin")
                     .requestMatchers("/api/**")
-                        .hasAnyAuthority("SCOPE_admin", "SCOPE_mytodolist-api.admin")
+                        .hasAuthority("SCOPE_mytodolist-apiadmin")
                     .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}));
