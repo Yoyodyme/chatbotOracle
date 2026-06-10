@@ -89,9 +89,11 @@ export default function ChatbotPanel() {
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         ) : (
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
+          <img
+            src="/chatbot-avatar.png"
+            alt="Assistant"
+            style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }}
+          />
         )}
       </button>
 
@@ -101,7 +103,13 @@ export default function ChatbotPanel() {
           {/* Header */}
           <div className="chatbot-header">
             <div className="chatbot-header-info">
-              <div className="chatbot-avatar">AI</div>
+              <div className="chatbot-avatar">
+                <img
+                  src="/chatbot-avatar.png"
+                  alt="Assistant"
+                  style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                />
+              </div>
               <div>
                 <p className="chatbot-nombre">Assistant</p>
                 <p className="chatbot-sub">Yoyodyme · Task Manager</p>
