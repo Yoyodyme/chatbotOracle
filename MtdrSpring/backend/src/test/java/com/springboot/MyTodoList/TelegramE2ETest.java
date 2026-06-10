@@ -79,23 +79,29 @@ class TelegramE2ETest {
     // -------------------------------------------------------------------------
 
     /**
-     * Drives the /newtask 7-step wizard and returns the ID of the created task.
-     * Steps: /newtask → title → saltar (skip desc) → 2h → priority 1 → assignee 1 → si
+     * Drives the /newtask 8-step wizard (steps 0-7) and returns the ID of the created task.
+     * Steps: /newtask → title → skip desc → 2h → priority 1 → assignee 1 → sprint (backlog) → yes
+     *
+     * Sprint step (step 6): sends "1" which selects Backlog when no active sprint is present
+     * (no-active-sprint menu: 1=Backlog, 2=Other sprint). If an active sprint exists the
+     * menu is 1=active sprint, 2=Backlog, 3=Other — but in test environments there is
+     * typically no active sprint, so "1" safely maps to Backlog in both cases.
      */
     private Long crearTareaConWizard(String titulo) throws Exception {
         sendMessageToBot("/newtask");
-        sendMessageToBot(titulo);
-        sendMessageToBot("saltar");  // skip description
-        sendMessageToBot("2");       // 2 hours estimated (≤ 4.0 → no long-hours warning)
-        sendMessageToBot("1");       // priority: first in list
-        sendMessageToBot("1");       // assignee: first in list
-        sendMessageToBot("si");      // confirm creation
+        sendMessageToBot(titulo);         // step 0: title
+        sendMessageToBot("skip");         // step 1: skip description
+        sendMessageToBot("2");            // step 2: 2 hours estimated (≤ 4.0 → no long-hours warning)
+        sendMessageToBot("1");            // step 4: priority — first in list
+        sendMessageToBot("1");            // step 5: assignee — first in list
+        sendMessageToBot("1");            // step 6: sprint — "1" = Backlog (no active sprint)
+        sendMessageToBot("yes");          // step 7: final confirmation
 
         return tareaRepository.findAll().stream()
                 .filter(t -> t.getTitulo() != null && t.getTitulo().contains(titulo))
                 .findFirst()
                 .map(Tarea::getIdTarea)
-                .orElseThrow(() -> new AssertionError("Tarea '" + titulo + "' no encontrada en BD tras wizard"));
+                .orElseThrow(() -> new AssertionError("Tarea '" + titulo + "' not found in DB after wizard"));
     }
 
     /**
@@ -113,9 +119,9 @@ class TelegramE2ETest {
 
         sendMessageToBot("/modifytask");
         sendMessageToBot(String.valueOf(tareaId));
-        sendMessageToBot("5");                     // campo 5 = asignado
+        sendMessageToBot("5");                     // field 5 = assignee
         sendMessageToBot(String.valueOf(idx + 1)); // 1-indexed
-        sendMessageToBot("si");
+        sendMessageToBot("yes");
     }
 
     /**
