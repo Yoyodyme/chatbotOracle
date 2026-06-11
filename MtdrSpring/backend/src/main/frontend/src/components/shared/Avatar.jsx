@@ -16,7 +16,7 @@ function hashName(name) {
   for (let i = 0; i < name.length; i++) {
     hash = (hash * 31 + name.charCodeAt(i)) % AVATAR_COLORS.length;
   }
-  return hash;
+  return hash;a
 }
 
 function getInitials(user) {
@@ -34,10 +34,10 @@ const SIZE_MAP = {
   lg: 40,
 };
 
-export default function Avatar({ user, size = 'md' }) {
-  const px = SIZE_MAP[size] ?? SIZE_MAP.md;
-  const initials = getInitials(user);
-  const nombre = user?.nombreCompleto || user?.nombreUsuario || '';
+export default function Avatar({ user, initials: initialsOverride, size = 'md' }) {
+  const px = typeof size === 'number' ? size : (SIZE_MAP[size] ?? SIZE_MAP.md);
+  const initials = initialsOverride ?? getInitials(user);
+  const nombre = user?.nombreCompleto || user?.nombreUsuario || initialsOverride || '';
   const bgColor = AVATAR_COLORS[hashName(nombre)];
   const fontSize = px * 0.375;
 

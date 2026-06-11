@@ -2,105 +2,156 @@ import React from 'react';
 import useAppStore from '../store/index';
 import useUsuarios from '../hooks/useUsuarios';
 import useEquipos from '../hooks/useEquipos';
-import Avatar from '../components/shared/Avatar';
 import Skeleton from '../components/shared/Skeleton';
 import EmptyState from '../components/shared/EmptyState';
 
-function SkeletonTarjetas({ n = 6 }) {
+const FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+
+const DEVELOPMENT_TEAM = [
+  {
+    match: ['gabriel', 'peres'],
+    fullName: 'Gabriel Peres',
+    initials: 'GP',
+    role: 'Database Admin',
+    username: 'gabriel.p',
+    bg: '#DCFCE7',
+    color: '#166534',
+  },
+
+  {
+    match: ['alejandro', 'garcia', 'garcía'],
+    fullName: 'Alejandro García',
+    initials: 'AL',
+    role: 'Developer',
+    username: 'alejandro.g',
+    bg: '#DBEAFE',
+    color: '#2563EB',
+  },
+
+  {
+    match: ['eugenio', 'diaz', 'díaz'],
+    fullName: 'Eugenio Díaz',
+    initials: 'ED',
+    role: 'Product Owner',
+    username: 'eugenio.d',
+    bg: '#FCE7F3',
+    color: '#DB2777',
+  },
+
+  {
+    match: ['elian', 'elián', 'genc'],
+    fullName: 'Elián Genc',
+    initials: 'EG',
+    role: 'Developer',
+    username: 'elian.g',
+    bg: '#FCE7D6',
+    color: '#EA580C',
+  },
+
+  {
+  match: ['rutilo', 'peña', 'pena'],
+  fullName: 'Rutilo de la Peña',
+  initials: 'RD',
+  role: 'Full Stack Developer',
+  username: 'rutilo.d',
+  bg: '#FEF3C7',
+  color: '#D97706',
+  },
+
+  {
+    match: ['grecia', 'saucedo'],
+    fullName: 'Grecia Saucedo',
+    initials: 'GS',
+    role: 'Scrum Master',
+    username: 'grecia.s',
+    bg: '#E9D5FF',
+    color: '#9333EA',
+  },
+];
+
+function getDevInfo(usuario) {
+  const text = [
+    usuario?.nombreCompleto,
+    usuario?.nombreUsuario,
+    usuario?.nombre,
+    usuario?.apellido,
+    usuario?.apellidos,
+    usuario?.name,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  return DEVELOPMENT_TEAM.find((dev) =>
+    dev.match.some((m) => text.includes(m.toLowerCase()))
+  );
+}
+
+function SkeletonCards({ n = 5 }) {
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-        gap: '12px',
-      }}
-    >
+    <div style={styles.grid}>
       {[...Array(n)].map((_, i) => (
-        <div
-          key={i}
-          style={{
-            backgroundColor: 'var(--bg-surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '20px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '10px',
-          }}
-        >
-          <Skeleton width="48px" height="48px" borderRadius="50%" />
-          <Skeleton width="100px" height="14px" />
-          <Skeleton width="72px" height="12px" />
-          <Skeleton width="64px" height="20px" borderRadius="9999px" />
+        <div key={i} style={styles.card}>
+          <Skeleton width="54px" height="54px" borderRadius="50%" />
+          <Skeleton width="120px" height="14px" />
+          <Skeleton width="84px" height="12px" />
+          <Skeleton width="86px" height="20px" borderRadius="999px" />
         </div>
       ))}
     </div>
   );
 }
 
-function TarjetaUsuario({ usuario }) {
-  const estiloCard = {
-    backgroundColor: 'var(--bg-surface)',
-    border: '1px solid var(--border)',
-    borderRadius: 'var(--radius-lg)',
-    padding: '20px',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '8px',
-    textAlign: 'center',
-    animation: 'fadeInUp 200ms ease-out both',
-    transition: 'border-color 150ms, box-shadow 150ms',
-    boxShadow: 'var(--shadow-sm)',
-  };
-
-  const estiloNombreCompleto = {
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-    fontSize: '0.9375rem',
-    color: 'var(--text-primary)',
-  };
-
-  const estiloNombreUsuario = {
-    fontFamily: 'var(--font-mono)',
-    fontSize: '0.75rem',
-    color: 'var(--text-muted)',
-  };
-
-  const estiloRolBadge = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    padding: '3px 10px',
-    borderRadius: '9999px',
-    fontSize: '0.6875rem',
-    fontWeight: 600,
-    letterSpacing: '0.04em',
-    backgroundColor: 'var(--accent-soft)',
-    border: '1px solid rgba(6,111,204,0.25)',
-    color: 'var(--accent)',
-  };
-
+function DevAvatar({ dev, size = 54 }) {
   return (
-    <div
-      style={estiloCard}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = 'var(--accent)';
-        e.currentTarget.style.boxShadow = 'var(--shadow-md)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = 'var(--border)';
-        e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+    <span
+      style={{
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        backgroundColor: dev.bg,
+        color: dev.color,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: Math.round(size * 0.38),
+        fontWeight: 600,
+        flexShrink: 0,
+        border: `1px solid ${dev.color}33`,
       }}
     >
-      <Avatar user={usuario} size="lg" />
-      <span style={estiloNombreCompleto}>
-        {usuario.nombreCompleto || usuario.nombreUsuario}
+      {dev.initials}
+    </span>
+  );
+}
+
+function MemberCard({ usuario }) {
+  const dev = getDevInfo(usuario);
+  if (!dev) return null;
+
+  return (
+    <div style={styles.card}>
+      <DevAvatar dev={dev} />
+
+      <div style={styles.memberInfo}>
+        <span style={styles.memberName}>
+          {dev.fullName}
+        </span>
+        <span style={styles.username}>
+          @{dev.username}
+        </span>
+      </div>
+
+      <span
+        style={{
+          ...styles.roleBadge,
+          backgroundColor: dev.bg,
+          color: dev.color,
+          borderColor: `${dev.color}33`,
+        }}
+      >
+        {dev.role}
       </span>
-      <span style={estiloNombreUsuario}>@{usuario.nombreUsuario}</span>
-      {usuario.rol?.nombre && (
-        <span style={estiloRolBadge}>{usuario.rol.nombre}</span>
-      )}
     </div>
   );
 }
@@ -108,145 +159,222 @@ function TarjetaUsuario({ usuario }) {
 export default function TeamPage() {
   const { loading: loadingUsuarios } = useUsuarios();
   const { loading: loadingEquipos } = useEquipos();
-  const usuarios = useAppStore((s) => s.usuarios);
-  const equipos = useAppStore((s) => s.equipos);
 
+  const usuarios = useAppStore((s) => s.usuarios);
   const loading = loadingUsuarios || loadingEquipos;
 
-  const estiloPage = { display: 'flex', flexDirection: 'column', gap: '32px', padding: '40px 32px 28px 32px' };
+  const usuariosFiltrados = DEVELOPMENT_TEAM.map((dev) => {
+  const usuarioApi = usuarios.find((u) => getDevInfo(u)?.initials === dev.initials);
 
-  const estiloTitulo = {
-    margin: 0,
-    fontSize: 28,
-    fontWeight: 700,
-    color: 'var(--text-primary)',
-    letterSpacing: '-0.02em',
-    lineHeight: 1.2,
+  return {
+    idUsuario: usuarioApi?.idUsuario || dev.initials,
+    nombreCompleto: dev.fullName,
+    nombreUsuario: dev.username,
+    rol: { nombre: dev.role },
+    devInfo: dev,
   };
-
-  const estiloSeccionHeader = {
-    fontFamily: 'var(--font-heading)',
-    fontWeight: 600,
-    fontSize: '1rem',
-    color: 'var(--text-primary)',
-    marginBottom: '12px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-  };
-
-  const estiloContadorEquipo = {
-    fontFamily: 'var(--font-body)',
-    fontSize: '0.8125rem',
-    fontWeight: 400,
-    color: 'var(--text-muted)',
-  };
-
-  const estiloGrid = {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-    gap: '12px',
-  };
-
-  const estiloDivider = {
-    height: '1px',
-    backgroundColor: 'var(--border)',
-    margin: '0',
-  };
-
-  const EXCLUIDOS = ['luis martinez', 'ana garcia'];
-  const usuariosFiltrados = usuarios.filter(
-    (u) => !EXCLUIDOS.includes((u.nombreCompleto || '').toLowerCase())
-  );
+});
 
   if (loading) {
     return (
-      <div style={estiloPage}>
-        <h1 style={estiloTitulo}>Team</h1>
-        <SkeletonTarjetas n={8} />
+      <div style={styles.page}>
+        <header style={styles.topbar}>
+          <div>
+            <h1 style={styles.title}>Team</h1>
+            <p style={styles.subtitle}>Loading development team...</p>
+          </div>
+        </header>
+
+        <section style={styles.content}>
+          <SkeletonCards n={5} />
+        </section>
       </div>
     );
   }
 
   if (usuariosFiltrados.length === 0) {
     return (
-      <div style={estiloPage}>
-        <h1 style={estiloTitulo}>Team</h1>
-        <EmptyState
-          icon="👥"
-          title="No members"
-          message="No users found in the system."
-        />
+      <div style={styles.page}>
+        <header style={styles.topbar}>
+          <div>
+            <h1 style={styles.title}>Team</h1>
+            <p style={styles.subtitle}>Development team</p>
+          </div>
+        </header>
+
+        <section style={styles.content}>
+          <EmptyState
+            icon="👥"
+            title="No development team members"
+            message="No matching users found in the system."
+          />
+        </section>
       </div>
     );
   }
 
-  const usuariosConEquipo = new Set();
-  const secciones = equipos.map((equipo) => {
-    const miembros = usuariosFiltrados.filter((u) => {
-      const perteneceEquipo =
-        u.equipo?.idEquipo === equipo.idEquipo ||
-        u.idEquipo === equipo.idEquipo;
-      if (perteneceEquipo) usuariosConEquipo.add(u.idUsuario);
-      return perteneceEquipo;
-    });
-    return { equipo, miembros };
-  });
-
-  const sinEquipo = usuariosFiltrados.filter((u) => !usuariosConEquipo.has(u.idUsuario));
-  const mostrarSinEquipo = sinEquipo.length > 0;
-
   return (
-    <div style={estiloPage}>
-      <h1 style={estiloTitulo}>Team</h1>
+    <div style={styles.page}>
+      <header style={styles.topbar}>
+        <div>
+          <h1 style={styles.title}>Team</h1>
+          <p style={styles.subtitle}>
+            {usuariosFiltrados.length} members · development team
+          </p>
+        </div>
+      </header>
 
-      {secciones.map(({ equipo, miembros }) => (
-        miembros.length > 0 && (
-          <section key={equipo.idEquipo}>
-            <h2 style={estiloSeccionHeader}>
-              {equipo.nombre}
-              <span style={estiloContadorEquipo}>
-                {miembros.length} member{miembros.length !== 1 ? 's' : ''}
-              </span>
-            </h2>
-            <div style={estiloGrid}>
-              {miembros.map((u) => (
-                <TarjetaUsuario key={u.idUsuario} usuario={u} />
-              ))}
+      <section style={styles.content}>
+        <div style={styles.sectionCard}>
+          <div style={styles.sectionHeader}>
+            <div>
+              <h2 style={styles.sectionTitle}>Development team</h2>
+              <p style={styles.sectionSubtitle}>
+                Core members working on the task manager
+              </p>
             </div>
-            <div style={{ ...estiloDivider, marginTop: '24px' }} />
-          </section>
-        )
-      ))}
 
-      {mostrarSinEquipo && (
-        <section>
-          <h2 style={{ ...estiloSeccionHeader, color: 'var(--text-muted)' }}>
-            <span style={estiloContadorEquipo}>
-              {sinEquipo.length} member{sinEquipo.length !== 1 ? 's' : ''}
+            <span style={styles.countBadge}>
+              {usuariosFiltrados.length} members
             </span>
-          </h2>
-          <div style={estiloGrid}>
-            {sinEquipo.map((u) => (
-              <TarjetaUsuario key={u.idUsuario} usuario={u} />
-            ))}
           </div>
-        </section>
-      )}
 
-      {equipos.length === 0 && (
-        <section>
-          <h2 style={estiloSeccionHeader}>
-            All members
-            <span style={estiloContadorEquipo}>{usuariosFiltrados.length}</span>
-          </h2>
-          <div style={estiloGrid}>
+          <div style={styles.grid}>
             {usuariosFiltrados.map((u) => (
-              <TarjetaUsuario key={u.idUsuario} usuario={u} />
+              <MemberCard key={u.idUsuario || u.nombreUsuario} usuario={u} />
             ))}
           </div>
-        </section>
-      )}
+        </div>
+      </section>
     </div>
   );
 }
+
+const styles = {
+  page: {
+    fontFamily: FONT,
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: '100%',
+    backgroundColor: '#F8F9FB',
+  },
+
+  topbar: {
+    backgroundColor: '#FFFFFF',
+    borderBottom: '0.5px solid #E5E7EB',
+    padding: '14px 24px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+  title: {
+    margin: 0,
+    fontSize: 22,
+    fontWeight: 700,
+    letterSpacing: '-0.02em',
+    color: '#111827',
+  },
+
+  subtitle: {
+    margin: '4px 0 0',
+    fontSize: 11,
+    fontWeight: 400,
+    color: '#9CA3AF',
+  },
+
+  content: {
+    padding: '16px 24px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 14,
+  },
+
+  sectionCard: {
+    backgroundColor: '#FFFFFF',
+    border: '0.5px solid #E5E7EB',
+    borderRadius: 10,
+    padding: 20,
+    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+  },
+
+  sectionHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 16,
+  },
+
+  sectionTitle: {
+    margin: 0,
+    fontSize: 14,
+    fontWeight: 700,
+    color: '#111827',
+  },
+
+  sectionSubtitle: {
+    margin: '4px 0 0',
+    fontSize: 11,
+    fontWeight: 400,
+    color: '#9CA3AF',
+  },
+
+  countBadge: {
+    backgroundColor: '#FEE2E2',
+    color: '#DC2626',
+    borderRadius: 20,
+    padding: '2px 8px',
+    fontSize: 10,
+    fontWeight: 500,
+    whiteSpace: 'nowrap',
+  },
+
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+    gap: 12,
+  },
+
+  card: {
+    backgroundColor: '#FFFFFF',
+    border: '0.5px solid #E5E7EB',
+    borderRadius: 10,
+    padding: '18px 16px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 10,
+    textAlign: 'center',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+    animation: 'fadeInUp 200ms ease-out both',
+  },
+
+  memberInfo: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 3,
+  },
+
+  memberName: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: '#111827',
+  },
+
+  username: {
+    fontSize: 11,
+    fontWeight: 400,
+    color: '#9CA3AF',
+  },
+
+  roleBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    border: '0.5px solid',
+    borderRadius: 20,
+    padding: '2px 8px',
+    fontSize: 10,
+    fontWeight: 500,
+  },
+};

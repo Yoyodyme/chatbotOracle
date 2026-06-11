@@ -3,123 +3,51 @@ import { useDroppable } from '@dnd-kit/core';
 import KanbanCard from './KanbanCard';
 import CardSkeleton from './CardSkeleton';
 
-function getCountColor(nombreEstatus) {
-  const nombre = (nombreEstatus || '').toLowerCase().trim();
-  if (nombre === 'en progreso') return 'var(--warning)';
-  if (nombre === 'completada') return 'var(--success)';
-  return 'var(--text-muted)';
+function getStatusColor(nombre) {
+  const n = (nombre || '').toLowerCase();
+
+  if (n.includes('progress') || n.includes('progreso')) return '#F59E0B';
+  if (n.includes('review') || n.includes('revisión') || n.includes('revision')) return '#a855f7';
+  if (n.includes('done') || n.includes('complet')) return '#22C55E';
+  return '#2563EB';
 }
 
 export default function KanbanColumn({ estatus, tareas, onAddCard, loading = false }) {
   const { setNodeRef, isOver } = useDroppable({ id: String(estatus.idEstatus) });
-
-  const countColor = getCountColor(estatus.nombre);
-
-  const estiloColumna = {
-    width: '280px',
-    minWidth: '280px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0',
-    flexShrink: 0,
-  };
-
-  const estiloHeader = {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: '10px',
-    padding: '0 2px',
-  };
-
-  const estiloHeaderLeft = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  };
-
-  const estiloNombre = {
-    fontFamily: "'IBM Plex Sans', sans-serif",
-    fontWeight: 600,
-    fontSize: '13px',
-    color: 'var(--text-primary)',
-    letterSpacing: '0.04em',
-    textTransform: 'uppercase',
-  };
-
-  const estiloContador = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: '20px',
-    height: '20px',
-    padding: '0 6px',
-    borderRadius: '9999px',
-    backgroundColor: 'var(--bg-base)',
-    border: '1px solid var(--border)',
-    fontFamily: "'IBM Plex Sans', sans-serif",
-    fontSize: '11px',
-    fontWeight: 600,
-    color: countColor,
-    lineHeight: 1,
-  };
-
-  const estiloBotonAgregar = {
-    width: '24px',
-    height: '24px',
-    borderRadius: 'var(--radius-md)',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '16px',
-    color: 'var(--text-muted)',
-    background: 'transparent',
-    border: '1px solid transparent',
-    cursor: 'pointer',
-    transition: 'color 150ms ease, border-color 150ms ease, background-color 150ms ease',
-    lineHeight: 1,
-    flexShrink: 0,
-  };
-
-  const estiloDropArea = {
-    minHeight: '400px',
-    borderRadius: 'var(--radius-lg)',
-    padding: '8px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    backgroundColor: isOver ? 'var(--accent-soft)' : '#ebedf0',
-    border: `1.5px dashed ${isOver ? 'var(--accent)' : 'transparent'}`,
-    transition: 'background-color 150ms ease, border-color 150ms ease',
-  };
+  const color = getStatusColor(estatus.nombre);
 
   return (
-    <div style={estiloColumna}>
-      <div style={estiloHeader}>
-        <div style={estiloHeaderLeft}>
-          <span style={estiloNombre}>{estatus.nombre}</span>
-          <span style={estiloContador}>{loading ? '…' : tareas.length}</span>
+    <div style={styles.column}>
+      <div style={styles.header}>
+        <div style={styles.headerLeft}>
+          <span style={styles.name}>{estatus.nombre}</span>
+          <span
+            style={{
+              ...styles.counter,
+              backgroundColor: `${color}14`,
+              color,
+            }}
+          >
+            {loading ? '…' : tareas.length}
+          </span>
         </div>
+
         <button
-          style={estiloBotonAgregar}
+          style={styles.addButton}
           onClick={() => onAddCard && onAddCard(estatus)}
-          title={`Add task to ${estatus.nombre}`}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = 'var(--accent)';
-            e.currentTarget.style.borderColor = 'var(--border)';
-            e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = 'var(--text-muted)';
-            e.currentTarget.style.borderColor = 'transparent';
-            e.currentTarget.style.backgroundColor = 'transparent';
-          }}
         >
           +
         </button>
       </div>
 
-      <div ref={setNodeRef} style={estiloDropArea}>
+      <div
+        ref={setNodeRef}
+        style={{
+          ...styles.dropArea,
+          borderColor: isOver ? color : '#E5E7EB',
+          backgroundColor: isOver ? `${color}0D` : '#F9FAFB',
+        }}
+      >
         {loading ? (
           <>
             <CardSkeleton />
@@ -131,21 +59,9 @@ export default function KanbanColumn({ estatus, tareas, onAddCard, loading = fal
             <KanbanCard key={tarea.idTarea} tarea={tarea} />
           ))
         )}
+
         {!loading && tareas.length === 0 && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flex: 1,
-              minHeight: '120px',
-              color: 'var(--text-muted)',
-              fontSize: '13px',
-              fontFamily: "'IBM Plex Sans', sans-serif",
-              textAlign: 'center',
-              padding: '16px',
-            }}
-          >
+          <div style={styles.empty}>
             {isOver ? 'Drop here' : 'No tasks'}
           </div>
         )}
@@ -153,3 +69,67 @@ export default function KanbanColumn({ estatus, tareas, onAddCard, loading = fal
     </div>
   );
 }
+
+const styles = {
+  column: {
+    width: 280,
+    minWidth: 280,
+    flexShrink: 0,
+  },
+
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+
+  headerLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+  },
+
+  name: {
+    fontSize: 14,
+    fontWeight: 700,
+    color: '#111827',
+  },
+
+  counter: {
+    borderRadius: 20,
+    padding: '1px 7px',
+    fontSize: 10,
+    fontWeight: 500,
+  },
+
+  addButton: {
+    border: 'none',
+    background: 'transparent',
+    color: '#111827',
+    fontSize: 16,
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
+
+  dropArea: {
+    minHeight: 460,
+    borderRadius: 10,
+    padding: 10,
+    border: '0.5px solid #E5E7EB',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    transition: 'background-color 0.15s, border-color 0.15s',
+  },
+
+  empty: {
+    flex: 1,
+    minHeight: 120,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#9CA3AF',
+    fontSize: 12,
+  },
+};

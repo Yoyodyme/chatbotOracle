@@ -1,26 +1,11 @@
-/**
- * SprintPage — /sprints route
- *
- * Table-style sprint management page.
- *
- * Features:
- *   - List all sprints with derived status (ACTIVO / FUTURO / PASADO)
- *   - Search by name, sort by date / status / name
- *   - Row selection with action bar (Delete · Change status · Cancel)
- *   - Click row (not checkbox) → SprintDetailPanel with tasks
- *   - Create sprint modal (POST /api/sprints)
- *   - Change status modal (PUT /api/sprints/{id}, toggling activo)
- *   - Delete via ConfirmDialog (no backend DELETE endpoint yet — shows warning)
- *
- * Status derivation (frontend-only):
- *   activo === true                       → ACTIVO
- *   fechaInicio > today && !activo        → FUTURO
- *   fechaFin <= today && !activo          → PASADO
- */
-
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import useSprints, { deriveSprintStatus } from "../hooks/useSprints";
-import { createSprint, updateSprint, deleteSprint, getTareasBySprint } from "../api/sprints";
+import {
+  createSprint,
+  updateSprint,
+  deleteSprint,
+  getTareasBySprint,
+} from "../api/sprints";
 import SprintDetailPanel from "../components/sprint/SprintDetailModal";
 import ConfirmDialog from "../components/shared/ConfirmDialog";
 import Skeleton from "../components/shared/Skeleton";
@@ -28,7 +13,68 @@ import EmptyState from "../components/shared/EmptyState";
 import useAppStore from "../store/index";
 import "../styles/animations.css";
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+const FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+
+const STATUS_ORDER = { ACTIVO: 0, FUTURO: 1, PASADO: 2 };
+
+const STATUS_CONFIG = {
+  ACTIVO: {
+    label: "Active",
+    bg: "#FEE2E2",
+    color: "#DC2626",
+    border: "#FECACA",
+    dot: "#DC2626",
+  },
+  FUTURO: {
+    label: "Future",
+    bg: "#EFF6FF",
+    color: "#1E40AF",
+    border: "#BFDBFE",
+    dot: "#2563EB",
+  },
+  PASADO: {
+    label: "Past",
+    bg: "#F9FAFB",
+    color: "#475569",
+    border: "#E5E7EB",
+    dot: "#9CA3AF",
+  },
+};
+
+const STATUS_FILTERS = [
+  {
+    label: "All statuses",
+    value: "",
+    bg: "#F9FAFB",
+    color: "#6B7280",
+    border: "#E5E7EB",
+    dot: "#9CA3AF",
+  },
+  {
+    label: "Active",
+    value: "ACTIVO",
+    bg: "#FEE2E2",
+    color: "#DC2626",
+    border: "#FECACA",
+    dot: "#DC2626",
+  },
+  {
+    label: "Future",
+    value: "FUTURO",
+    bg: "#EFF6FF",
+    color: "#1E40AF",
+    border: "#BFDBFE",
+    dot: "#2563EB",
+  },
+  {
+    label: "Past",
+    value: "PASADO",
+    bg: "#F9FAFB",
+    color: "#475569",
+    border: "#E5E7EB",
+    dot: "#9CA3AF",
+  },
+];
 
 function fmtDate(dateStr) {
   if (!dateStr) return "—";
@@ -36,45 +82,23 @@ function fmtDate(dateStr) {
   return `${m}/${d}/${y.slice(2)}`;
 }
 
-const STATUS_ORDER = { ACTIVO: 0, FUTURO: 1, PASADO: 2 };
-
-// ── Sub-components ────────────────────────────────────────────────────────────
-
 function StatusPill({ status }) {
-  const CONFIG = {
-    ACTIVO: {
-      bg: "var(--accent-soft)",
-      border: "rgba(6,111,204,0.25)",
-      color: "var(--accent)",
-      dot: "var(--accent)",
-    },
-    FUTURO: {
-      bg: "#f1efe8",
-      border: "rgba(141,141,141,0.3)",
-      color: "#5f5e5a",
-      dot: "#888780",
-    },
-    PASADO: {
-      bg: "#f5c4b3",
-      border: "rgba(153,60,29,0.35)",
-      color: "#712b13",
-      dot: "#993c1d",
-    },
-  };
-  const cfg = CONFIG[status] ?? CONFIG.PASADO;
+  const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.PASADO;
+
   return (
     <span
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: 5,
-        fontSize: 11,
-        fontWeight: 600,
-        padding: "2px 9px",
-        borderRadius: 10,
-        background: cfg.bg,
-        border: `1px solid ${cfg.border}`,
+        gap: 6,
+        fontSize: 10,
+        fontWeight: 500,
+        padding: "2px 8px",
+        borderRadius: 20,
+        backgroundColor: cfg.bg,
+        border: `0.5px solid ${cfg.border}`,
         color: cfg.color,
+        whiteSpace: "nowrap",
       }}
     >
       <span
@@ -82,80 +106,54 @@ function StatusPill({ status }) {
           width: 6,
           height: 6,
           borderRadius: "50%",
-          background: cfg.dot,
+          backgroundColor: cfg.dot,
           flexShrink: 0,
         }}
       />
-      {status.charAt(0) + status.slice(1).toLowerCase()}
+      {cfg.label}
     </span>
   );
 }
 
-function ProgressCell({ total, done }) {
+function ProgressCell({ total, done, status }) {
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  const fill =
+    status === "ACTIVO"
+      ? "#DC2626"
+      : status === "FUTURO"
+      ? "#2563EB"
+      : "#22C55E";
+
   return (
-    <div>
-      <div
-        style={{
-          textAlign: "center",
-          marginBottom: 3,
-          fontSize: 12,
-          color: "var(--text-secondary)",
-        }}
-      >
-        {done}
-      </div>
-      {total > 0 && (
+    <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+      <span style={styles.progressText}>
+        {done} / {total || 0}
+      </span>
+
+      <div style={styles.progressTrack}>
         <div
           style={{
-            height: 3,
-            width: 52,
-            margin: "0 auto",
-            background: "var(--bg-hover)",
-            borderRadius: 2,
-            overflow: "hidden",
+            ...styles.progressFill,
+            width: `${pct}%`,
+            backgroundColor: fill,
           }}
-        >
-          <div
-            style={{
-              height: "100%",
-              width: `${pct}%`,
-              background: "var(--accent)",
-              borderRadius: 2,
-            }}
-          />
-        </div>
-      )}
+        />
+      </div>
     </div>
   );
 }
 
 function SkeletonRows({ n = 5 }) {
   return [...Array(n)].map((_, i) => (
-    <tr key={i} style={{ borderBottom: "1px solid var(--border)" }}>
-      <td style={{ padding: "10px 10px" }}>
-        <Skeleton width="14px" height="14px" borderRadius="3px" />
-      </td>
-      <td style={{ padding: "10px 10px" }}>
-        <Skeleton width="160px" height="13px" />
-      </td>
-      <td style={{ padding: "10px 10px" }}>
-        <Skeleton width="70px" height="18px" borderRadius="9999px" />
-      </td>
-      <td style={{ padding: "10px 10px" }}>
-        <Skeleton width="120px" height="13px" />
-      </td>
-      <td style={{ padding: "10px 10px" }}>
-        <Skeleton width="28px" height="13px" />
-      </td>
-      <td style={{ padding: "10px 10px" }}>
-        <Skeleton width="28px" height="13px" />
-      </td>
+    <tr key={i}>
+      {[24, 160, 80, 160, 70, 70].map((w, j) => (
+        <td key={j} style={styles.td}>
+          <Skeleton width={`${w}px`} height="12px" />
+        </td>
+      ))}
     </tr>
   ));
 }
-
-// ── Create Sprint Modal ───────────────────────────────────────────────────────
 
 function CreateSprintModal({ onClose, onSubmit }) {
   const [form, setForm] = useState({
@@ -166,8 +164,7 @@ function CreateSprintModal({ onClose, onSubmit }) {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Close on Escape
-  React.useEffect(() => {
+  useEffect(() => {
     const h = (e) => {
       if (e.key === "Escape") onClose();
     };
@@ -177,20 +174,25 @@ function CreateSprintModal({ onClose, onSubmit }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
+
     if (!form.nombre.trim()) {
       setError("Sprint name is required.");
       return;
     }
+
     if (!form.fechaInicio || !form.fechaFin) {
       setError("Start and end dates are required.");
       return;
     }
+
     if (form.fechaFin <= form.fechaInicio) {
       setError("End date must be after start date.");
       return;
     }
+
     setError("");
     setSaving(true);
+
     try {
       await onSubmit({
         nombre: form.nombre.trim(),
@@ -204,72 +206,19 @@ function CreateSprintModal({ onClose, onSubmit }) {
     }
   }
 
-  const inputStyle = {
-    fontFamily: "var(--font-body)",
-    fontSize: "0.875rem",
-    color: "var(--text-primary)",
-    backgroundColor: "var(--bg-surface)",
-    border: "1px solid var(--border)",
-    borderRadius: "var(--radius-md)",
-    padding: "8px 12px",
-    width: "100%",
-    outline: "none",
-    boxSizing: "border-box",
-  };
-
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        backgroundColor: "rgba(0,0,0,0.5)",
-        zIndex: 10000,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-      }}
-      onClick={onClose}
-    >
+    <div style={styles.modalOverlay} onClick={onClose}>
       <div
-        style={{
-          backgroundColor: "var(--bg-surface)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-lg)",
-          padding: 28,
-          width: "100%",
-          maxWidth: 440,
-          boxShadow: "var(--shadow-md)",
-          animation: "scaleIn 150ms ease-out both",
-        }}
+        style={styles.modal}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
       >
-        <h2
-          style={{
-            fontFamily: "var(--font-heading)",
-            fontWeight: 600,
-            fontSize: "1.125rem",
-            color: "var(--text-primary)",
-            marginBottom: 20,
-          }}
-        >
-          New sprint
-        </h2>
+        <h2 style={styles.modalTitle}>New sprint</h2>
+
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: 14 }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: "0.8125rem",
-                fontWeight: 500,
-                color: "var(--text-secondary)",
-                marginBottom: 5,
-              }}
-            >
-              Name *
-            </label>
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Name</label>
             <input
               type="text"
               value={form.nombre}
@@ -278,147 +227,56 @@ function CreateSprintModal({ onClose, onSubmit }) {
               }
               placeholder="Sprint 5"
               autoFocus
-              style={inputStyle}
+              style={styles.input}
               onFocus={(e) => {
-                e.currentTarget.style.borderColor = "var(--accent)";
-                e.currentTarget.style.boxShadow =
-                  "0 0 0 3px rgba(6,111,204,0.18)";
+                e.currentTarget.style.borderColor = "#DC2626";
               }}
               onBlur={(e) => {
-                e.currentTarget.style.borderColor = "var(--border)";
-                e.currentTarget.style.boxShadow = "none";
+                e.currentTarget.style.borderColor = "#E5E7EB";
               }}
             />
           </div>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 12,
-              marginBottom: 14,
-            }}
-          >
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "0.8125rem",
-                  fontWeight: 500,
-                  color: "var(--text-secondary)",
-                  marginBottom: 5,
-                }}
-              >
-                Start date{" "}
-                <span style={{ fontSize: 10, color: "var(--text-muted)" }}>
-                  (fechaInicio)
-                </span>
-              </label>
+
+          <div style={styles.dateGrid}>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Start date</label>
               <input
                 type="date"
                 value={form.fechaInicio}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, fechaInicio: e.target.value }))
                 }
-                style={{ ...inputStyle, colorScheme: "light" }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = "var(--accent)";
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = "var(--border)";
-                }}
+                style={styles.input}
               />
             </div>
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "0.8125rem",
-                  fontWeight: 500,
-                  color: "var(--text-secondary)",
-                  marginBottom: 5,
-                }}
-              >
-                End date{" "}
-                <span style={{ fontSize: 10, color: "var(--text-muted)" }}>
-                  (fechaFin)
-                </span>
-              </label>
+
+            <div style={styles.formGroup}>
+              <label style={styles.label}>End date</label>
               <input
                 type="date"
                 value={form.fechaFin}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, fechaFin: e.target.value }))
                 }
-                style={{ ...inputStyle, colorScheme: "light" }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = "var(--accent)";
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = "var(--border)";
-                }}
+                style={styles.input}
               />
             </div>
           </div>
-          {error && (
-            <p
-              style={{
-                fontSize: "0.8125rem",
-                color: "var(--danger)",
-                marginBottom: 12,
-              }}
-            >
-              {error}
-            </p>
-          )}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: 10,
-              marginTop: 20,
-            }}
-          >
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                padding: "9px 16px",
-                borderRadius: "var(--radius-md)",
-                fontSize: "0.875rem",
-                fontWeight: 500,
-                color: "var(--text-secondary)",
-                background: "transparent",
-                border: "1px solid var(--border)",
-                cursor: "pointer",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "var(--bg-hover)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "transparent";
-              }}
-            >
+
+          {error && <p style={styles.errorText}>{error}</p>}
+
+          <div style={styles.modalActions}>
+            <button type="button" onClick={onClose} style={styles.ghostButton}>
               Cancel
             </button>
+
             <button
               type="submit"
               disabled={saving}
               style={{
-                padding: "9px 20px",
-                borderRadius: "var(--radius-md)",
-                fontSize: "0.875rem",
-                fontWeight: 600,
-                color: "#fff",
-                background: "var(--accent)",
-                border: "none",
-                cursor: saving ? "not-allowed" : "pointer",
+                ...styles.primaryButton,
                 opacity: saving ? 0.7 : 1,
-              }}
-              onMouseEnter={(e) => {
-                if (!saving) e.currentTarget.style.opacity = "0.85";
-              }}
-              onMouseLeave={(e) => {
-                if (!saving) e.currentTarget.style.opacity = "1";
+                cursor: saving ? "not-allowed" : "pointer",
               }}
             >
               {saving ? "Creating…" : "Create sprint"}
@@ -430,39 +288,16 @@ function CreateSprintModal({ onClose, onSubmit }) {
   );
 }
 
-// ── Change Status Modal ───────────────────────────────────────────────────────
-
 function ChangeStatusModal({ count, onClose, onApply }) {
   const [picked, setPicked] = useState(null);
 
   const OPTIONS = [
-    { status: "ACTIVO", label: "Activo" },
-    { status: "FUTURO", label: "Futuro" },
-    { status: "PASADO", label: "Pasado" },
+    { status: "ACTIVO", label: "Active" },
+    { status: "FUTURO", label: "Future" },
+    { status: "PASADO", label: "Past" },
   ];
 
-  const CFG = {
-    ACTIVO: {
-      bg: "var(--accent-soft)",
-      border: "rgba(6,111,204,0.25)",
-      color: "var(--accent)",
-      dot: "var(--accent)",
-    },
-    FUTURO: {
-      bg: "#f1efe8",
-      border: "rgba(141,141,141,0.3)",
-      color: "#5f5e5a",
-      dot: "#888780",
-    },
-    PASADO: {
-      bg: "#f5c4b3",
-      border: "rgba(153,60,29,0.35)",
-      color: "#712b13",
-      dot: "#993c1d",
-    },
-  };
-
-  React.useEffect(() => {
+  useEffect(() => {
     const h = (e) => {
       if (e.key === "Escape") onClose();
     };
@@ -471,144 +306,59 @@ function ChangeStatusModal({ count, onClose, onApply }) {
   }, [onClose]);
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        backgroundColor: "rgba(0,0,0,0.5)",
-        zIndex: 10000,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-      }}
-      onClick={onClose}
-    >
+    <div style={styles.modalOverlay} onClick={onClose}>
       <div
-        style={{
-          backgroundColor: "var(--bg-surface)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-lg)",
-          padding: 28,
-          width: "100%",
-          maxWidth: 400,
-          boxShadow: "var(--shadow-md)",
-          animation: "scaleIn 150ms ease-out both",
-        }}
+        style={styles.modalSmall}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
       >
-        <h2
-          style={{
-            fontFamily: "var(--font-heading)",
-            fontWeight: 600,
-            fontSize: "1.125rem",
-            color: "var(--text-primary)",
-            marginBottom: 6,
-          }}
-        >
-          Change sprint status
-        </h2>
-        <p
-          style={{
-            fontSize: "0.8125rem",
-            color: "var(--text-secondary)",
-            marginBottom: 16,
-          }}
-        >
+        <h2 style={styles.modalTitle}>Change sprint status</h2>
+        <p style={styles.modalSubtitle}>
           Applies to {count} sprint{count !== 1 ? "s" : ""}.
         </p>
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "row",
-            flexWrap: "wrap",
-            gap: 8,
-            marginBottom: 20,
-          }}
-        >
+
+        <div style={styles.statusOptions}>
           {OPTIONS.map((opt) => {
-            const cfg = CFG[opt.status];
-            const isSelected = picked?.status === opt.status;
+            const cfg = STATUS_CONFIG[opt.status];
+            const selected = picked?.status === opt.status;
+
             return (
-              <span
+              <button
                 key={opt.status}
                 onClick={() => setPicked(opt)}
                 style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  padding: "5px 13px",
-                  borderRadius: 999,
-                  cursor: "pointer",
-                  background: cfg.bg,
+                  ...styles.statusOption,
+                  backgroundColor: cfg.bg,
                   color: cfg.color,
-                  border: isSelected
-                    ? `2px solid ${cfg.dot}`
-                    : `1px solid ${cfg.border}`,
-                  boxShadow: isSelected ? `0 0 0 3px ${cfg.bg}` : "none",
-                  transition: "border 100ms, box-shadow 100ms",
-                  userSelect: "none",
+                  borderColor: selected ? cfg.dot : cfg.border,
+                  boxShadow: selected ? `0 0 0 3px ${cfg.bg}` : "none",
                 }}
               >
                 <span
                   style={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: "50%",
-                    background: cfg.dot,
-                    flexShrink: 0,
+                    ...styles.statusDot,
+                    backgroundColor: cfg.dot,
                   }}
                 />
                 {opt.label}
-              </span>
+              </button>
             );
           })}
         </div>
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-          <button
-            onClick={onClose}
-            style={{
-              padding: "9px 16px",
-              borderRadius: "var(--radius-md)",
-              fontSize: "0.875rem",
-              fontWeight: 500,
-              color: "var(--text-secondary)",
-              background: "transparent",
-              border: "1px solid var(--border)",
-              cursor: "pointer",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--bg-hover)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "transparent";
-            }}
-          >
+
+        <div style={styles.modalActions}>
+          <button onClick={onClose} style={styles.ghostButton}>
             Cancel
           </button>
+
           <button
             disabled={!picked}
             onClick={() => picked && onApply(picked.status)}
             style={{
-              padding: "9px 20px",
-              borderRadius: "var(--radius-md)",
-              fontSize: "0.875rem",
-              fontWeight: 600,
-              color: "#fff",
-              background: "var(--accent)",
-              border: "none",
-              cursor: picked ? "pointer" : "not-allowed",
+              ...styles.primaryButton,
               opacity: picked ? 1 : 0.5,
-            }}
-            onMouseEnter={(e) => {
-              if (picked) e.currentTarget.style.opacity = "0.85";
-            }}
-            onMouseLeave={(e) => {
-              if (picked) e.currentTarget.style.opacity = "1";
+              cursor: picked ? "pointer" : "not-allowed",
             }}
           >
             Apply
@@ -619,14 +369,13 @@ function ChangeStatusModal({ count, onClose, onApply }) {
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
-
 export default function SprintPage() {
   const { sprints, loading, error, refetch, setSprints } = useSprints();
   const addToast = useAppStore((s) => s.addToast);
 
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("date-desc");
+  const [statusFilter, setStatusFilter] = useState("");
   const [selected, setSelected] = useState(new Set());
   const [activeSprint, setActiveSprint] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -636,7 +385,9 @@ export default function SprintPage() {
 
   useEffect(() => {
     if (!sprints.length) return;
+
     let cancelled = false;
+
     Promise.all(
       sprints.map((s) =>
         getTareasBySprint(s.idSprint)
@@ -644,8 +395,13 @@ export default function SprintPage() {
             const total = tareas.length;
             const done = tareas.filter((t) => {
               const name = (t.estatus?.nombre ?? "").toLowerCase().trim();
-              return name === "completed" || name === "completada" || name === "done";
+              return (
+                name === "completed" ||
+                name === "completada" ||
+                name === "done"
+              );
             }).length;
+
             return [s.idSprint, { total, done }];
           })
           .catch(() => [s.idSprint, { total: 0, done: 0 }])
@@ -653,43 +409,57 @@ export default function SprintPage() {
     ).then((entries) => {
       if (!cancelled) setTaskCounts(Object.fromEntries(entries));
     });
-    return () => { cancelled = true; };
-  }, [sprints]);
 
-  // ── Filtering & sorting ───────────────────────────────────────────────────
+    return () => {
+      cancelled = true;
+    };
+  }, [sprints]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
+
     let list = q
       ? sprints.filter((s) => s.nombre.toLowerCase().includes(q))
       : [...sprints];
 
+    if (statusFilter) {
+      list = list.filter((s) => deriveSprintStatus(s) === statusFilter);
+    }
+
     list.sort((a, b) => {
-      if (sort === "date-desc")
+      if (sort === "date-desc") {
         return (b.fechaInicio ?? "").localeCompare(a.fechaInicio ?? "");
-      if (sort === "date-asc")
+      }
+
+      if (sort === "date-asc") {
         return (a.fechaInicio ?? "").localeCompare(b.fechaInicio ?? "");
+      }
+
       if (sort === "name-asc") return a.nombre.localeCompare(b.nombre);
       if (sort === "name-desc") return b.nombre.localeCompare(a.nombre);
+
       if (sort === "status-asc") {
         return (
           (STATUS_ORDER[deriveSprintStatus(a)] ?? 9) -
           (STATUS_ORDER[deriveSprintStatus(b)] ?? 9)
         );
       }
+
       if (sort === "status-desc") {
         return (
           (STATUS_ORDER[deriveSprintStatus(b)] ?? 9) -
           (STATUS_ORDER[deriveSprintStatus(a)] ?? 9)
         );
       }
+
       return 0;
     });
 
     return list;
-  }, [sprints, search, sort]);
+  }, [sprints, search, sort, statusFilter]);
 
-  // ── Selection helpers ─────────────────────────────────────────────────────
+  const allChecked =
+    filtered.length > 0 && filtered.every((s) => selected.has(s.idSprint));
 
   const toggleOne = useCallback((id) => {
     setSelected((prev) => {
@@ -702,38 +472,33 @@ export default function SprintPage() {
   const toggleAll = useCallback(
     (checked) => {
       setSelected(
-        checked ? new Set(filtered.map((s) => s.idSprint)) : new Set(),
+        checked ? new Set(filtered.map((s) => s.idSprint)) : new Set()
       );
     },
-    [filtered],
+    [filtered]
   );
 
   const clearSelection = useCallback(() => setSelected(new Set()), []);
 
-  // ── Row click (detail panel) ──────────────────────────────────────────────
-
-  const handleRowClick = useCallback(
-    (sprint) => {
-      setActiveSprint((prev) =>
-        prev?.idSprint === sprint.idSprint ? null : sprint,
-      );
-      setShowCreate(false);
-      setShowStatus(false);
-    },
-    [],
-  );
-
-  // ── CRUD handlers ─────────────────────────────────────────────────────────
+  function handleRowClick(sprint) {
+    setActiveSprint((prev) =>
+      prev?.idSprint === sprint.idSprint ? null : sprint
+    );
+    setShowCreate(false);
+    setShowStatus(false);
+  }
 
   async function handleCreate(data) {
     try {
       const nuevo = await createSprint(data);
       setSprints((prev) => [nuevo, ...prev]);
+
       addToast({
         id: `cre-${Date.now()}`,
         message: `Sprint "${nuevo.nombre}" created.`,
         type: "success",
       });
+
       setShowCreate(false);
     } catch {
       addToast({
@@ -741,29 +506,35 @@ export default function SprintPage() {
         message: "Error creating sprint.",
         type: "error",
       });
+
       throw new Error("create failed");
     }
   }
 
   async function handleApplyStatus(estado) {
     const ids = [...selected];
+
     setShowStatus(false);
     clearSelection();
+
     try {
       await Promise.all(
         ids.map((id) => {
           const sprint = sprints.find((s) => s.idSprint === id);
           if (!sprint) return Promise.resolve();
           return updateSprint(id, { ...sprint, estado });
-        }),
+        })
       );
-      // Optimistic update
+
       setSprints((prev) =>
-        prev.map((s) => (ids.includes(s.idSprint) ? { ...s, estado } : s)),
+        prev.map((s) => (ids.includes(s.idSprint) ? { ...s, estado } : s))
       );
+
       addToast({
         id: `st-${Date.now()}`,
-        message: `Status updated for ${ids.length} sprint${ids.length !== 1 ? "s" : ""}.`,
+        message: `Status updated for ${ids.length} sprint${
+          ids.length !== 1 ? "s" : ""
+        }.`,
         type: "success",
       });
     } catch {
@@ -777,11 +548,15 @@ export default function SprintPage() {
 
   async function handleDeleteConfirmed() {
     const ids = [...selected];
+
     setConfirmDelete(false);
     clearSelection();
+
     try {
       await Promise.all(ids.map((id) => deleteSprint(id)));
+
       setSprints((prev) => prev.filter((s) => !ids.includes(s.idSprint)));
+
       addToast({
         id: `del-${Date.now()}`,
         message: `${ids.length} sprint${ids.length !== 1 ? "s" : ""} deleted.`,
@@ -796,106 +571,35 @@ export default function SprintPage() {
     }
   }
 
-  // ── Shared input style ────────────────────────────────────────────────────
-
-  const inputStyle = {
-    fontFamily: "var(--font-body)",
-    fontSize: "0.875rem",
-    color: "var(--text-primary)",
-    backgroundColor: "var(--bg-surface)",
-    border: "1px solid var(--border)",
-    borderRadius: "var(--radius-md)",
-    padding: "8px 12px",
-    outline: "none",
-    transition: "border-color 150ms",
-  };
-
-  const thStyle = {
-    padding: "12px 16px",
-    textAlign: "left",
-    fontFamily: "var(--font-body)",
-    fontSize: "0.75rem",
-    fontWeight: 600,
-    color: "var(--text-muted)",
-    letterSpacing: "0.04em",
-    textTransform: "uppercase",
-    borderBottom: "1px solid var(--border)",
-    backgroundColor: "#f7f8f9",
-    whiteSpace: "nowrap",
-    userSelect: "none",
-  };
-
-  const tdStyle = {
-    padding: "12px 16px",
-    fontSize: 13,
-    color: "var(--text-primary)",
-    verticalAlign: "middle",
-  };
-
-  // ── Render ────────────────────────────────────────────────────────────────
+  const hasFilters = search || statusFilter;
 
   if (error) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-        <h1
-          style={{
-            fontFamily: "var(--font-heading)",
-            fontWeight: 600,
-            fontSize: "1.375rem",
-            color: "var(--text-primary)",
-            letterSpacing: "-0.01em",
-          }}
-        >
-          Sprints
-        </h1>
-        <p style={{ color: "var(--danger)", fontSize: "0.875rem" }}>
-          Could not load sprints.{" "}
-          <button
-            onClick={refetch}
-            style={{
-              color: "var(--accent)",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              textDecoration: "underline",
-              fontFamily: "var(--font-body)",
-              fontSize: "0.875rem",
-            }}
-          >
+      <div style={styles.page}>
+        <header style={styles.topbar}>
+          <div>
+            <h1 style={styles.title}>Sprints</h1>
+            <p style={styles.subtitle}>Could not load sprints.</p>
+          </div>
+
+          <button onClick={refetch} style={styles.ghostButton}>
             Retry
           </button>
-        </p>
+        </header>
       </div>
     );
   }
 
-  const allChecked =
-    filtered.length > 0 && filtered.every((s) => selected.has(s.idSprint));
-
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20, padding: "40px 32px 28px 32px" }}>
-      {/* ── Page header ── */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "12px",
-          flexWrap: "wrap",
-        }}
-      >
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 28,
-            fontWeight: 700,
-            color: "var(--text-primary)",
-            letterSpacing: "-0.02em",
-            lineHeight: 1.2,
-          }}
-        >
-          Sprints
-        </h1>
+    <div style={styles.page}>
+      <header style={styles.topbar}>
+        <div>
+          <h1 style={styles.title}>Sprints</h1>
+          <p style={styles.subtitle}>
+            {filtered.length} sprints · plan, track and manage sprint cycles
+          </p>
+        </div>
+
         {selected.size === 0 && (
           <button
             onClick={() => {
@@ -903,489 +607,298 @@ export default function SprintPage() {
               setShowCreate(true);
               setShowStatus(false);
             }}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "9px 18px",
-              borderRadius: "var(--radius-md)",
-              fontSize: "0.875rem",
-              fontWeight: 600,
-              color: "#fff",
-              background: "var(--accent)",
-              border: "none",
-              cursor: "pointer",
-              transition: "opacity 150ms",
-              flexShrink: 0,
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.85"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
+            style={styles.primaryButton}
           >
-            <span style={{ fontSize: "16px", lineHeight: 1 }}>+</span>
-            New sprint
+            + New sprint
           </button>
         )}
-      </div>
+      </header>
 
-      {/* ── Filters ── */}
-      <div
-        style={{
-          display: "flex",
-          gap: "10px",
-          flexWrap: "wrap",
-          alignItems: "center",
-        }}
-      >
-        <input
-          type="text"
-          placeholder="Search by name…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ ...inputStyle, width: "220px" }}
-          onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
-          onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
-        />
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value)}
-          style={{
-            ...inputStyle,
-            width: "auto",
-            minWidth: "140px",
-            cursor: "pointer",
-            backgroundImage:
-              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238d8d8d' d='M6 8L1 3h10z'/%3E%3C/svg%3E\")",
-            backgroundRepeat: "no-repeat",
-            backgroundPosition: "right 10px center",
-            paddingRight: "32px",
-            appearance: "none",
-            WebkitAppearance: "none",
-          }}
-        >
-          <option value="date-desc">Date: most recent</option>
-          <option value="date-asc">Date: oldest</option>
-          <option value="status-asc">Status: Activo → Pasado</option>
-          <option value="status-desc">Status: Pasado → Activo</option>
-          <option value="name-asc">Name: A → Z</option>
-          <option value="name-desc">Name: Z → A</option>
-        </select>
-        {search && (
-          <button
-            style={{
-              fontSize: "0.8125rem",
-              color: "var(--text-muted)",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: "4px 8px",
-            }}
-            onClick={() => setSearch("")}
-          >
-            ✕ Clear filters
-          </button>
-        )}
-      </div>
+      <section style={styles.content}>
+        <div style={styles.filterCard}>
+          <div style={styles.filterGroup}>
+            <div style={styles.filterLabel}>Status</div>
+            <div style={styles.chipRow}>
+              {STATUS_FILTERS.map((status) => {
+                const active = statusFilter === status.value;
 
-      {/* ── Action bar (visible only when rows are selected) ── */}
-      {selected.size > 0 && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "8px 12px",
-            background: "var(--bg-hover)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-md)",
-            animation: "fadeInUp 120ms ease-out both",
-          }}
-        >
-          <span
-            style={{
-              fontSize: 12,
-              color: "var(--text-secondary)",
-              marginRight: 4,
-            }}
-          >
-            {selected.size} selected
-          </span>
+                return (
+                  <button
+                    key={status.label}
+                    onClick={() => setStatusFilter(status.value)}
+                    style={{
+                      ...styles.filterChip,
+                      backgroundColor: active ? status.bg : "#FFFFFF",
+                      color: active ? status.color : "#6B7280",
+                      borderColor: active ? status.border : "#E5E7EB",
+                    }}
+                  >
+                    <span
+                      style={{
+                        ...styles.statusDot,
+                        backgroundColor: status.dot,
+                      }}
+                    />
+                    {status.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-          {/* Delete */}
-          <button
-            onClick={() => setConfirmDelete(true)}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 5,
-              padding: "5px 12px",
-              borderRadius: "var(--radius-md)",
-              fontSize: 12,
-              cursor: "pointer",
-              background: "#FCEBEB",
-              color: "#A32D2D",
-              border: "1px solid #F09595",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "#F7C1C1";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "#FCEBEB";
-            }}
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          <div style={styles.filterDivider} />
+
+          <div style={styles.filterRow}>
+            <input
+              type="text"
+              placeholder="Search by sprint name..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={styles.input}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = "#DC2626";
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = "#E5E7EB";
+              }}
+            />
+
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              style={styles.select}
             >
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6l-1 14H6L5 6" />
-              <path d="M10 11v6" />
-              <path d="M14 11v6" />
-              <path d="M9 6V4h6v2" />
-            </svg>
-            Delete
-          </button>
+              <option value="date-desc">Date: most recent</option>
+              <option value="date-asc">Date: oldest</option>
+              <option value="status-asc">Status: Active → Past</option>
+              <option value="status-desc">Status: Past → Active</option>
+              <option value="name-asc">Name: A → Z</option>
+              <option value="name-desc">Name: Z → A</option>
+            </select>
 
-          {/* Change status */}
-          <button
-            onClick={() => {
-              setShowStatus(true);
-              setShowCreate(false);
-              setActiveSprint(null);
-            }}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 5,
-              padding: "5px 12px",
-              borderRadius: "var(--radius-md)",
-              fontSize: 12,
-              cursor: "pointer",
-              background: "var(--bg-surface)",
-              color: "var(--text-primary)",
-              border: "1px solid var(--border)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--bg-hover)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "var(--bg-surface)";
-            }}
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="23 4 23 10 17 10" />
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-            </svg>
-            Change status
-          </button>
-
-          {/* Cancel */}
-          <button
-            onClick={clearSelection}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 5,
-              padding: "5px 12px",
-              borderRadius: "var(--radius-md)",
-              fontSize: 12,
-              cursor: "pointer",
-              background: "transparent",
-              color: "var(--text-secondary)",
-              border: "1px solid transparent",
-              marginLeft: "auto",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--bg-surface)";
-              e.currentTarget.style.borderColor = "var(--border)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.borderColor = "transparent";
-            }}
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-            Cancel
-          </button>
+            {hasFilters && (
+              <button
+                style={styles.clearButton}
+                onClick={() => {
+                  setSearch("");
+                  setStatusFilter("");
+                }}
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
         </div>
-      )}
 
-      {/* ── Sprint table ── */}
-      <div
-        style={{
-          backgroundColor: "var(--bg-surface)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-lg)",
-          overflow: "hidden",
-          boxShadow: "var(--shadow-sm)",
-        }}
-      >
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            tableLayout: "fixed",
-          }}
-        >
-          <colgroup>
-            <col style={{ width: 36 }} />
-            <col style={{ width: "35%" }} />
-            <col style={{ width: "16%" }} />
-            <col style={{ width: "24%" }} />
-            <col style={{ width: "12%" }} />
-            <col style={{ width: "12%" }} />
-          </colgroup>
-          <thead>
-            <tr>
-              <th style={{ ...thStyle, textAlign: "center" }}>
-                <input
-                  type="checkbox"
-                  checked={allChecked}
-                  onChange={(e) => toggleAll(e.target.checked)}
-                  style={{
-                    width: 14,
-                    height: 14,
-                    accentColor: "var(--accent)",
-                    cursor: "pointer",
-                  }}
-                />
-              </th>
-              <th style={thStyle}>
-                Sprint name
-              </th>
-              <th style={thStyle}>
-                Status
-              </th>
-              <th style={thStyle}>
-                Dates
-              </th>
-              <th style={{ ...thStyle, textAlign: "center" }}>
-                Total
-              </th>
-              <th style={{ ...thStyle, textAlign: "center" }}>
-                Done
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <SkeletonRows n={5} />
-            ) : filtered.length === 0 ? (
+        {selected.size > 0 && (
+          <div style={styles.actionBar}>
+            <span style={styles.selectedText}>{selected.size} selected</span>
+
+            <button
+              onClick={() => setConfirmDelete(true)}
+              style={styles.dangerButton}
+            >
+              Delete
+            </button>
+
+            <button
+              onClick={() => {
+                setShowStatus(true);
+                setShowCreate(false);
+                setActiveSprint(null);
+              }}
+              style={styles.ghostButton}
+            >
+              Change status
+            </button>
+
+            <button
+              onClick={clearSelection}
+              style={{ ...styles.ghostButton, marginLeft: "auto" }}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
+        <div style={styles.tableWrapper}>
+          <table style={styles.table}>
+            <colgroup>
+              <col style={{ width: 42 }} />
+              <col />
+              <col style={{ width: 120 }} />
+              <col style={{ width: 190 }} />
+              <col style={{ width: 90 }} />
+              <col style={{ width: 100 }} />
+            </colgroup>
+
+            <thead>
               <tr>
-                <td colSpan={6}>
-                  <EmptyState
-                    icon="⚡"
-                    title={search ? "No sprints match" : "No sprints yet"}
-                    message={
-                      search
-                        ? "Try a different search term."
-                        : "Create the first sprint to get started."
-                    }
-                    action={
-                      !search
-                        ? {
-                            label: "+ New sprint",
-                            onClick: () => setShowCreate(true),
-                          }
-                        : undefined
-                    }
+                <th style={{ ...styles.th, textAlign: "center" }}>
+                  <input
+                    type="checkbox"
+                    checked={allChecked}
+                    onChange={(e) => toggleAll(e.target.checked)}
+                    style={styles.checkbox}
                   />
-                </td>
+                </th>
+                <th style={styles.th}>Sprint name</th>
+                <th style={styles.th}>Status</th>
+                <th style={styles.th}>Dates</th>
+                <th style={{ ...styles.th, textAlign: "center" }}>Total</th>
+                <th style={{ ...styles.th, textAlign: "center" }}>Done</th>
               </tr>
-            ) : (
-              <>
-                {filtered.map((sprint) => {
+            </thead>
+
+            <tbody>
+              {loading ? (
+                <SkeletonRows n={5} />
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6}>
+                    <EmptyState
+                      icon="⚡"
+                      title={hasFilters ? "No sprints match" : "No sprints yet"}
+                      message={
+                        hasFilters
+                          ? "Try a different search term or status filter."
+                          : "Create the first sprint to get started."
+                      }
+                      action={
+                        !hasFilters
+                          ? {
+                              label: "+ New sprint",
+                              onClick: () => setShowCreate(true),
+                            }
+                          : undefined
+                      }
+                    />
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((sprint) => {
                   const status = deriveSprintStatus(sprint);
                   const isActive = activeSprint?.idSprint === sprint.idSprint;
-                  const isSel = selected.has(sprint.idSprint);
+                  const isSelected = selected.has(sprint.idSprint);
+                  const counts = taskCounts[sprint.idSprint] ?? {
+                    total: 0,
+                    done: 0,
+                  };
 
                   return (
                     <tr
                       key={sprint.idSprint}
                       onClick={() => handleRowClick(sprint)}
                       style={{
-                        borderBottom: "1px solid var(--border)",
-                        cursor: "pointer",
-                        background: isSel
-                          ? "#e8f2fd"
+                        ...styles.tr,
+                        borderLeft:
+                          status === "ACTIVO"
+                            ? "2px solid #DC2626"
+                            : "2px solid transparent",
+                        backgroundColor: isSelected
+                          ? "#FEE2E2"
                           : isActive
-                            ? "var(--bg-hover)"
-                            : "transparent",
-                        transition: "background-color 100ms",
+                          ? "#FAFAFA"
+                          : "transparent",
                       }}
                       onMouseEnter={(e) => {
-                        if (!isSel && !isActive)
-                          e.currentTarget.style.backgroundColor =
-                            "var(--bg-hover)";
+                        if (!isSelected && !isActive) {
+                          e.currentTarget.style.backgroundColor = "#FAFAFA";
+                        }
                       }}
                       onMouseLeave={(e) => {
-                        if (!isSel && !isActive)
+                        if (!isSelected && !isActive) {
                           e.currentTarget.style.backgroundColor = "transparent";
+                        }
                       }}
                     >
                       <td
-                        style={{ ...tdStyle, textAlign: "center" }}
+                        style={{ ...styles.td, textAlign: "center" }}
                         onClick={(e) => e.stopPropagation()}
                       >
                         <input
                           type="checkbox"
-                          checked={isSel}
+                          checked={isSelected}
                           onChange={() => toggleOne(sprint.idSprint)}
-                          style={{
-                            width: 14,
-                            height: 14,
-                            accentColor: "var(--accent)",
-                            cursor: "pointer",
-                          }}
+                          style={styles.checkbox}
                         />
                       </td>
-                      <td style={tdStyle}>
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 7,
-                          }}
-                        >
-                          <svg
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            style={{
-                              color: "var(--text-muted)",
-                              flexShrink: 0,
-                            }}
-                            aria-hidden="true"
-                          >
-                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-                          </svg>
+
+                      <td style={styles.td}>
+                        <div style={styles.sprintNameCell}>
                           <span
                             style={{
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
+                              ...styles.sprintIcon,
+                              color: status === "ACTIVO" ? "#DC2626" : "#9CA3AF",
                             }}
                           >
-                            {sprint.nombre}
+                            ↯
                           </span>
+                          <div style={styles.sprintTextGroup}>
+                            <span style={styles.sprintTitle}>
+                              {sprint.nombre}
+                            </span>
+                            <span style={styles.sprintId}>
+                              SP-{sprint.idSprint}
+                            </span>
+                          </div>
                         </div>
                       </td>
-                      <td style={tdStyle}>
+
+                      <td style={styles.td}>
                         <StatusPill status={status} />
                       </td>
-                      <td style={tdStyle}>
-                        <span
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 4,
-                            fontSize: 12,
-                            color: "var(--text-secondary)",
-                          }}
-                        >
-                          <svg
-                            width="12"
-                            height="12"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            style={{
-                              color: "var(--text-muted)",
-                              flexShrink: 0,
-                            }}
-                            aria-hidden="true"
-                          >
-                            <rect
-                              x="3"
-                              y="4"
-                              width="18"
-                              height="18"
-                              rx="2"
-                              ry="2"
-                            />
-                            <line x1="16" y1="2" x2="16" y2="6" />
-                            <line x1="8" y1="2" x2="8" y2="6" />
-                            <line x1="3" y1="10" x2="21" y2="10" />
-                          </svg>
+
+                      <td style={styles.td}>
+                        <span style={styles.dateText}>
                           {fmtDate(sprint.fechaInicio)} →{" "}
                           {fmtDate(sprint.fechaFin)}
                         </span>
                       </td>
-                      <td
-                        style={{
-                          ...tdStyle,
-                          textAlign: "center",
-                          color: "var(--text-secondary)",
-                        }}
-                      >
-                        {taskCounts[sprint.idSprint]?.total ?? "—"}
+
+                      <td style={{ ...styles.td, textAlign: "center" }}>
+                        <span style={styles.bodyBold}>{counts.total}</span>
                       </td>
-                      <td style={{ ...tdStyle, textAlign: "center" }}>
-                        {taskCounts[sprint.idSprint]?.done ?? "—"}
+
+                      <td style={styles.td}>
+                        <ProgressCell
+                          total={counts.total}
+                          done={counts.done}
+                          status={status}
+                        />
                       </td>
                     </tr>
                   );
-                })}
-              </>
-            )}
-          </tbody>
-        </table>
-      </div>
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
 
-      {/* ── Detail panel ── */}
-      {activeSprint && !showCreate && !showStatus && (
-        <SprintDetailPanel
-          sprint={activeSprint}
-          onStatusChange={(newEstado) => {
-            setSprints((prev) =>
-              prev.map((s) =>
-                s.idSprint === activeSprint.idSprint ? { ...s, estado: newEstado } : s,
-              ),
-            );
-            setActiveSprint((prev) => (prev ? { ...prev, estado: newEstado } : prev));
-          }}
-          onClose={() => {
-            setActiveSprint(null);
-            clearSelection();
-          }}
-        />
-      )}
+        {activeSprint && !showCreate && !showStatus && (
+          <SprintDetailPanel
+            sprint={activeSprint}
+            onStatusChange={(newEstado) => {
+              setSprints((prev) =>
+                prev.map((s) =>
+                  s.idSprint === activeSprint.idSprint
+                    ? { ...s, estado: newEstado }
+                    : s
+                )
+              );
 
-      {/* ── Modals ── */}
+              setActiveSprint((prev) =>
+                prev ? { ...prev, estado: newEstado } : prev
+              );
+            }}
+            onClose={() => {
+              setActiveSprint(null);
+              clearSelection();
+            }}
+          />
+        )}
+      </section>
+
       {showCreate && (
         <CreateSprintModal
           onClose={() => setShowCreate(false)}
@@ -1404,7 +917,9 @@ export default function SprintPage() {
       <ConfirmDialog
         open={confirmDelete}
         title="Delete sprint(s)?"
-        message={`You are about to delete ${selected.size} sprint${selected.size !== 1 ? "s" : ""}. This action cannot be undone.`}
+        message={`You are about to delete ${selected.size} sprint${
+          selected.size !== 1 ? "s" : ""
+        }. This action cannot be undone.`}
         confirmLabel="Delete"
         dangerous
         onConfirm={handleDeleteConfirmed}
@@ -1413,3 +928,410 @@ export default function SprintPage() {
     </div>
   );
 }
+
+const styles = {
+  page: {
+    fontFamily: FONT,
+    display: "flex",
+    flexDirection: "column",
+    minHeight: "100%",
+    backgroundColor: "#F8F9FB",
+  },
+
+  topbar: {
+    backgroundColor: "#FFFFFF",
+    borderBottom: "0.5px solid #E5E7EB",
+    padding: "14px 24px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+
+  title: {
+    margin: 0,
+    fontSize: 22,
+    fontWeight: 700,
+    letterSpacing: "-0.02em",
+    color: "#111827",
+  },
+
+  subtitle: {
+    margin: "4px 0 0",
+    fontSize: 11,
+    fontWeight: 400,
+    color: "#9CA3AF",
+  },
+
+  content: {
+    padding: "16px 24px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 14,
+  },
+
+  primaryButton: {
+    backgroundColor: "#DC2626",
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: 500,
+    padding: "6px 13px",
+    borderRadius: 6,
+    border: "none",
+    cursor: "pointer",
+    boxShadow: "0 1px 3px rgba(220,38,38,0.3)",
+    whiteSpace: "nowrap",
+  },
+
+  ghostButton: {
+    backgroundColor: "#FFFFFF",
+    border: "0.5px solid #E5E7EB",
+    color: "#6B7280",
+    fontSize: 12,
+    fontWeight: 500,
+    padding: "6px 12px",
+    borderRadius: 6,
+    cursor: "pointer",
+  },
+
+  dangerButton: {
+    backgroundColor: "#FEE2E2",
+    border: "0.5px solid #FECACA",
+    color: "#991B1B",
+    fontSize: 12,
+    fontWeight: 500,
+    padding: "6px 12px",
+    borderRadius: 6,
+    cursor: "pointer",
+  },
+
+  filterCard: {
+    backgroundColor: "#FFFFFF",
+    border: "0.5px solid #E5E7EB",
+    borderRadius: 10,
+    padding: 14,
+    boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+  },
+
+  filterGroup: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+  },
+
+  filterLabel: {
+    fontSize: 11,
+    fontWeight: 400,
+    color: "#9CA3AF",
+  },
+
+  chipRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+
+  filterChip: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    border: "0.5px solid #E5E7EB",
+    borderRadius: 20,
+    padding: "4px 10px",
+    fontSize: 10,
+    fontWeight: 500,
+    cursor: "pointer",
+    transition: "all 0.15s ease",
+  },
+
+  filterDivider: {
+    height: 1,
+    backgroundColor: "#F3F4F6",
+    width: "100%",
+  },
+
+  filterRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    flexWrap: "wrap",
+  },
+
+  input: {
+    fontFamily: FONT,
+    fontSize: 12,
+    fontWeight: 400,
+    color: "#111827",
+    backgroundColor: "#F9FAFB",
+    border: "0.5px solid #E5E7EB",
+    borderRadius: 6,
+    padding: "7px 10px",
+    outline: "none",
+    width: 240,
+  },
+
+  select: {
+    fontFamily: FONT,
+    fontSize: 12,
+    fontWeight: 500,
+    color: "#6B7280",
+    backgroundColor: "#FFFFFF",
+    border: "0.5px solid #E5E7EB",
+    borderRadius: 6,
+    padding: "7px 30px 7px 10px",
+    outline: "none",
+    cursor: "pointer",
+    appearance: "none",
+    WebkitAppearance: "none",
+  },
+
+  clearButton: {
+    backgroundColor: "#FFFFFF",
+    border: "0.5px solid #E5E7EB",
+    color: "#6B7280",
+    fontSize: 12,
+    fontWeight: 500,
+    padding: "6px 12px",
+    borderRadius: 6,
+    cursor: "pointer",
+  },
+
+  actionBar: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "10px 12px",
+    backgroundColor: "#FFFFFF",
+    border: "0.5px solid #E5E7EB",
+    borderRadius: 10,
+    boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+    animation: "fadeInUp 120ms ease-out both",
+  },
+
+  selectedText: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginRight: 4,
+  },
+
+  tableWrapper: {
+    backgroundColor: "#FFFFFF",
+    border: "0.5px solid #E5E7EB",
+    borderRadius: 10,
+    overflow: "hidden",
+    overflowX: "auto",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+  },
+
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    tableLayout: "fixed",
+  },
+
+  th: {
+    padding: "9px 12px",
+    textAlign: "left",
+    fontSize: 10,
+    fontWeight: 500,
+    color: "#9CA3AF",
+    letterSpacing: "0.05em",
+    textTransform: "uppercase",
+    borderBottom: "0.5px solid #E5E7EB",
+    backgroundColor: "#F9FAFB",
+    whiteSpace: "nowrap",
+  },
+
+  td: {
+    padding: "9px 12px",
+    borderBottom: "0.5px solid #F3F4F6",
+    verticalAlign: "middle",
+    fontSize: 12,
+    color: "#374151",
+  },
+
+  tr: {
+    transition: "background-color 100ms",
+    cursor: "pointer",
+  },
+
+  checkbox: {
+    width: 14,
+    height: 14,
+    accentColor: "#DC2626",
+    cursor: "pointer",
+  },
+
+  sprintNameCell: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    minWidth: 0,
+  },
+
+  sprintIcon: {
+    fontSize: 13,
+    flexShrink: 0,
+  },
+
+  sprintTextGroup: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 2,
+    minWidth: 0,
+  },
+
+  sprintTitle: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#111827",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+
+  sprintId: {
+    fontSize: 10,
+    color: "#9CA3AF",
+  },
+
+  dateText: {
+    fontSize: 11,
+    color: "#9CA3AF",
+    whiteSpace: "nowrap",
+  },
+
+  bodyBold: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#111827",
+  },
+
+  progressText: {
+    fontSize: 11,
+    color: "#9CA3AF",
+    textAlign: "center",
+  },
+
+  progressTrack: {
+    height: 5,
+    width: 64,
+    margin: "0 auto",
+    backgroundColor: "#E5E7EB",
+    borderRadius: 999,
+    overflow: "hidden",
+  },
+
+  progressFill: {
+    height: "100%",
+    borderRadius: 999,
+    transition: "width 0.5s ease",
+  },
+
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    backgroundColor: "rgba(17,24,39,0.45)",
+    zIndex: 10000,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+  },
+
+  modal: {
+    fontFamily: FONT,
+    backgroundColor: "#FFFFFF",
+    border: "0.5px solid #E5E7EB",
+    borderRadius: 12,
+    padding: 24,
+    width: "100%",
+    maxWidth: 440,
+    boxShadow: "0 24px 48px rgba(15,23,42,0.18)",
+    animation: "scaleIn 150ms ease-out both",
+  },
+
+  modalSmall: {
+    fontFamily: FONT,
+    backgroundColor: "#FFFFFF",
+    border: "0.5px solid #E5E7EB",
+    borderRadius: 12,
+    padding: 24,
+    width: "100%",
+    maxWidth: 400,
+    boxShadow: "0 24px 48px rgba(15,23,42,0.18)",
+    animation: "scaleIn 150ms ease-out both",
+  },
+
+  modalTitle: {
+    fontSize: 14,
+    fontWeight: 700,
+    color: "#111827",
+    margin: "0 0 16px",
+  },
+
+  modalSubtitle: {
+    fontSize: 11,
+    color: "#9CA3AF",
+    margin: "0 0 16px",
+  },
+
+  formGroup: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+    marginBottom: 12,
+  },
+
+  label: {
+    fontSize: 11,
+    fontWeight: 400,
+    color: "#9CA3AF",
+  },
+
+  dateGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 12,
+  },
+
+  errorText: {
+    fontSize: 11,
+    color: "#DC2626",
+    margin: "4px 0 0",
+  },
+
+  modalActions: {
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: 10,
+    marginTop: 20,
+  },
+
+  statusOptions: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+
+  statusOption: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    border: "0.5px solid #E5E7EB",
+    borderRadius: 20,
+    padding: "4px 10px",
+    fontSize: 10,
+    fontWeight: 500,
+    cursor: "pointer",
+  },
+
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: "50%",
+  },
+};
