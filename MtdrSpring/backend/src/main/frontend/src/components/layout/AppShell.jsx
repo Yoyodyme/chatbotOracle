@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
-import { useAuth } from 'react-oidc-context';
 import { useIsAuthenticated } from '../../utils/auth';
 import Sidebar from './Sidebar';
 import Toast from '../shared/Toast';
@@ -14,17 +13,18 @@ import '../../styles/globals.css';
 const ANCHO_SIDEBAR_EXPANDIDO = 220;
 const ANCHO_SIDEBAR_COLAPSADO = 52;
 
+// CHANGED 2026-06-11: use useIsAuthenticated (covers both OCI and local JWT) for auth guard
 export default function AppShell({ tituloPagina }) {
-  const auth = useAuth();
   const navigate = useNavigate();
+  const { isAuthenticated, isLoading } = useIsAuthenticated();
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
   useUsuarios(); // Loads the user list globally for all assignment selectors
 
   useEffect(() => {
-    if (!auth.isLoading && !auth.isAuthenticated) {
+    if (!isLoading && !isAuthenticated) {
       navigate('/login', { replace: true });
     }
-  }, [auth.isLoading, auth.isAuthenticated, navigate]);
+  }, [isLoading, isAuthenticated, navigate]);
 
   if (isLoading || !isAuthenticated) return null;
 
