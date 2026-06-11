@@ -294,7 +294,7 @@ export default function Sidebar() {
             fontSize: '0.8125rem',
             color: 'var(--text-muted)',
           }}>
-            {user.email || '—'}
+            {user.email || user.username || '—'}
           </span>
         </div>
       )}

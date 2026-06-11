@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from 'react-oidc-context';
+import { useIsAuthenticated } from '../../utils/auth';
 import Sidebar from './Sidebar';
 import Toast from '../shared/Toast';
 import TaskDetailModal from '../tasks/TaskDetailModal';
@@ -14,17 +15,19 @@ const ANCHO_SIDEBAR_EXPANDIDO = 220;
 const ANCHO_SIDEBAR_COLAPSADO = 52;
 
 export default function AppShell({ tituloPagina }) {
-  const auth = useAuth();
+  useAuth(); // keeps OIDC session alive; actual auth state read via useIsAuthenticated
+  const { isAuthenticated, isLoading } = useIsAuthenticated();
+  const navigate = useNavigate();
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
   useUsuarios(); // Loads the user list globally for all assignment selectors
 
   useEffect(() => {
-    if (!auth.isLoading && !auth.isAuthenticated) {
-      auth.signinRedirect();
+    if (!isLoading && !isAuthenticated) {
+      navigate('/login');
     }
-  }, [auth.isLoading, auth.isAuthenticated]);
+  }, [isLoading, isAuthenticated, navigate]);
 
-  if (auth.isLoading || !auth.isAuthenticated) return null;
+  if (isLoading || !isAuthenticated) return null;
 
   const anchoSidebar = sidebarCollapsed
     ? ANCHO_SIDEBAR_COLAPSADO

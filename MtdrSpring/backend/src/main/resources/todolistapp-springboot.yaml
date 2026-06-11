@@ -5,11 +5,19 @@ metadata:
   annotations:
     oci.oraclecloud.com/reserved-ips: "160.34.214.149"
     oci.oraclecloud.com/loadbalancer-policy: "IP_HASH"
+    # SSL termination at the OCI Load Balancer — cert stored in K8s TLS secret
+    service.beta.kubernetes.io/oci-load-balancer-ssl-ports: "443"
+    service.beta.kubernetes.io/oci-load-balancer-tls-secret: "yoyodyne-tls"
 spec:
   type: LoadBalancer
   externalTrafficPolicy: Local
   ports:
-    - port: 80
+    - name: https
+      port: 443
+      protocol: TCP
+      targetPort: 8080
+    - name: http
+      port: 80
       protocol: TCP
       targetPort: 8080
   selector:

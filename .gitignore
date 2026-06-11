@@ -68,3 +68,9 @@ frontend/yarn-debug.log*
 frontend/yarn-error.log*
 *.yaml
 MtdrSpring/backend/src/main/frontend/dist/
+
+# SSL keystore — generated locally, never commit
+keystore.p12
+
+# Local dev TLS certs (mkcert) — private key must never be committed
+localhost+*.pem
