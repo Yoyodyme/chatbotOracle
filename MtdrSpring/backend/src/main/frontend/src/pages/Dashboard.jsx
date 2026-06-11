@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   XAxis, YAxis, CartesianGrid, Tooltip,
-  Bar, BarChart, ResponsiveContainer, ComposedChart, Line,
+  Bar, BarChart, ResponsiveContainer, ComposedChart, Line, LabelList,
 } from 'recharts';
 import { apiFetch } from '../api/client';
 import '../styles/animations.css';
@@ -10,6 +10,7 @@ import MetricCard from '../components/dashboard/MetricCard';
 import GaugeSprint from '../components/sprint/GaugeSprint';
 import DevFilterBar from '../components/dashboard/DevFilterBar';
 import { DEVELOPERS, getDeveloperByName } from '../utils/developers';
+import { useCurrentUser } from '../utils/auth';
 import SprintBadge from '../components/sprint/SprintBadge';
 import { generateSprintPDF } from '../utils/generatePDF';
 import {
@@ -20,7 +21,14 @@ import {
   COLORES_SPRINTS, EJE_TICK, TOOLTIP_STYLE, CARD,
 } from '../theme';
 
-// ── Date helper ───────────────────────────────────────────────────────────────
+// ── Date helpers ──────────────────────────────────────────────────────────────
+function parseSprintDate(raw) {
+  if (!raw) return null;
+  if (Array.isArray(raw)) { const [y, m, d] = raw; return new Date(y, m - 1, d); }
+  if (typeof raw === 'string') { const [y, m, d] = raw.split('-').map(Number); return new Date(y, m - 1, d); }
+  return null;
+}
+
 function formatSprintDate(raw) {
   if (!raw) return null;
   if (Array.isArray(raw)) {
@@ -52,6 +60,30 @@ function getStatusConfig(raw = '') {
   return STATUS_CONFIG[raw.toLowerCase().trim()] ?? { label: raw, color: TEXT_MUTED };
 }
 
+// ── Math helpers ──────────────────────────────────────────────────────────────
+function median(arr) {
+  if (!arr.length) return 0;
+  const sorted = [...arr].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+// ── Pivot by sprint (rows = sprints, cols = devs) ────────────────────────────
+function pivotPorSprint(datos, campoValor) {
+  if (!datos || datos.length === 0) return { pivotado: [], devs: [] };
+  const sprintList = [...new Set(datos.map(d => d.sprint).filter(Boolean))].sort();
+  const devs       = [...new Set(datos.map(d => d.usuario).filter(Boolean))];
+  const pivotado   = sprintList.map(sprint => {
+    const fila = { sprint };
+    devs.forEach(dev => {
+      const enc = datos.find(d => d.usuario === dev && d.sprint === sprint);
+      fila[dev] = enc ? (Number(enc[campoValor]) || 0) : 0;
+    });
+    return fila;
+  });
+  return { pivotado, devs };
+}
+
 // ── Pivot helper ──────────────────────────────────────────────────────────────
 function pivotarDatos(datos, campoValor) {
   if (!datos || datos.length === 0) return { pivotado: [], sprints: [] };
@@ -80,6 +112,7 @@ export default function Dashboard() {
   const [dropdownOpen,     setDropdownOpen]     = useState(false);
   const [generandoPDF,     setGenerandoPDF]     = useState(false);
   const [activeDev,        setActiveDev]        = useState(null);
+  const currentUser = useCurrentUser();
 
   // ── Fetching ──────────────────────────────────────────────────────────────
   const cargarDashboard = useCallback(async (showRefreshing = false) => {
@@ -118,8 +151,29 @@ export default function Dashboard() {
     apiFetch('/api/sprints')
       .then(list => {
         setSprints(list || []);
-        const active = (list || []).find(s => s.estado === 'current' || s.estado === 'ACTIVE');
-        if (active) setSelectedSprintId(active.idSprint);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        let chosen = (list || []).find(s => s.estado === 'ACTIVE' || s.estado === 'current');
+
+        if (!chosen) {
+          chosen = (list || []).find(s => {
+            const start = parseSprintDate(s.fechaInicio);
+            const end   = parseSprintDate(s.fechaFin);
+            if (!start || !end) return false;
+            end.setHours(23, 59, 59, 999);
+            return today >= start && today <= end;
+          });
+        }
+
+        if (!chosen) {
+          const past = (list || [])
+            .filter(s => { const e = parseSprintDate(s.fechaFin); return e && e < today; })
+            .sort((a, b) => parseSprintDate(b.fechaFin) - parseSprintDate(a.fechaFin));
+          chosen = past[0] ?? null;
+        }
+
+        if (chosen) setSelectedSprintId(chosen.idSprint);
       })
       .catch(() => {});
   }, []);
@@ -223,8 +277,6 @@ export default function Dashboard() {
   const { pivotado: dataHoras, sprints: sprintsHoras } = pivotarDatos(horasFiltered, 'horasReales');
 
   // ── Individual work ───────────────────────────────────────────────────────
-  // Both endpoints return first name only. We resolve full name + initials
-  // from DEVELOPERS using first name as the join key.
   const personalParaSprint = (() => {
     const base = personal.map(u => {
       const firstName = (u.nombre || u.usuario || '').trim().toLowerCase();
@@ -236,6 +288,7 @@ export default function Dashboard() {
 
       // Resolve full name + initials from DEVELOPERS list
       const devEntry = DEVELOPERS.find(d =>
+        d.filterName !== '__me__' &&
         (d.filterName || d.label || '').split(' ')[0].toLowerCase() === firstName
       );
 
@@ -261,8 +314,11 @@ export default function Dashboard() {
   // Generic filter for chart data (usuario field = first name)
   const filterByDev = arr => {
     if (!activeDev) return arr;
-    const dev     = DEVELOPERS.find(d => d.initials === activeDev);
-    const devFirst = (dev?.filterName || dev?.label || '').split(' ')[0].toLowerCase();
+    const dev = DEVELOPERS.find(d => d.initials === activeDev);
+    const rawName = dev?.filterName === '__me__'
+      ? (currentUser.name ?? '')
+      : (dev?.filterName ?? '');
+    const devFirst = rawName.split(' ')[0].toLowerCase();
     if (!devFirst) return arr;
     return arr.filter(d =>
       (d.usuario ?? '').trim().toLowerCase() === devFirst
@@ -270,6 +326,39 @@ export default function Dashboard() {
   };
 
   const dataKpiFiltered = filterByDev(dataKpi);
+
+  const normalize = str => str.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const TEAM = DEVELOPERS.filter(d => d.filterName !== '__me__');
+  const teamFirstNames = TEAM.map(d => normalize(d.filterName.split(' ')[0]));
+
+  const { pivotado: dataTasksRaw, devs: devsKpiRaw   } = pivotPorSprint(kpiFiltered,   'tasksCompletadas');
+  const { pivotado: dataHorasRaw, devs: devsHorasRaw } = pivotPorSprint(horasFiltered, 'horasReales');
+
+  const devsKpi   = teamFirstNames;
+  const devsHoras = teamFirstNames;
+
+  const allSprintSlots = selectedSprintName
+    ? [selectedSprintName]
+    : [...new Set([
+        ...sprints.map(s => s.nombre).filter(Boolean),
+        ...dataTasksRaw.map(r => r.sprint),
+      ])].sort().slice(0, 5);
+
+  const buildPivot = (raw, slots) => slots.map(sprintName => {
+    const existing = raw.find(r => r.sprint === sprintName) ?? {};
+    const filled = { sprint: sprintName };
+    teamFirstNames.forEach(n => { filled[n] = existing[n] ?? 0; });
+    return filled;
+  });
+
+  const dataTasksSprint = buildPivot(dataTasksRaw, allSprintSlots);
+  const dataHorasSprint = buildPivot(dataHorasRaw, allSprintSlots);
+
+  const numDevs      = personalParaSprint.length || 1;
+  const avgTaskDev   = Math.round(totalCompletadas / numDevs);
+  const avgHoursDev  = +(totalHorasReales / numDevs).toFixed(1);
+  const medTaskDev   = Math.round(median(personalParaSprint.map(u => u.tareas)));
+  const medHoursDev  = +median(personalParaSprint.map(u => u.horas)).toFixed(1);
 
   const generarPDF = async () => {
   setGenerandoPDF(true);
@@ -517,6 +606,26 @@ export default function Dashboard() {
             value={`${eficiencia}%`}
             sub={eficiencia >= 70 ? 'On target · goal ≥ 70%' : 'Below target · goal ≥ 70%'}
             accent={eficiencia >= 70 ? SUCCESS : RED}
+          />
+          <MetricCard
+            label="Avg Task / Dev"
+            value={String(avgTaskDev)}
+            sub="Per developer"
+          />
+          <MetricCard
+            label="Avg Hours / Dev"
+            value={`${avgHoursDev}h`}
+            sub="Per developer"
+          />
+          <MetricCard
+            label="Median Task / Dev"
+            value={String(medTaskDev)}
+            sub="Middle value"
+          />
+          <MetricCard
+            label="Median Hours / Dev"
+            value={`${medHoursDev}h`}
+            sub="Middle value"
           />
         </div>
 
@@ -808,6 +917,95 @@ export default function Dashboard() {
               <div style={{ textAlign: 'center', color: TEXT_MUTED, fontSize: 13, padding: '40px 0' }}>
                 No assigned tasks
               </div>
+            )}
+          </div>
+
+        </div>
+
+        {/* ── Tasks & Hours per Developer / Sprint (side by side) ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+
+          {/* Tasks Completed per Developer / Sprint */}
+          <div style={CARD}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: TEXT_PRIMARY }}>Tasks Terminadas por Desarrollador / Sprint</div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {devsKpi.map(dev => {
+                  const d = getDeveloperByName(dev);
+                  return (
+                    <span key={dev} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: TEXT_MUTED }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 2, background: d?.color ?? '#6B7280', display: 'inline-block' }} />
+                      {d ? `${d.filterName.split(' ')[0]} ${d.filterName.split(' ')[1]?.[0] ?? ''}.` : dev}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+            {dataTasksSprint.length > 0 ? (
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={dataTasksSprint} margin={{ top: 18, right: 10, left: -15, bottom: 5 }} barCategoryGap="30%">
+                  <CartesianGrid strokeDasharray="3 3" stroke={BORDER} vertical={false} />
+                  <XAxis dataKey="sprint" tick={EJE_TICK} axisLine={false} tickLine={false} />
+                  <YAxis tick={EJE_TICK} axisLine={false} tickLine={false} label={{ value: 'Tareas', angle: -90, position: 'insideLeft', offset: 20, style: { fontSize: 10, fill: TEXT_MUTED } }} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v, name) => {
+                    const d = getDeveloperByName(name);
+                    const label = d ? `${d.filterName.split(' ')[0]} ${d.filterName.split(' ')[1]?.[0] ?? ''}.` : name;
+                    return [v, label];
+                  }} />
+                  {devsKpi.map(dev => {
+                    const d = getDeveloperByName(dev);
+                    return (
+                      <Bar key={dev} dataKey={dev} name={dev} fill={d?.color ?? '#6B7280'} radius={[3, 3, 0, 0]} maxBarSize={22}>
+                        <LabelList dataKey={dev} position="top" style={{ fontSize: 10, fill: TEXT_MUTED }} formatter={v => v > 0 ? v : ''} />
+                      </Bar>
+                    );
+                  })}
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ textAlign: 'center', color: TEXT_MUTED, fontSize: 13, padding: '60px 0' }}>No tasks data</div>
+            )}
+          </div>
+
+          {/* Real Hours per Developer / Sprint */}
+          <div style={CARD}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: TEXT_PRIMARY }}>Horas Reales por Desarrollador / Sprint</div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {devsHoras.map(dev => {
+                  const d = getDeveloperByName(dev);
+                  return (
+                    <span key={dev} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: TEXT_MUTED }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 2, background: d?.color ?? '#6B7280', display: 'inline-block' }} />
+                      {d ? `${d.filterName.split(' ')[0]} ${d.filterName.split(' ')[1]?.[0] ?? ''}.` : dev}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+            {dataHorasSprint.length > 0 ? (
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={dataHorasSprint} margin={{ top: 18, right: 10, left: -15, bottom: 5 }} barCategoryGap="30%">
+                  <CartesianGrid strokeDasharray="3 3" stroke={BORDER} vertical={false} />
+                  <XAxis dataKey="sprint" tick={EJE_TICK} axisLine={false} tickLine={false} />
+                  <YAxis tick={EJE_TICK} axisLine={false} tickLine={false} label={{ value: 'hrs', angle: -90, position: 'insideLeft', offset: 20, style: { fontSize: 10, fill: TEXT_MUTED } }} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v, name) => {
+                    const d = getDeveloperByName(name);
+                    const label = d ? `${d.filterName.split(' ')[0]} ${d.filterName.split(' ')[1]?.[0] ?? ''}.` : name;
+                    return [`${v}h`, label];
+                  }} />
+                  {devsHoras.map(dev => {
+                    const d = getDeveloperByName(dev);
+                    return (
+                      <Bar key={dev} dataKey={dev} name={dev} fill={d?.color ?? '#6B7280'} radius={[3, 3, 0, 0]} maxBarSize={22}>
+                        <LabelList dataKey={dev} position="top" style={{ fontSize: 10, fill: TEXT_MUTED }} formatter={v => v > 0 ? `${v}h` : ''} />
+                      </Bar>
+                    );
+                  })}
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ textAlign: 'center', color: TEXT_MUTED, fontSize: 13, padding: '60px 0' }}>No hours data</div>
             )}
           </div>
 

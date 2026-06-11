@@ -10,13 +10,39 @@ import useUsuarios from '../../hooks/useUsuarios';
 import '../../styles/animations.css';
 import '../../styles/globals.css';
 
+const IS_MOCK = import.meta.env.VITE_MOCK === 'true';
+
 const ANCHO_SIDEBAR_EXPANDIDO = 220;
 const ANCHO_SIDEBAR_COLAPSADO = 52;
 
-export default function AppShell({ tituloPagina }) {
-  const auth = useAuth();
+function ShellContent() {
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
-  useUsuarios(); // Loads the user list globally for all assignment selectors
+  useUsuarios();
+
+  const anchoSidebar = sidebarCollapsed ? ANCHO_SIDEBAR_COLAPSADO : ANCHO_SIDEBAR_EXPANDIDO;
+
+  return (
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-base)' }}>
+      <Sidebar />
+      <main style={{
+        marginLeft: anchoSidebar,
+        flex: 1,
+        minWidth: 0,
+        overflow: 'auto',
+        height: '100vh',
+        transition: 'margin-left 250ms cubic-bezier(0.4, 0, 0.2, 1)',
+      }}>
+        <Outlet />
+      </main>
+      <TaskDetailModal />
+      <Toast />
+      <ChatbotPanel />
+    </div>
+  );
+}
+
+function AuthGate() {
+  const auth = useAuth();
 
   useEffect(() => {
     if (!auth.isLoading && !auth.isAuthenticated) {
@@ -25,46 +51,9 @@ export default function AppShell({ tituloPagina }) {
   }, [auth.isLoading, auth.isAuthenticated]);
 
   if (auth.isLoading || !auth.isAuthenticated) return null;
+  return <ShellContent />;
+}
 
-  const anchoSidebar = sidebarCollapsed
-    ? ANCHO_SIDEBAR_COLAPSADO
-    : ANCHO_SIDEBAR_EXPANDIDO;
-
-  const estiloShell = {
-    display: 'flex',
-    minHeight: '100vh',
-    backgroundColor: 'var(--bg-base)',
-  };
-
-  const estiloMain = {
-    marginLeft: anchoSidebar,
-    flex: 1,
-    minWidth: 0,
-    overflow: 'auto',
-    paddingTop: 0,
-    marginTop: 0,
-    height: '100vh',
-    transition: 'margin-left 250ms cubic-bezier(0.4, 0, 0.2, 1)',
-  };
-
-  return (
-    <div style={estiloShell}>
-      {/* Fixed left sidebar */}
-      <Sidebar />
-
-      {/* Main content area — starts at top with no offset */}
-      <main style={estiloMain}>
-        <Outlet />
-      </main>
-
-      {/* Task detail modal (controlled by store.selectedTask) */}
-      <TaskDetailModal />
-
-      {/* Toast notification system */}
-      <Toast />
-
-      {/* Task assistant */}
-      <ChatbotPanel />
-    </div>
-  );
+export default function AppShell() {
+  return IS_MOCK ? <ShellContent /> : <AuthGate />;
 }
