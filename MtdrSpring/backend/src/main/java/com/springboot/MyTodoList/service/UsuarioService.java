@@ -106,6 +106,27 @@ public class UsuarioService {
         return buildUserInfo(usuario);
     }
 
+    // Returns the Usuario entity on success, null on bad credentials.
+    public Usuario autenticar(String nombreUsuario, String password) {
+        Usuario usuario = usuarioRepository.findByNombreUsuario(nombreUsuario);
+        if (usuario == null || usuario.getPasswordHash() == null) return null;
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        return encoder.matches(password, usuario.getPasswordHash()) ? usuario : null;
+    }
+
+    @Transactional
+    public Usuario crearUsuarioLocal(String nombreUsuario, String nombreCompleto, String password) {
+        if (usuarioRepository.findByNombreUsuario(nombreUsuario) != null) {
+            throw new IllegalArgumentException("Username already exists: " + nombreUsuario);
+        }
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        Usuario nuevo = new Usuario();
+        nuevo.setNombreUsuario(nombreUsuario);
+        nuevo.setNombreCompleto(nombreCompleto);
+        nuevo.setPasswordHash(encoder.encode(password));
+        return usuarioRepository.save(nuevo);
+    }
+
     public Map<String, Object> getUserInfo(Long idUsuario) {
         Usuario usuario = obtenerUsuarioPorId(idUsuario);
         if (usuario == null) return null;
