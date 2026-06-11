@@ -68,3 +68,6 @@ frontend/yarn-debug.log*
 frontend/yarn-error.log*
 *.yaml
 MtdrSpring/backend/src/main/frontend/dist/
+tls-temp/
+TLS_SETUP_NOTES.md
+cloudshell-step2.txt
