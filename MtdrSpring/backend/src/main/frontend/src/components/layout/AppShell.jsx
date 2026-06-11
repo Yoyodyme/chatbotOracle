@@ -15,17 +15,16 @@ const ANCHO_SIDEBAR_EXPANDIDO = 220;
 const ANCHO_SIDEBAR_COLAPSADO = 52;
 
 export default function AppShell({ tituloPagina }) {
-  useAuth(); // keeps OIDC session alive; actual auth state read via useIsAuthenticated
-  const { isAuthenticated, isLoading } = useIsAuthenticated();
+  const auth = useAuth();
   const navigate = useNavigate();
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
   useUsuarios(); // Loads the user list globally for all assignment selectors
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      navigate('/login');
+    if (!auth.isLoading && !auth.isAuthenticated) {
+      navigate('/login', { replace: true });
     }
-  }, [isLoading, isAuthenticated, navigate]);
+  }, [auth.isLoading, auth.isAuthenticated, navigate]);
 
   if (isLoading || !isAuthenticated) return null;
 
