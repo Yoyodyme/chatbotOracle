@@ -10,6 +10,8 @@ import App from './App.jsx';
 import { ociAuthConfig } from './ociAuth.js';
 import { setAuthToken } from './api/client.js';
 
+const IS_MOCK = import.meta.env.VITE_MOCK === 'true';
+
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -56,15 +58,29 @@ function OidcTokenSync() {
 
 const rootElement = document.getElementById('root');
 
-createRoot(rootElement).render(
-  <StrictMode>
-    <ErrorBoundary>
-      <AuthProvider {...ociAuthConfig}>
-        <OidcTokenSync />
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
-      </AuthProvider>
-    </ErrorBoundary>
-  </StrictMode>
-);
+async function enableMocking() {
+  if (!IS_MOCK) return;
+  const { worker } = await import('./mocks/browser.js');
+  return worker.start({ onUnhandledRequest: 'bypass' });
+}
+
+enableMocking().then(() => {
+  createRoot(rootElement).render(
+    <StrictMode>
+      <ErrorBoundary>
+        {IS_MOCK ? (
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        ) : (
+          <AuthProvider {...ociAuthConfig}>
+            <OidcTokenSync />
+            <BrowserRouter>
+              <App />
+            </BrowserRouter>
+          </AuthProvider>
+        )}
+      </ErrorBoundary>
+    </StrictMode>
+  );
+});

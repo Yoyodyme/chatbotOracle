@@ -1,4 +1,3 @@
-// CHANGED 2026-06-10: moved collapse toggle to logo row, added user avatar with profile popover, added sign-out button at bottom
 import React, { useState, useRef, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { NavLink } from 'react-router-dom';
@@ -384,14 +383,14 @@ function SidebarNavLink({ to, label, icon, collapsed, exact }) {
           textDecoration: 'none',
           color: linkColor,
           backgroundColor: bgColor,
-        borderRadius: '0',
-        margin: '1px 0',
-        transition: 'background-color 100ms, color 100ms, padding 250ms',
-        overflow: 'hidden',
-        whiteSpace: 'nowrap',
-        borderLeft: isActive ? '3px solid var(--accent)' : '3px solid transparent',
-        borderRight: 'none',
-        position: 'relative',
+          borderRadius: '0',
+          margin: '1px 0',
+          transition: 'background-color 100ms, color 100ms, padding 250ms',
+          overflow: 'hidden',
+          whiteSpace: 'nowrap',
+          borderLeft: isActive ? '3px solid var(--accent)' : '3px solid transparent',
+          borderRight: 'none',
+          position: 'relative',
       });
       }}
       onMouseEnter={() => setHovered(true)}
