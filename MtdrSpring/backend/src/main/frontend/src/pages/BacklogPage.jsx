@@ -141,8 +141,23 @@ function SkeletonRows({ n = 6 }) {
 }
 
 export default function BacklogPage() {
-  const { loading } = useTareas();
+  const { loading, refetch } = useTareas();
   const tareas = useAppStore((s) => s.tareas);
+  const [refreshing, setRefreshing] = useState(false);
+  const [ultimaAct, setUltimaAct] = useState(null);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refetch();
+    setUltimaAct(new Date());
+    setRefreshing(false);
+  };
+
+  useEffect(() => {
+    setUltimaAct(new Date());
+    const id = setInterval(handleRefresh, 3_600_000);
+    return () => clearInterval(id);
+  }, []);
   const addTareaStore = useAppStore((s) => s.addTarea);
   const updateTareaStore = useAppStore((s) => s.updateTarea);
   const deleteTareaStore = useAppStore((s) => s.deleteTarea);
@@ -401,10 +416,31 @@ export default function BacklogPage() {
           <h1 style={styles.title}>Backlog</h1>
           <p style={styles.subtitle}>
             {tareasFiltradas.length} tasks · organize, filter and edit work
+            {ultimaAct && (
+              <span style={{ marginLeft: 8 }}>
+                · Updated {ultimaAct.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })} · refreshes every hour
+              </span>
+            )}
           </p>
         </div>
 
         <div style={styles.topbarActions}>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            style={styles.refreshButton}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" strokeWidth="2.2"
+                 strokeLinecap="round" strokeLinejoin="round"
+                 style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }}>
+              <polyline points="23 4 23 10 17 10"/>
+              <polyline points="1 20 1 14 7 14"/>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+            {refreshing ? 'Refreshing…' : 'Refresh'}
+          </button>
+
           <button
             style={styles.primaryButton}
             onClick={() => setShowCreateForm(true)}
@@ -818,6 +854,21 @@ const styles = {
     fontSize: 11,
     fontWeight: 400,
     color: '#9CA3AF',
+  },
+
+  refreshButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 5,
+    padding: '6px 12px',
+    borderRadius: 6,
+    fontSize: 12,
+    fontWeight: 500,
+    cursor: 'pointer',
+    border: '1px solid #E5E7EB',
+    background: '#FFFFFF',
+    color: '#6B7280',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
   },
 
   primaryButton: {
