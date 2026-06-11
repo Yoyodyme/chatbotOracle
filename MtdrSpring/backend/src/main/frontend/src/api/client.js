@@ -8,6 +8,8 @@
 
 const BASE_URL = '';
 
+const LOCAL_JWT_KEY = 'local_jwt';
+
 let _bearerToken = null;
 
 /** Called by OidcTokenSync whenever the OIDC access token changes. */
@@ -26,7 +28,8 @@ export function setAuthToken(token) {
 export async function apiFetch(path, options = {}) {
   const url = `${BASE_URL}${path}`;
 
-  const authHeader = _bearerToken ? { Authorization: `Bearer ${_bearerToken}` } : {};
+  const token = _bearerToken || localStorage.getItem(LOCAL_JWT_KEY);
+  const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
 
   const config = {
     ...options,

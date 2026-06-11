@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from 'react-oidc-context';
+import { useIsAuthenticated } from '../../utils/auth';
 import Sidebar from './Sidebar';
 import Toast from '../shared/Toast';
 import TaskDetailModal from '../tasks/TaskDetailModal';
@@ -25,7 +26,7 @@ export default function AppShell({ tituloPagina }) {
     }
   }, [auth.isLoading, auth.isAuthenticated, navigate]);
 
-  if (auth.isLoading || !auth.isAuthenticated) return null;
+  if (isLoading || !isAuthenticated) return null;
 
   const anchoSidebar = sidebarCollapsed
     ? ANCHO_SIDEBAR_COLAPSADO
