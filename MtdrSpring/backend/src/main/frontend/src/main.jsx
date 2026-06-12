@@ -2,7 +2,7 @@ import React, { StrictMode, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
-import { AuthProvider, useAuth } from 'react-oidc-context';
+import { AuthProvider, AuthContext, useAuth } from 'react-oidc-context';
 
 import './styles/globals.css';
 import './styles/animations.css';
@@ -11,6 +11,23 @@ import { ociAuthConfig } from './ociAuth.js';
 import { setAuthToken } from './api/client.js';
 
 const IS_MOCK = import.meta.env.VITE_MOCK === 'true';
+
+const MOCK_AUTH_VALUE = {
+  isLoading: false,
+  isAuthenticated: true,
+  user: {
+    access_token: 'mock-token',
+    profile: {
+      sub: 'mock-user-1',
+      name: 'Dev User',
+      preferred_username: 'devuser',
+      email: 'dev@local',
+    },
+  },
+  signinRedirect: () => {},
+  signoutRedirect: () => {},
+  removeUser: () => {},
+};
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -69,9 +86,11 @@ enableMocking().then(() => {
     <StrictMode>
       <ErrorBoundary>
         {IS_MOCK ? (
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
+          <AuthContext.Provider value={MOCK_AUTH_VALUE}>
+            <BrowserRouter>
+              <App />
+            </BrowserRouter>
+          </AuthContext.Provider>
         ) : (
           <AuthProvider {...ociAuthConfig}>
             <OidcTokenSync />

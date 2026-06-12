@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
-import { useAuth } from 'react-oidc-context';
 import { useIsAuthenticated } from '../../utils/auth';
 import Sidebar from './Sidebar';
 import Toast from '../shared/Toast';
@@ -11,62 +10,52 @@ import useUsuarios from '../../hooks/useUsuarios';
 import '../../styles/animations.css';
 import '../../styles/globals.css';
 
+const IS_MOCK = import.meta.env.VITE_MOCK === 'true';
+
 const ANCHO_SIDEBAR_EXPANDIDO = 220;
 const ANCHO_SIDEBAR_COLAPSADO = 52;
 
-export default function AppShell({ tituloPagina }) {
-  const auth = useAuth();
-  const navigate = useNavigate();
+function ShellContent() {
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
-  useUsuarios(); // Loads the user list globally for all assignment selectors
+  useUsuarios();
 
-  useEffect(() => {
-    if (!auth.isLoading && !auth.isAuthenticated) {
-      navigate('/login', { replace: true });
-    }
-  }, [auth.isLoading, auth.isAuthenticated, navigate]);
-
-  if (isLoading || !isAuthenticated) return null;
-
-  const anchoSidebar = sidebarCollapsed
-    ? ANCHO_SIDEBAR_COLAPSADO
-    : ANCHO_SIDEBAR_EXPANDIDO;
-
-  const estiloShell = {
-    display: 'flex',
-    minHeight: '100vh',
-    backgroundColor: 'var(--bg-base)',
-  };
-
-  const estiloMain = {
-    marginLeft: anchoSidebar,
-    flex: 1,
-    minWidth: 0,
-    overflow: 'auto',
-    paddingTop: 0,
-    marginTop: 0,
-    height: '100vh',
-    transition: 'margin-left 250ms cubic-bezier(0.4, 0, 0.2, 1)',
-  };
+  const anchoSidebar = sidebarCollapsed ? ANCHO_SIDEBAR_COLAPSADO : ANCHO_SIDEBAR_EXPANDIDO;
 
   return (
-    <div style={estiloShell}>
-      {/* Fixed left sidebar */}
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-base)' }}>
       <Sidebar />
-
-      {/* Main content area — starts at top with no offset */}
-      <main style={estiloMain}>
+      <main style={{
+        marginLeft: anchoSidebar,
+        flex: 1,
+        minWidth: 0,
+        overflow: 'auto',
+        height: '100vh',
+        transition: 'margin-left 250ms cubic-bezier(0.4, 0, 0.2, 1)',
+      }}>
         <Outlet />
       </main>
-
-      {/* Task detail modal (controlled by store.selectedTask) */}
       <TaskDetailModal />
-
-      {/* Toast notification system */}
       <Toast />
-
-      {/* Task assistant */}
       <ChatbotPanel />
     </div>
   );
+}
+
+// Dual-auth gate: covers both OCI (react-oidc-context) and local JWT login (see utils/auth.js)
+function AuthGate() {
+  const navigate = useNavigate();
+  const { isAuthenticated, isLoading } = useIsAuthenticated();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      navigate('/login', { replace: true });
+    }
+  }, [isLoading, isAuthenticated, navigate]);
+
+  if (isLoading || !isAuthenticated) return null;
+  return <ShellContent />;
+}
+
+export default function AppShell() {
+  return IS_MOCK ? <ShellContent /> : <AuthGate />;
 }

@@ -1,7 +1,23 @@
 import React from 'react';
 import { DEVELOPERS } from '../../utils/developers';
+import { useCurrentUser } from '../../utils/auth';
 
 export default function DevFilterBar({ active, onChange }) {
+  const currentUser = useCurrentUser();
+
+  const currentFirstName = (currentUser.name || '').split(' ')[0].toLowerCase();
+  const matchedDev = DEVELOPERS.find(d =>
+    d.filterName !== '__me__' &&
+    d.filterName.split(' ')[0].toLowerCase() === currentFirstName
+  );
+
+  const resolvedDevs = DEVELOPERS.map(dev => {
+    if (dev.filterName !== '__me__') return dev;
+    return matchedDev
+      ? { ...dev, bg: matchedDev.bg, color: matchedDev.color }
+      : dev;
+  });
+
   return (
     <div
       style={{
@@ -14,12 +30,15 @@ export default function DevFilterBar({ active, onChange }) {
         flexShrink: 0,
       }}
     >
-      {DEVELOPERS.map((dev) => {
+      {resolvedDevs.map((dev) => {
         const isOn = active === dev.initials;
+        const displayInitials = dev.initials === '__me__'
+          ? (matchedDev?.initials ?? 'ME')
+          : dev.initials;
 
         return (
           <button
-            key={`${dev.label}-${dev.initials}`}
+            key={dev.initials}
             onClick={() => onChange(isOn ? null : dev.initials)}
             style={{
               display: 'inline-flex',
@@ -51,7 +70,7 @@ export default function DevFilterBar({ active, onChange }) {
                 fontWeight: 600,
               }}
             >
-              {dev.initials}
+              {displayInitials}
             </span>
             {dev.label}
           </button>
