@@ -56,7 +56,7 @@ spec:
     spec:
       containers:
         - name: todolistapp-springboot
-          image: "mx-queretaro-1.ocir.io/axx2gmncrzyo/yoyodyme/mavyk/todolistapp-springboot:0.1"
+          image: "%DOCKER_REGISTRY%/todolistapp-springboot:0.1"
           imagePullPolicy: Always
           env:
             - name: SPRING_PROFILES_ACTIVE
@@ -64,13 +64,13 @@ spec:
             - name: ORACLE_DB_USERNAME
               value: "EQUIPO51"
             - name: DB_URL
-              value: "jdbc:oracle:thin:@chatbotdb_tp?TNS_ADMIN=/mtdrworkshop/creds"
+              value: "jdbc:oracle:thin:@%TODO_PDB_NAME%_tp?TNS_ADMIN=/mtdrworkshop/creds"
             - name: WALLET_PATH
               value: "/mtdrworkshop/creds"
             - name: TNS_ADMIN
               value: "/mtdrworkshop/creds"
             - name: OCI_REGION
-              value: "mx-queretaro-1"
+              value: "%OCI_REGION%"
             - name: ORACLE_DB_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -96,7 +96,7 @@ spec:
                   key: deepseek-api-key
                   optional: true
             - name: ui_username
-              value: "EQUIPO51"
+              value: "%UI_USERNAME%"
           volumeMounts:
             - name: creds
               mountPath: /mtdrworkshop/creds
