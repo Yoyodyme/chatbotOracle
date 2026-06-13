@@ -5,6 +5,7 @@ import {
   updateSprint,
   deleteSprint,
   getTareasBySprint,
+  activateSprint,
 } from "../api/sprints";
 import SprintDetailPanel from "../components/sprint/SprintDetailModal";
 import ConfirmDialog from "../components/shared/ConfirmDialog";
@@ -322,17 +323,26 @@ function ChangeStatusModal({ count, onClose, onApply }) {
           {OPTIONS.map((opt) => {
             const cfg = STATUS_CONFIG[opt.status];
             const selected = picked?.status === opt.status;
+            const disabled = opt.status === "ACTIVO" && count !== 1;
 
             return (
               <button
                 key={opt.status}
-                onClick={() => setPicked(opt)}
+                onClick={() => !disabled && setPicked(opt)}
+                disabled={disabled}
+                title={
+                  disabled
+                    ? "Select exactly one sprint to mark it as active."
+                    : undefined
+                }
                 style={{
                   ...styles.statusOption,
                   backgroundColor: cfg.bg,
                   color: cfg.color,
                   borderColor: selected ? cfg.dot : cfg.border,
                   boxShadow: selected ? `0 0 0 3px ${cfg.bg}` : "none",
+                  opacity: disabled ? 0.5 : 1,
+                  cursor: disabled ? "not-allowed" : "pointer",
                 }}
               >
                 <span
@@ -516,6 +526,42 @@ export default function SprintPage() {
 
     setShowStatus(false);
     clearSelection();
+
+    // "Active" must enforce a single active sprint, so it goes through the
+    // dedicated activation endpoint and only makes sense for one sprint at a time.
+    if (estado === "ACTIVO") {
+      if (ids.length !== 1) {
+        addToast({
+          id: `err-${Date.now()}`,
+          message: "Select exactly one sprint to mark as active.",
+          type: "error",
+        });
+        return;
+      }
+
+      const id = ids[0];
+
+      try {
+        const activado = await activateSprint(id);
+
+        // The backend may also demote a previously active sprint, so refetch
+        // the full list rather than patching local state piecemeal.
+        await refetch();
+
+        addToast({
+          id: `st-${Date.now()}`,
+          message: `"${activado.nombre}" is now the active sprint.`,
+          type: "success",
+        });
+      } catch {
+        addToast({
+          id: `err-${Date.now()}`,
+          message: "Error activating sprint.",
+          type: "error",
+        });
+      }
+      return;
+    }
 
     try {
       await Promise.all(

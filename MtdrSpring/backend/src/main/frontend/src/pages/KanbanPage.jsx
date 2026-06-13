@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import useTareas from '../hooks/useTareas';
 import useAppStore from '../store/index';
 import KanbanBoard from '../components/kanban/KanbanBoard';
 import { getSprints } from '../api/sprints';
-import { DEVELOPERS } from '../utils/developers';
+import { buildDeveloperFilters } from '../utils/developers';
 
 const FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
@@ -11,6 +11,8 @@ const FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 export default function KanbanPage() {
   const { loading } = useTareas();
   const estatuses = useAppStore((s) => s.estatuses);
+  const usuarios = useAppStore((s) => s.usuarios);
+  const devs = useMemo(() => buildDeveloperFilters(usuarios), [usuarios]);
 
   const [sprints, setSprints] = useState([]);
   const [sprintSeleccionado, setSprintSeleccionado] = useState('');
@@ -80,13 +82,14 @@ export default function KanbanPage() {
       </header>
 
       <div style={styles.devFilterBar}>
-        {DEVELOPERS.map((dev) => {
-          const isActive = developerActivo === dev.initials;
+        {devs.map((dev) => {
+          const isAllTasks = dev.initials === '__all__';
+          const isActive = isAllTasks ? developerActivo === null : developerActivo === dev.initials;
 
           return (
             <button
               key={`${dev.label}-${dev.initials}`}
-              onClick={() => setDeveloperActivo(isActive ? null : dev.initials)}
+              onClick={() => setDeveloperActivo(isAllTasks ? null : (isActive ? null : dev.initials))}
               style={{
                 ...styles.devButton,
                 color: isActive ? '#DC2626' : '#6B7280',
@@ -101,7 +104,7 @@ export default function KanbanPage() {
                   color: dev.color,
                 }}
               >
-                {dev.initials}
+                {isAllTasks ? 'ALL' : dev.initials}
               </span>
               {dev.label}
             </button>

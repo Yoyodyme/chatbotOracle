@@ -21,6 +21,17 @@ export function updateSprint(id, data) {
 }
 
 /**
+ * Marks the given sprint as the single active sprint ("ACTIVO"), demoting
+ * any previously active sprint based on its dates.
+ *
+ * @param {number} id
+ * @returns {Promise<Sprint>}
+ */
+export function activateSprint(id) {
+  return apiFetch(`/api/sprints/${id}/activar`, { method: "PUT" });
+}
+
+/**
  * Fetches all tasks associated with a sprint.
  * Requires GET /api/tareas/sprint/{id} to be implemented in TareaController.
  *

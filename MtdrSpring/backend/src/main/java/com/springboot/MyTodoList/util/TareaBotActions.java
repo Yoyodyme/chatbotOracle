@@ -589,7 +589,7 @@ public class TareaBotActions {
         for (int i = 0; i < sprints.size(); i++) {
             Sprint s = sprints.get(i);
             sb.append(i + 1).append(". ").append(s.getNombre());
-            if ("current".equals(s.getEstado())) sb.append(" [current]");
+            if ("ACTIVO".equalsIgnoreCase(s.getEstado())) sb.append(" [active]");
             if (s.getFechaInicio() != null && s.getFechaFin() != null) {
                 sb.append("  ").append(s.getFechaInicio().format(DATE_FORMAT_SHORT))
                   .append(" → ").append(s.getFechaFin().format(DATE_FORMAT_SHORT));
@@ -1075,9 +1075,11 @@ public class TareaBotActions {
         for (int i = 0; i < sprints.size(); i++) {
             Sprint s = sprints.get(i);
             sb.append(i + 1).append(". ").append(s.getNombre());
-            if ("current".equals(s.getEstado())) {
-                sb.append("  [current]");
-            } else if ("past".equals(s.getEstado())) {
+            if ("ACTIVO".equalsIgnoreCase(s.getEstado())) {
+                sb.append("  [active]");
+            } else if ("FUTURO".equalsIgnoreCase(s.getEstado())) {
+                sb.append("  [future]");
+            } else if ("PASADO".equalsIgnoreCase(s.getEstado())) {
                 sb.append("  [past]");
             } else if (s.getEstado() != null) {
                 sb.append("  [").append(s.getEstado()).append("]");
@@ -1177,26 +1179,19 @@ public class TareaBotActions {
     private void processNewSprintConfirmation(ConversationState state) {
         String text = textoMensaje.trim().toLowerCase();
         if (text.equals("yes")) {
-            // Deactivate the previous active sprint if one exists.
-            Optional<Sprint> previousSprintOpt = sprintService.obtenerSprintActivo();
-            if (previousSprintOpt.isPresent()) {
-                Sprint previousSprint = previousSprintOpt.get();
-                // Sprint estado uses English values to match the database.
-                previousSprint.setEstado("past");
-                Sprint result = sprintService.actualizarSprint(previousSprint.getIdSprint(), previousSprint);
-                if (result == null) {
-                    logger.warn("Could not deactivate the previous sprint with ID {}",
-                            previousSprint.getIdSprint());
-                }
-            }
-
             Sprint newSprint = new Sprint();
             newSprint.setNombre((String) state.getDato("nombreSprint"));
             newSprint.setFechaInicio((LocalDate) state.getDato("fechaInicio"));
             newSprint.setFechaFin((LocalDate) state.getDato("fechaFin"));
-            // Sprint estado uses English values to match the database.
-            newSprint.setEstado("current");
-            sprintService.crearSprint(newSprint);
+            newSprint = sprintService.crearSprint(newSprint);
+
+            // Mark the new sprint as the single active sprint, demoting any
+            // previously active sprint based on its dates.
+            Sprint activado = sprintService.activarSprint(newSprint.getIdSprint());
+            if (activado == null) {
+                logger.warn("Could not activate the newly created sprint with ID {}",
+                        newSprint.getIdSprint());
+            }
             conversationManager.terminarConversacion(chatId);
 
             String message = BotMessages.NEWSPRINT_CREADO.getMessage()
@@ -1361,7 +1356,7 @@ public class TareaBotActions {
                         sbS.append(" (").append(s.getFechaInicio().format(DATE_FORMAT_SHORT))
                            .append(" - ").append(s.getFechaFin().format(DATE_FORMAT_SHORT)).append(")");
                     }
-                    if ("current".equals(s.getEstado())) sbS.append(" [Active]");
+                    if ("ACTIVO".equalsIgnoreCase(s.getEstado())) sbS.append(" [Active]");
                     sbS.append("\n");
                 }
                 BotHelper.sendMessageToTelegram(chatId, sbS.toString(), telegramClient);

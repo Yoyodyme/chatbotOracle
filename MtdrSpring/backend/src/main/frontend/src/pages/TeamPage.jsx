@@ -2,90 +2,11 @@ import React from 'react';
 import useAppStore from '../store/index';
 import useUsuarios from '../hooks/useUsuarios';
 import useEquipos from '../hooks/useEquipos';
+import { getAvatarInfo } from '../utils/developers';
 import Skeleton from '../components/shared/Skeleton';
 import EmptyState from '../components/shared/EmptyState';
 
 const FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-
-const DEVELOPMENT_TEAM = [
-  {
-    match: ['gabriel', 'peres'],
-    fullName: 'Gabriel Peres',
-    initials: 'GP',
-    role: 'Database Admin',
-    username: 'gabriel.p',
-    bg: '#DCFCE7',
-    color: '#166534',
-  },
-
-  {
-    match: ['alejandro', 'garcia', 'garcía'],
-    fullName: 'Alejandro García',
-    initials: 'AL',
-    role: 'Developer',
-    username: 'alejandro.g',
-    bg: '#DBEAFE',
-    color: '#2563EB',
-  },
-
-  {
-    match: ['eugenio', 'diaz', 'díaz'],
-    fullName: 'Eugenio Díaz',
-    initials: 'ED',
-    role: 'Product Owner',
-    username: 'eugenio.d',
-    bg: '#FCE7F3',
-    color: '#DB2777',
-  },
-
-  {
-    match: ['elian', 'elián', 'genc'],
-    fullName: 'Elián Genc',
-    initials: 'EG',
-    role: 'Developer',
-    username: 'elian.g',
-    bg: '#FCE7D6',
-    color: '#EA580C',
-  },
-
-  {
-  match: ['rutilo', 'peña', 'pena'],
-  fullName: 'Rutilo de la Peña',
-  initials: 'RD',
-  role: 'Full Stack Developer',
-  username: 'rutilo.d',
-  bg: '#FEF3C7',
-  color: '#D97706',
-  },
-
-  {
-    match: ['grecia', 'saucedo'],
-    fullName: 'Grecia Saucedo',
-    initials: 'GS',
-    role: 'Scrum Master',
-    username: 'grecia.s',
-    bg: '#E9D5FF',
-    color: '#9333EA',
-  },
-];
-
-function getDevInfo(usuario) {
-  const text = [
-    usuario?.nombreCompleto,
-    usuario?.nombreUsuario,
-    usuario?.nombre,
-    usuario?.apellido,
-    usuario?.apellidos,
-    usuario?.name,
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-
-  return DEVELOPMENT_TEAM.find((dev) =>
-    dev.match.some((m) => text.includes(m.toLowerCase()))
-  );
-}
 
 function SkeletonCards({ n = 5 }) {
   return (
@@ -125,9 +46,9 @@ function DevAvatar({ dev, size = 54 }) {
   );
 }
 
-function MemberCard({ usuario }) {
-  const dev = getDevInfo(usuario);
-  if (!dev) return null;
+function MemberCard({ usuario, dev }) {
+  const fullName = usuario.nombreCompleto || usuario.nombreUsuario || 'Unknown';
+  const role = usuario.rol?.nombre || 'Team member';
 
   return (
     <div style={styles.card}>
@@ -135,10 +56,10 @@ function MemberCard({ usuario }) {
 
       <div style={styles.memberInfo}>
         <span style={styles.memberName}>
-          {dev.fullName}
+          {fullName}
         </span>
         <span style={styles.username}>
-          @{dev.username}
+          @{usuario.nombreUsuario}
         </span>
       </div>
 
@@ -150,7 +71,7 @@ function MemberCard({ usuario }) {
           borderColor: `${dev.color}33`,
         }}
       >
-        {dev.role}
+        {role}
       </span>
     </div>
   );
@@ -163,17 +84,7 @@ export default function TeamPage() {
   const usuarios = useAppStore((s) => s.usuarios);
   const loading = loadingUsuarios || loadingEquipos;
 
-  const usuariosFiltrados = DEVELOPMENT_TEAM.map((dev) => {
-  const usuarioApi = usuarios.find((u) => getDevInfo(u)?.initials === dev.initials);
-
-  return {
-    idUsuario: usuarioApi?.idUsuario || dev.initials,
-    nombreCompleto: dev.fullName,
-    nombreUsuario: dev.username,
-    rol: { nombre: dev.role },
-    devInfo: dev,
-  };
-});
+  const usuariosFiltrados = usuarios;
 
   if (loading) {
     return (
@@ -240,8 +151,8 @@ export default function TeamPage() {
           </div>
 
           <div style={styles.grid}>
-            {usuariosFiltrados.map((u) => (
-              <MemberCard key={u.idUsuario || u.nombreUsuario} usuario={u} />
+            {usuariosFiltrados.map((u, i) => (
+              <MemberCard key={u.idUsuario || u.nombreUsuario} usuario={u} dev={getAvatarInfo(u, i)} />
             ))}
           </div>
         </div>
