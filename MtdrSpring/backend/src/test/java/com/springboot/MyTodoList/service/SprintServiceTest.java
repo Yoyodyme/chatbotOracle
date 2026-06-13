@@ -33,7 +33,7 @@ class SprintServiceTest {
         sprintMock = new Sprint();
         sprintMock.setIdSprint(1L);
         sprintMock.setNombre("Sprint 1");
-        sprintMock.setEstado("current");
+        sprintMock.setEstado("ACTIVO");
         sprintMock.setFechaInicio(LocalDate.now().minusDays(7));
         sprintMock.setFechaFin(LocalDate.now().plusDays(7));
     }
@@ -61,19 +61,19 @@ class SprintServiceTest {
 
     @Test
     void obtenerSprintActivo_found_returnsSprint() {
-        when(sprintRepository.findFirstByEstadoOrderByFechaInicioDesc("current"))
+        when(sprintRepository.findFirstByEstadoOrderByFechaInicioDesc("ACTIVO"))
                 .thenReturn(Optional.of(sprintMock));
 
         Optional<Sprint> result = sprintService.obtenerSprintActivo();
 
         assertTrue(result.isPresent());
-        assertEquals("current", result.get().getEstado());
+        assertEquals("ACTIVO", result.get().getEstado());
         assertEquals("Sprint 1", result.get().getNombre());
     }
 
     @Test
     void obtenerSprintActivo_notFound_returnsEmpty() {
-        when(sprintRepository.findFirstByEstadoOrderByFechaInicioDesc("current"))
+        when(sprintRepository.findFirstByEstadoOrderByFechaInicioDesc("ACTIVO"))
                 .thenReturn(Optional.empty());
 
         Optional<Sprint> result = sprintService.obtenerSprintActivo();
