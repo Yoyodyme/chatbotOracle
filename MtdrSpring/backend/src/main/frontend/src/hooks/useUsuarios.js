@@ -8,6 +8,9 @@ import { useEffect, useState } from 'react';
 import { getUsuarios } from '../api/usuarios';
 import useStore from '../store';
 
+// Accounts that exist in the database but should not appear in team/filter UI.
+const HIDDEN_USERNAMES = ['rolando', 'carlos', 'martha', 'gerado', 'adan', 'eugen'];
+
 /**
  * @returns {{ loading: boolean, error: Error|null }}
  */
@@ -28,7 +31,10 @@ export function useUsuarios() {
         const usuarios = await getUsuarios();
 
         if (!cancelado) {
-          setUsuarios(usuarios ?? []);
+          const visibles = (usuarios ?? []).filter(
+            (u) => !HIDDEN_USERNAMES.includes(u.nombreUsuario)
+          );
+          setUsuarios(visibles);
         }
       } catch (err) {
         if (!cancelado) {

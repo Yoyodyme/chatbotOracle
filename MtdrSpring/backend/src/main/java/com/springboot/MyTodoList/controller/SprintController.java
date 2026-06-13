@@ -29,9 +29,9 @@ public class SprintController {
     }
 
     /**
-     * Returns the iteration currently marked as active (estado = "current").
+     * Returns the iteration currently marked as active (estado = "ACTIVO").
      *
-     * @return HTTP 200 with the active iteration, or HTTP 404 when none is marked current
+     * @return HTTP 200 with the active iteration, or HTTP 404 when none is marked active
      */
     @GetMapping("/activo")
     public ResponseEntity<Sprint> obtenerActivo() {
@@ -76,6 +76,17 @@ public class SprintController {
         Sprint actualizado = sprintService.actualizarSprint(id, sprint);
         if (actualizado == null) return ResponseEntity.notFound().build();
         return ResponseEntity.ok(actualizado);
+    }
+
+    /**
+     * Marks the given sprint as the single active sprint ("ACTIVO"), demoting
+     * any previously active sprint to "FUTURO"/"PASADO" based on its dates.
+     */
+    @PutMapping("/{id}/activar")
+    public ResponseEntity<Sprint> activar(@PathVariable Long id) {
+        Sprint activado = sprintService.activarSprint(id);
+        if (activado == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(activado);
     }
 
     /**

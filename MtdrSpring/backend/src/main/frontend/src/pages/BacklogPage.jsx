@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { DEVELOPERS } from '../utils/developers';
+import { buildDeveloperFilters } from '../utils/developers';
 import useAppStore from '../store/index';
 import useTareas from '../hooks/useTareas';
 import {
@@ -31,10 +31,28 @@ const PRIORITY_FILTERS = [
   { label: 'Low', value: 'low', bg: '#DBEAFE', color: '#1E40AF', border: '#BFDBFE', dot: '#2563EB' },
 ];
 
-const DEVELOPER_FILTERS = [
-  { label: 'All', initials: null, bg: '#F9FAFB', color: '#6B7280' },
-  ...DEVELOPERS.filter((d) => d.label !== 'My tasks'),
-];
+const ALL_FILTER = { label: 'All', initials: null, bg: '#F9FAFB', color: '#6B7280' };
+
+/**
+ * Derives initials from a full name: first letter of the first two words,
+ * uppercased (matches the algorithm KanbanBoard uses to compute
+ * `usuarioAsignado` initials, so filters stay consistent).
+ */
+function getInitials(user) {
+  const nombre = [
+    user?.nombreCompleto,
+    user?.nombre,
+    user?.apellido,
+    user?.apellidos,
+    user?.nombreUsuario,
+    user?.name,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const partes = nombre.trim().split(/\s+/).filter(Boolean);
+  return partes.slice(0, 2).map((p) => p[0]?.toUpperCase()).join('');
+}
 
 function formatFecha(fechaStr) {
   if (!fechaStr) return '—';
@@ -69,31 +87,8 @@ function normalizePriority(nombre) {
   return 'low';
 }
 
-function getInitials(user) {
-  const nombre = [
-    user?.nombreCompleto,
-    user?.nombre,
-    user?.apellido,
-    user?.apellidos,
-    user?.nombreUsuario,
-    user?.name,
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-
-  if (nombre.includes('gabriel')) return 'GP';
-  if (nombre.includes('alejandro')) return 'AL';
-  if (nombre.includes('eugenio')) return 'ED';
-  if (nombre.includes('eli')) return 'EG';
-  if (nombre.includes('grecia')) return 'GS';
-  if (nombre.includes('rutilo')) return 'RD';
-
-  return '';
-}
-
-function DevAvatar({ initials, size = 24 }) {
-  const dev = DEVELOPERS.find((d) => d.initials === initials);
+function DevAvatar({ initials, devs, size = 24 }) {
+  const dev = devs.find((d) => d.initials === initials);
 
   return (
     <span
@@ -143,6 +138,12 @@ function SkeletonRows({ n = 6 }) {
 export default function BacklogPage() {
   const { loading, refetch } = useTareas();
   const tareas = useAppStore((s) => s.tareas);
+  const usuarios = useAppStore((s) => s.usuarios);
+  const devFilters = useMemo(() => buildDeveloperFilters(usuarios), [usuarios]);
+  const developerFilters = useMemo(
+    () => [ALL_FILTER, ...devFilters.filter((d) => d.initials !== '__all__')],
+    [devFilters]
+  );
   const [refreshing, setRefreshing] = useState(false);
   const [ultimaAct, setUltimaAct] = useState(null);
 
@@ -496,7 +497,7 @@ export default function BacklogPage() {
       </header>
 
       <div style={styles.devFilterBar}>
-        {DEVELOPER_FILTERS.map((dev) => {
+        {developerFilters.map((dev) => {
           const isActive = filtroDeveloper === dev.initials;
 
           return (
@@ -511,7 +512,7 @@ export default function BacklogPage() {
               }}
             >
               {dev.initials ? (
-                <DevAvatar initials={dev.initials} size={20} />
+                <DevAvatar initials={dev.initials} devs={devFilters} size={20} />
               ) : (
                 <span style={styles.allAvatar}>All</span>
               )}
@@ -708,7 +709,7 @@ export default function BacklogPage() {
                       <td style={styles.td}>
                         {tarea.usuarioAsignado ? (
                           <div style={styles.assignedCell}>
-                            <DevAvatar initials={initials} size={24} />
+                            <DevAvatar initials={initials} devs={devFilters} size={24} />
                             <span style={styles.assignedName}>
                               {tarea.usuarioAsignado.nombreCompleto ||
                                 tarea.usuarioAsignado.nombreUsuario ||

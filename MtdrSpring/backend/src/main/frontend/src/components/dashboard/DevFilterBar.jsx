@@ -1,23 +1,14 @@
 import React from 'react';
-import { DEVELOPERS } from '../../utils/developers';
-import { useCurrentUser } from '../../utils/auth';
 
-export default function DevFilterBar({ active, onChange }) {
-  const currentUser = useCurrentUser();
-
-  const currentFirstName = (currentUser.name || '').split(' ')[0].toLowerCase();
-  const matchedDev = DEVELOPERS.find(d =>
-    d.filterName !== '__me__' &&
-    d.filterName.split(' ')[0].toLowerCase() === currentFirstName
-  );
-
-  const resolvedDevs = DEVELOPERS.map(dev => {
-    if (dev.filterName !== '__me__') return dev;
-    return matchedDev
-      ? { ...dev, bg: matchedDev.bg, color: matchedDev.color }
-      : dev;
-  });
-
+/**
+ * Developer filter tab bar.
+ *
+ * @param {Array<{label:string, initials:string, filterName:string|null, bg:string, color:string}>} devs
+ *        Filter entries, including the fixed "All tasks" entry (initials: '__all__').
+ * @param {string|null} active - initials of the active dev, or null for "All tasks".
+ * @param {(initials: string|null) => void} onChange
+ */
+export default function DevFilterBar({ devs, active, onChange }) {
   return (
     <div
       style={{
@@ -30,16 +21,14 @@ export default function DevFilterBar({ active, onChange }) {
         flexShrink: 0,
       }}
     >
-      {resolvedDevs.map((dev) => {
-        const isOn = active === dev.initials;
-        const displayInitials = dev.initials === '__me__'
-          ? (matchedDev?.initials ?? 'ME')
-          : dev.initials;
+      {devs.map((dev) => {
+        const isAllTasks = dev.initials === '__all__';
+        const isOn = isAllTasks ? active === null : active === dev.initials;
 
         return (
           <button
             key={dev.initials}
-            onClick={() => onChange(isOn ? null : dev.initials)}
+            onClick={() => onChange(isAllTasks ? null : (isOn ? null : dev.initials))}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -70,7 +59,7 @@ export default function DevFilterBar({ active, onChange }) {
                 fontWeight: 600,
               }}
             >
-              {displayInitials}
+              {dev.initials === '__all__' ? 'ALL' : dev.initials}
             </span>
             {dev.label}
           </button>

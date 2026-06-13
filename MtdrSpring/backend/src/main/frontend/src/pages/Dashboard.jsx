@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   XAxis, YAxis, CartesianGrid, Tooltip,
   Bar, BarChart, ResponsiveContainer, ComposedChart, Line, LabelList,
@@ -9,8 +9,8 @@ import Avatar from '../components/shared/Avatar';
 import MetricCard from '../components/dashboard/MetricCard';
 import GaugeSprint from '../components/sprint/GaugeSprint';
 import DevFilterBar from '../components/dashboard/DevFilterBar';
-import { DEVELOPERS, getDeveloperByName } from '../utils/developers';
-import { useCurrentUser } from '../utils/auth';
+import { buildDeveloperFilters, getDeveloperByName, normalizeName } from '../utils/developers';
+import useAppStore from '../store/index';
 import SprintBadge from '../components/sprint/SprintBadge';
 import { generateSprintPDF } from '../utils/generatePDF';
 import {
@@ -69,14 +69,17 @@ function median(arr) {
 }
 
 // ── Pivot by sprint (rows = sprints, cols = devs) ────────────────────────────
+// Columns are keyed by the *normalized first name* of `usuario` (lowercased,
+// accent-stripped) so they line up with `teamFirstNames`, which is derived
+// the same way from the developer filter list.
 function pivotPorSprint(datos, campoValor) {
   if (!datos || datos.length === 0) return { pivotado: [], devs: [] };
   const sprintList = [...new Set(datos.map(d => d.sprint).filter(Boolean))].sort();
-  const devs       = [...new Set(datos.map(d => d.usuario).filter(Boolean))];
+  const devs       = [...new Set(datos.map(d => normalizeName(d.usuario)).filter(Boolean))];
   const pivotado   = sprintList.map(sprint => {
     const fila = { sprint };
     devs.forEach(dev => {
-      const enc = datos.find(d => d.usuario === dev && d.sprint === sprint);
+      const enc = datos.find(d => normalizeName(d.usuario) === dev && d.sprint === sprint);
       fila[dev] = enc ? (Number(enc[campoValor]) || 0) : 0;
     });
     return fila;
@@ -112,7 +115,9 @@ export default function Dashboard() {
   const [dropdownOpen,     setDropdownOpen]     = useState(false);
   const [generandoPDF,     setGenerandoPDF]     = useState(false);
   const [activeDev,        setActiveDev]        = useState(null);
-  const currentUser = useCurrentUser();
+
+  const usuarios = useAppStore((s) => s.usuarios);
+  const devs = useMemo(() => buildDeveloperFilters(usuarios), [usuarios]);
 
   // ── Fetching ──────────────────────────────────────────────────────────────
   const cargarDashboard = useCallback(async (showRefreshing = false) => {
@@ -211,12 +216,23 @@ export default function Dashboard() {
     ? resumenConTareas.filter(s => s.sprint === selectedSprintName)
     : resumenConTareas;
 
-  const totalCompletadas = kpiFiltered.length > 0
-    ? kpiFiltered.reduce((s, d) => s + (Number(d.tasksCompletadas) || 0), 0)
-    : (resumen.find(s => s.sprint === selectedSprintName)?.completadas ?? 0);
-  const totalHorasReales = horasFiltered.length > 0
-    ? horasFiltered.reduce((s, d) => s + (Number(d.horasReales) || 0), 0)
-    : (resumen.find(s => s.sprint === selectedSprintName)?.horasReales ?? 0);
+  // The currently selected developer's filter entry (null when "All tasks").
+  const selectedDev = activeDev ? devs.find(d => d.initials === activeDev) : null;
+  const selectedDevFirst = selectedDev ? normalizeName(selectedDev.filterName.split(' ')[0]) : null;
+
+  const kpiForTotals   = selectedDevFirst ? kpiFiltered.filter(d   => normalizeName(d.usuario) === selectedDevFirst) : kpiFiltered;
+  const horasForTotals = selectedDevFirst ? horasFiltered.filter(d => normalizeName(d.usuario) === selectedDevFirst) : horasFiltered;
+
+  const totalCompletadas = selectedDevFirst
+    ? kpiForTotals.reduce((s, d) => s + (Number(d.tasksCompletadas) || 0), 0)
+    : (kpiFiltered.length > 0
+        ? kpiFiltered.reduce((s, d) => s + (Number(d.tasksCompletadas) || 0), 0)
+        : (resumen.find(s => s.sprint === selectedSprintName)?.completadas ?? 0));
+  const totalHorasReales = selectedDevFirst
+    ? horasForTotals.reduce((s, d) => s + (Number(d.horasReales) || 0), 0)
+    : (horasFiltered.length > 0
+        ? horasFiltered.reduce((s, d) => s + (Number(d.horasReales) || 0), 0)
+        : (resumen.find(s => s.sprint === selectedSprintName)?.horasReales ?? 0));
 
   const totalEstimadas = resumenConTareasFiltered.reduce((s, r) => s + (Number(r.horasEstimadas) || 0), 0);
   const totalReales    = resumenConTareasFiltered.reduce((s, r) => s + (Number(r.horasReales)    || 0), 0);
@@ -279,18 +295,15 @@ export default function Dashboard() {
   // ── Individual work ───────────────────────────────────────────────────────
   const personalParaSprint = (() => {
     const base = personal.map(u => {
-      const firstName = (u.nombre || u.usuario || '').trim().toLowerCase();
+      const firstName = (u.nombre || u.usuario || '').trim();
 
       // Match hours by first name
       const horaRow = horasFiltered.find(h =>
-        (h.usuario || '').trim().toLowerCase() === firstName
+        normalizeName(h.usuario || '') === normalizeName(firstName)
       );
 
-      // Resolve full name + initials from DEVELOPERS list
-      const devEntry = DEVELOPERS.find(d =>
-        d.filterName !== '__me__' &&
-        (d.filterName || d.label || '').split(' ')[0].toLowerCase() === firstName
-      );
+      // Resolve full name + initials from the dynamic developer list
+      const devEntry = getDeveloperByName(firstName, devs);
 
       return {
         nombre:     devEntry?.filterName ?? (u.nombre || u.usuario),
@@ -301,41 +314,22 @@ export default function Dashboard() {
       };
     }).filter(u => u.tareas > 0);
 
-    // Apply dev filter — match on first name of filterName
-    if (!activeDev) return base;
-    const dev      = DEVELOPERS.find(d => d.initials === activeDev);
-    const devFirst = (dev?.filterName || dev?.label || '').split(' ')[0].toLowerCase();
-    if (!devFirst) return base;
+    // Apply dev filter — match on normalized first name ("All tasks" = no filter)
+    if (!selectedDevFirst) return base;
     return base.filter(u =>
-      u.nombre.split(' ')[0].toLowerCase() === devFirst
+      normalizeName(u.nombre.split(' ')[0]) === selectedDevFirst
     );
   })();
 
-  // Generic filter for chart data (usuario field = first name)
-  const filterByDev = arr => {
-    if (!activeDev) return arr;
-    const dev = DEVELOPERS.find(d => d.initials === activeDev);
-    const rawName = dev?.filterName === '__me__'
-      ? (currentUser.name ?? '')
-      : (dev?.filterName ?? '');
-    const devFirst = rawName.split(' ')[0].toLowerCase();
-    if (!devFirst) return arr;
-    return arr.filter(d =>
-      (d.usuario ?? '').trim().toLowerCase() === devFirst
-    );
-  };
+  const { pivotado: dataTasksRaw } = pivotPorSprint(kpiFiltered,   'tasksCompletadas');
+  const { pivotado: dataHorasRaw } = pivotPorSprint(horasFiltered, 'horasReales');
 
-  const dataKpiFiltered = filterByDev(dataKpi);
+  const TEAM = devs.filter(d => d.filterName);
+  const teamFirstNames = TEAM.map(d => normalizeName(d.filterName.split(' ')[0]));
 
-  const normalize = str => str.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  const TEAM = DEVELOPERS.filter(d => d.filterName !== '__me__');
-  const teamFirstNames = TEAM.map(d => normalize(d.filterName.split(' ')[0]));
-
-  const { pivotado: dataTasksRaw, devs: devsKpiRaw   } = pivotPorSprint(kpiFiltered,   'tasksCompletadas');
-  const { pivotado: dataHorasRaw, devs: devsHorasRaw } = pivotPorSprint(horasFiltered, 'horasReales');
-
-  const devsKpi   = teamFirstNames;
-  const devsHoras = teamFirstNames;
+  // When a developer filter is active, show only that developer's column.
+  const devsKpi   = selectedDevFirst ? teamFirstNames.filter(n => n === selectedDevFirst) : teamFirstNames;
+  const devsHoras = devsKpi;
 
   const allSprintSlots = selectedSprintName
     ? [selectedSprintName]
@@ -344,15 +338,15 @@ export default function Dashboard() {
         ...dataTasksRaw.map(r => r.sprint),
       ])].sort().slice(0, 5);
 
-  const buildPivot = (raw, slots) => slots.map(sprintName => {
+  const buildPivot = (raw, cols, slots) => slots.map(sprintName => {
     const existing = raw.find(r => r.sprint === sprintName) ?? {};
     const filled = { sprint: sprintName };
-    teamFirstNames.forEach(n => { filled[n] = existing[n] ?? 0; });
+    cols.forEach(n => { filled[n] = existing[n] ?? 0; });
     return filled;
   });
 
-  const dataTasksSprint = buildPivot(dataTasksRaw, allSprintSlots);
-  const dataHorasSprint = buildPivot(dataHorasRaw, allSprintSlots);
+  const dataTasksSprint = buildPivot(dataTasksRaw, devsKpi, allSprintSlots);
+  const dataHorasSprint = buildPivot(dataHorasRaw, devsHoras, allSprintSlots);
 
   const numDevs      = personalParaSprint.length || 1;
   const avgTaskDev   = Math.round(totalCompletadas / numDevs);
@@ -578,7 +572,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── Developer filter bar ── */}
-      <DevFilterBar active={activeDev} onChange={setActiveDev} />
+      <DevFilterBar devs={devs} active={activeDev} onChange={setActiveDev} />
 
       <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: 14, flex: 1 }}>
 
@@ -592,20 +586,24 @@ export default function Dashboard() {
           <MetricCard
             label="Completed tasks"
             value={String(totalCompletadas)}
-            sub={activeDev
-              ? `Filtered: ${DEVELOPERS.find(d => d.initials === activeDev)?.label ?? ''}`
+            sub={selectedDev
+              ? `Filtered: ${selectedDev.label}`
               : 'All sprints'}
           />
           <MetricCard
             label="Total actual hours"
             value={`${Number(totalHorasReales).toFixed(1)}h`}
-            sub={`Est ${totalEstimadas.toFixed(1)}h`}
+            sub={selectedDev ? `Filtered: ${selectedDev.label}` : `Est ${totalEstimadas.toFixed(1)}h`}
           />
           <MetricCard
             label="Efficiency"
-            value={`${eficiencia}%`}
-            sub={eficiencia >= 70 ? 'On target · goal ≥ 70%' : 'Below target · goal ≥ 70%'}
-            accent={eficiencia >= 70 ? SUCCESS : RED}
+            value={selectedDev ? '—' : `${eficiencia}%`}
+            sub={selectedDev
+              ? 'Select "All tasks" to view'
+              : (eficiencia > 100
+                  ? `Over budget by ${eficiencia - 100}%`
+                  : `Under/on budget · ${100 - eficiencia}% margin`)}
+            accent={selectedDev ? TEXT_MUTED : (eficiencia <= 100 ? SUCCESS : RED)}
           />
           <MetricCard
             label="Avg Task / Dev"
@@ -865,8 +863,8 @@ export default function Dashboard() {
     width: 28,
     height: 28,
     borderRadius: '50%',
-    backgroundColor: getDeveloperByName(u.nombre)?.bg ?? '#F9FAFB',
-    color: getDeveloperByName(u.nombre)?.color ?? '#6B7280',
+    backgroundColor: getDeveloperByName(u.nombre, devs)?.bg ?? '#F9FAFB',
+    color: getDeveloperByName(u.nombre, devs)?.color ?? '#6B7280',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -901,7 +899,7 @@ export default function Dashboard() {
                         <div style={{
                           height: 5,
                           width: `${Math.min(u.porcentaje * 6, 100)}%`,
-                          background: getDeveloperByName(u.nombre)?.color ?? COLORES_SPRINTS[i % COLORES_SPRINTS.length],
+                          background: getDeveloperByName(u.nombre, devs)?.color ?? COLORES_SPRINTS[i % COLORES_SPRINTS.length],
                           borderRadius: 3,
                           transition: 'width 0.5s ease',
                         }} />
@@ -931,7 +929,7 @@ export default function Dashboard() {
               <div style={{ fontSize: 14, fontWeight: 700, color: TEXT_PRIMARY }}>Tasks Terminadas por Desarrollador / Sprint</div>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 {devsKpi.map(dev => {
-                  const d = getDeveloperByName(dev);
+                  const d = getDeveloperByName(dev, devs);
                   return (
                     <span key={dev} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: TEXT_MUTED }}>
                       <span style={{ width: 10, height: 10, borderRadius: 2, background: d?.color ?? '#6B7280', display: 'inline-block' }} />
@@ -948,12 +946,12 @@ export default function Dashboard() {
                   <XAxis dataKey="sprint" tick={EJE_TICK} axisLine={false} tickLine={false} />
                   <YAxis tick={EJE_TICK} axisLine={false} tickLine={false} label={{ value: 'Tareas', angle: -90, position: 'insideLeft', offset: 20, style: { fontSize: 10, fill: TEXT_MUTED } }} />
                   <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v, name) => {
-                    const d = getDeveloperByName(name);
+                    const d = getDeveloperByName(name, devs);
                     const label = d ? `${d.filterName.split(' ')[0]} ${d.filterName.split(' ')[1]?.[0] ?? ''}.` : name;
                     return [v, label];
                   }} />
                   {devsKpi.map(dev => {
-                    const d = getDeveloperByName(dev);
+                    const d = getDeveloperByName(dev, devs);
                     return (
                       <Bar key={dev} dataKey={dev} name={dev} fill={d?.color ?? '#6B7280'} radius={[3, 3, 0, 0]} maxBarSize={22}>
                         <LabelList dataKey={dev} position="top" style={{ fontSize: 10, fill: TEXT_MUTED }} formatter={v => v > 0 ? v : ''} />
@@ -973,7 +971,7 @@ export default function Dashboard() {
               <div style={{ fontSize: 14, fontWeight: 700, color: TEXT_PRIMARY }}>Horas Reales por Desarrollador / Sprint</div>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 {devsHoras.map(dev => {
-                  const d = getDeveloperByName(dev);
+                  const d = getDeveloperByName(dev, devs);
                   return (
                     <span key={dev} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: TEXT_MUTED }}>
                       <span style={{ width: 10, height: 10, borderRadius: 2, background: d?.color ?? '#6B7280', display: 'inline-block' }} />
@@ -990,12 +988,12 @@ export default function Dashboard() {
                   <XAxis dataKey="sprint" tick={EJE_TICK} axisLine={false} tickLine={false} />
                   <YAxis tick={EJE_TICK} axisLine={false} tickLine={false} label={{ value: 'hrs', angle: -90, position: 'insideLeft', offset: 20, style: { fontSize: 10, fill: TEXT_MUTED } }} />
                   <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v, name) => {
-                    const d = getDeveloperByName(name);
+                    const d = getDeveloperByName(name, devs);
                     const label = d ? `${d.filterName.split(' ')[0]} ${d.filterName.split(' ')[1]?.[0] ?? ''}.` : name;
                     return [`${v}h`, label];
                   }} />
                   {devsHoras.map(dev => {
-                    const d = getDeveloperByName(dev);
+                    const d = getDeveloperByName(dev, devs);
                     return (
                       <Bar key={dev} dataKey={dev} name={dev} fill={d?.color ?? '#6B7280'} radius={[3, 3, 0, 0]} maxBarSize={22}>
                         <LabelList dataKey={dev} position="top" style={{ fontSize: 10, fill: TEXT_MUTED }} formatter={v => v > 0 ? `${v}h` : ''} />
