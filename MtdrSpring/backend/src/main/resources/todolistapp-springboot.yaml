@@ -5,23 +5,12 @@ metadata:
   annotations:
     oci.oraclecloud.com/reserved-ips: "160.34.214.149"
     oci.oraclecloud.com/loadbalancer-policy: "IP_HASH"
-    # Tells the OCI Load Balancer to terminate SSL on port 443
-    service.beta.kubernetes.io/oci-load-balancer-ssl-ports: "443"
-    # Name of the Kubernetes TLS secret created from the Let's Encrypt certificate
-    # Create it with: kubectl create secret tls yoyodyne-tls --cert=fullchain.pem --key=privkey.pem
-    service.beta.kubernetes.io/oci-load-balancer-tls-secret: "yoyodyne-tls"
 spec:
   type: LoadBalancer
   externalTrafficPolicy: Local
   ports:
-    # HTTP — kept open so existing traffic and HTTP→HTTPS redirects work
     - name: http
       port: 80
-      protocol: TCP
-      targetPort: 8080
-    # HTTPS — SSL terminated at the OCI Load Balancer, forwarded as plain HTTP to the pod
-    - name: https
-      port: 443
       protocol: TCP
       targetPort: 8080
   selector:
