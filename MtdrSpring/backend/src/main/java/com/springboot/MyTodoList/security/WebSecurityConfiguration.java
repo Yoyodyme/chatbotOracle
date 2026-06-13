@@ -55,7 +55,7 @@ public class WebSecurityConfiguration {
                         .hasAnyAuthority("SCOPE_mytodolist-apiread", "SCOPE_mytodolist-apiadmin")
                     .requestMatchers("/api/**")
                         .hasAuthority("SCOPE_mytodolist-apiadmin")
-                    .anyRequest().authenticated()
+                    .anyRequest().permitAll()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.decoder(jwtDecoder)));
 
