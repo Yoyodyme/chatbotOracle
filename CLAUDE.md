@@ -1,6 +1,6 @@
 # CLAUDE.md — chatbotOracle
 
-> **Roadmap activo del proyecto:** ver [`NEXT_STEPS.md`](./NEXT_STEPS.md) en la raíz del repo.
+> **Roadmap activo del proyecto:** ver [`NEXT_STEPS.md`](./docs/NEXT_STEPS.md) (local, no versionado).
 
 ## Descripción del Proyecto
 Aplicación cloud-native de gestión de tareas construida sobre Oracle Cloud Infrastructure (OCI).
@@ -75,7 +75,7 @@ Grupos de endpoints principales:
 - `/api/comentarios-tareas`, `/api/evidencias-tareas`, `/api/logs-tareas` — metadatos de tareas
 - `/todolist` — to-do simple legado, usado por el bot de Telegram
 
-Matriz completa de endpoints: ver `MATRIZ_ENDPOINTS_REST.md`
+Matriz completa de endpoints: ver `docs/MATRIZ_ENDPOINTS_REST.md` (local, no versionado)
 
 ### Comandos del Bot de Telegram
 
