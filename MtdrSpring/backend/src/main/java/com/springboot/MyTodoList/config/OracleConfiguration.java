@@ -1,17 +1,24 @@
 package com.springboot.MyTodoList.config;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 import javax.sql.DataSource;
 import java.io.File;
 
+/**
+ * Provides the primary JDBC {@link DataSource} bean backed by a HikariCP connection pool
+ * targeting Oracle Autonomous Database; resolves all connection properties from environment
+ * variables so that no credentials are stored in source code.
+ */
 @Configuration
 public class OracleConfiguration {
+
     Logger logger = LoggerFactory.getLogger(OracleConfiguration.class);
 
     @Value("${ORACLE_DB_USERNAME}")
@@ -20,11 +27,16 @@ public class OracleConfiguration {
     @Value("${ORACLE_DB_PASSWORD}")
     private String dbPassword;
 
+    /**
+     * Resolves the Oracle Wallet path and JDBC URL from environment variables,
+     * applies Oracle-specific JVM system properties required for TLS and SSO wallet
+     * authentication, then constructs a HikariCP pool sized for a free-tier ADB instance
+     * (max 5 connections, min 2 idle, {@code SELECT 1 FROM DUAL} keep-alive query).
+     *
+     * @return a fully initialised {@link HikariDataSource} ready to serve JDBC connections
+     */
     @Bean
     public DataSource dataSource() {
-        DriverManagerDataSource dataSource = new DriverManagerDataSource();
-
-        // Ruta relativa al directorio donde se ejecuta Maven (MtdrSpring/backend/)
         String walletPath = System.getenv().getOrDefault("WALLET_PATH",
                 new File("wallet").getAbsolutePath().replace("\\", "/"));
 
@@ -49,14 +61,22 @@ public class OracleConfiguration {
         String jdbcUrl = System.getenv().getOrDefault("DB_URL",
                 "jdbc:oracle:thin:@yoyodymemavyk_high?TNS_ADMIN=" + walletPath);
 
-        dataSource.setDriverClassName("oracle.jdbc.OracleDriver");
-        dataSource.setUrl(jdbcUrl);
-        dataSource.setUsername(dbUsername);
-        dataSource.setPassword(dbPassword);
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(jdbcUrl);
+        config.setUsername(dbUsername);
+        config.setPassword(dbPassword);
+        config.setDriverClassName("oracle.jdbc.OracleDriver");
+        config.setMaximumPoolSize(5);
+        config.setMinimumIdle(2);
+        config.setConnectionTimeout(30_000);
+        config.setIdleTimeout(600_000);
+        config.setMaxLifetime(1_800_000);
+        config.setConnectionTestQuery("SELECT 1 FROM DUAL");
+        config.setPoolName("YoyodynePool");
 
-        logger.info("Oracle Cloud ADB DataSource configured");
+        logger.info("Oracle Cloud ADB HikariCP DataSource configured");
         logger.info("Wallet path: {}", walletPath);
 
-        return dataSource;
+        return new HikariDataSource(config);
     }
 }

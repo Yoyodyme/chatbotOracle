@@ -106,7 +106,7 @@ public class DashboardService {
 
     public List<Map<String, Object>> getTimeComparison() {
         Long idDone = getIdEstatusDone();
-        Locale spanish = Locale.ENGLISH;
+        Locale locale = Locale.ENGLISH;
 
         List<Tarea> cerradas = tareaRepository.findAll().stream()
                 .filter(t -> t.getEstatus() != null && idDone.equals(t.getEstatus().getIdEstatus()))
@@ -135,7 +135,7 @@ public class DashboardService {
                             .average().orElse(4.0);
 
                     Map<String, Object> item = new LinkedHashMap<>();
-                    item.put("mes", entry.getKey().getMonth().getDisplayName(TextStyle.SHORT, spanish));
+                    item.put("mes", entry.getKey().getMonth().getDisplayName(TextStyle.SHORT, locale));
                     item.put("horasReales", Math.round(realProm * 10.0) / 10.0);
                     item.put("horasEstimadas", Math.round(estimadoProm * 10.0) / 10.0);
                     return item;
@@ -217,7 +217,7 @@ public class DashboardService {
     }
 
     public List<Map<String, Object>> getHoras(String periodo) {
-        Locale spanish = Locale.ENGLISH;
+        Locale locale = Locale.ENGLISH;
         LocalDateTime ahora = LocalDateTime.now();
         List<Tarea> recientes;
 
@@ -226,7 +226,7 @@ public class DashboardService {
                 recientes = tareaRepository.findAll().stream()
                         .filter(t -> t.getCreadoEn() != null && t.getCreadoEn().isAfter(ahora.minusDays(14)))
                         .collect(Collectors.toList());
-                DateTimeFormatter fmtDia = DateTimeFormatter.ofPattern("d MMM", spanish);
+                DateTimeFormatter fmtDia = DateTimeFormatter.ofPattern("d MMM", locale);
                 return recientes.stream()
                         .collect(Collectors.groupingBy(t -> t.getCreadoEn().toLocalDate()))
                         .entrySet().stream()
@@ -243,7 +243,7 @@ public class DashboardService {
                         .entrySet().stream()
                         .sorted(Map.Entry.comparingByKey())
                         .map(e -> buildHorasItem(
-                                e.getKey().getMonth().getDisplayName(TextStyle.SHORT, spanish),
+                                e.getKey().getMonth().getDisplayName(TextStyle.SHORT, locale),
                                 e.getValue()))
                         .collect(Collectors.toList());
 
@@ -252,7 +252,7 @@ public class DashboardService {
                         .filter(t -> t.getCreadoEn() != null && t.getCreadoEn().isAfter(ahora.minusDays(70)))
                         .collect(Collectors.toList());
                 WeekFields iso = WeekFields.ISO;
-                DateTimeFormatter fmtSem = DateTimeFormatter.ofPattern("d MMM", spanish);
+                DateTimeFormatter fmtSem = DateTimeFormatter.ofPattern("d MMM", locale);
                 return recientes.stream()
                         .collect(Collectors.groupingBy(
                                 t -> t.getCreadoEn().toLocalDate().with(iso.dayOfWeek(), 1)))
