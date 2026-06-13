@@ -72,12 +72,12 @@ public class Tarea {
     private LocalDateTime actualizadoEn;
 
     /** Planned effort in decimal hours with two-decimal precision. */
-    @Column(name = "HORAS_ESTIMADAS", precision = 5, scale = 2,
+    @Column(name = "HORAS_ESTIMADAS",
             columnDefinition = "NUMBER(5,2) DEFAULT 0.00")
     private Double horasEstimadas;
 
     /** Actual effort logged after the work is complete, in decimal hours. */
-    @Column(name = "HORAS_REALES", precision = 5, scale = 2,
+    @Column(name = "HORAS_REALES",
             columnDefinition = "NUMBER(5,2) DEFAULT 0.00")
     private Double horasReales;
 
