@@ -64,7 +64,7 @@ spec:
             - name: ORACLE_DB_USERNAME
               value: "EQUIPO51"
             - name: DB_URL
-              value: "jdbc:oracle:thin:@chatbotdb_tp?TNS_ADMIN=/mtdrworkshop/creds"
+              value: "jdbc:oracle:thin:@yoyodymemavyk_tp?TNS_ADMIN=/mtdrworkshop/creds"
             - name: WALLET_PATH
               value: "/mtdrworkshop/creds"
             - name: TNS_ADMIN
